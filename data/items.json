@@ -4,6 +4,7 @@
 		"name": "Combat Knife",
 		"weight": 0.5,
 		"category": "melee",
+		"interaction": "equip",
 		"sprite": "res://assets/images/items/spr_combat_knife.png",
 		"slot": "r_hand"
 	},
@@ -12,6 +13,7 @@
 		"name": "Field Bandage",
 		"weight": 0.1,
 		"category": "medicine",
+		"interaction": "use",
 		"sprite": "res://assets/images/items/spr_field_bandage.png",
 		"slot": null
 	}

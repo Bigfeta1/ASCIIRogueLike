@@ -34,6 +34,15 @@ func _ready() -> void:
 	_label_temp = hbox.get_node("TemperatureLabel")
 	_refresh_ui()
 
+func heal(amount: int) -> void:
+	hp = mini(hp + amount, hp_max)
+	_refresh_ui()
+	var character := get_parent()
+	if character.character_role == character.CharacterRole.PLAYER:
+		var label: Label = DamageLabelScript.new()
+		character.get_parent().get_node("CanvasLayer").add_child(label)
+		label.setup("+%dHP" % amount, Color.GREEN, character.position, character.get_parent().get_node("Camera3D"))
+
 func tick_regen() -> void:
 	if hp >= hp_max:
 		_turns_since_regen = 0

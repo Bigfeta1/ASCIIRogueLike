@@ -79,27 +79,7 @@ func _apply_damage(target: Node) -> void:
 		_spawn_miss_label(target)
 		return
 
-	# Parry — defender needs 18+ (d20 + parry_mod vs fixed 18 + attacker parry_mod)
-	var parry_roll: int = randi_range(1, 20) + defender_levels.parry_mod()
-	if parry_roll >= 19 + attacker_levels.parry_mod():
-		_spawn_label(target, "Parry!", Color.CYAN)
-		var attacker_vitals := _character.get_node_or_null("CharacterVitals")
-		if attacker_vitals != null:
-			attacker_vitals.hp = maxi(0, attacker_vitals.hp - 1)
-			if _character.character_role == _character.CharacterRole.PLAYER:
-				attacker_vitals._refresh_ui()
-		return
-
-	# Dodge — needs 18+ (d20 + dodge_mod vs fixed 18)
-	var dodge_roll: int = randi_range(1, 20) + defender_levels.dodge_mod()
-	if dodge_roll >= 19:
-		var adrenal_contribution: int = defender_levels.stat_mod(defender_levels.adrenal)
-		if adrenal_contribution > 0:
-			vitals.stat_debt["adrenal"] = vitals.stat_debt.get("adrenal", 0) + adrenal_contribution
-		_spawn_label(target, "Dodge!", Color.GREEN)
-		return
-
-	# Crit check
+	# Damage roll (simultaneous crit check)
 	var muscle_mod: int = attacker_levels.stat_mod(attacker_levels.muscle)
 	var affect_mod: int = attacker_levels.stat_mod(attacker_levels.affect)
 	var crit_chance: float = 0.05 + affect_mod * 0.025
@@ -111,7 +91,27 @@ func _apply_damage(target: Node) -> void:
 	else:
 		damage = maxi(1, randi_range(1, 3) + muscle_mod)
 
-	# Block — needs 18+ (d20 + block_mod vs fixed 18), then rolls d6 reduction
+	# Parry — defender needs 19+ (d20 + parry_mod vs 19 + attacker parry_mod)
+	var parry_roll: int = randi_range(1, 20) + defender_levels.parry_mod()
+	if parry_roll >= 19 + attacker_levels.parry_mod():
+		_spawn_label(target, "Parry!", Color.CYAN)
+		var attacker_vitals := _character.get_node_or_null("CharacterVitals")
+		if attacker_vitals != null:
+			attacker_vitals.hp = maxi(0, attacker_vitals.hp - 1)
+			if _character.character_role == _character.CharacterRole.PLAYER:
+				attacker_vitals._refresh_ui()
+		return
+
+	# Dodge — needs 19+ (d20 + dodge_mod vs flat 19)
+	var dodge_roll: int = randi_range(1, 20) + defender_levels.dodge_mod()
+	if dodge_roll >= 19:
+		var adrenal_contribution: int = defender_levels.stat_mod(defender_levels.adrenal)
+		if adrenal_contribution > 0:
+			vitals.stat_debt["adrenal"] = vitals.stat_debt.get("adrenal", 0) + adrenal_contribution
+		_spawn_label(target, "Dodge!", Color.GREEN)
+		return
+
+	# Block — needs 19+ (d20 + block_mod vs flat 19), then rolls d6 reduction
 	var block_check: int = randi_range(1, 20) + defender_levels.block_mod()
 	if block_check >= 19:
 		var block_roll: int = randi_range(1, 6) + defender_levels.block_mod()

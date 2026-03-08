@@ -118,4 +118,4 @@ func _refresh_ui() -> void:
 				if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 					item_clicked.emit(label))
 			item_list.add_child(label)
-			selectable_entries.append({"type": "item", "category": cat, "node": label})
+			selectable_entries.append({"type": "item", "category": cat, "node": label, "id": id})
