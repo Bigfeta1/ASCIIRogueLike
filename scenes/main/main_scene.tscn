@@ -1,20 +1,14 @@
-[gd_scene load_steps=11 format=3 uid="uid://mjt58ix46v16"]
+[gd_scene load_steps=13 format=3 uid="uid://mjt58ix46v16"]
 
 [ext_resource type="Script" uid="uid://da2bhqgx7ybn4" path="res://scripts/turn_order.gd" id="1_271kv"]
 [ext_resource type="Texture2D" uid="uid://2666ys540gi" path="res://assets/images/ui/spr_menu_panel.png" id="1_s7l2u"]
 [ext_resource type="PackedScene" uid="uid://btoovjkj3xjl5" path="res://scenes/map/grid_map.tscn" id="2_24sno"]
 [ext_resource type="Script" uid="uid://dalh8tnvbvoyj" path="res://scripts/camera.gd" id="6_3mcv8"]
 [ext_resource type="PackedScene" uid="uid://gwl4g5mr80cv" path="res://scenes/character/character.tscn" id="7_a1617"]
-[ext_resource type="Script" path="res://scenes/main/character_sheet.gd" id="8_sheet"]
+[ext_resource type="Script" uid="uid://c4528qwm1k3g0" path="res://scenes/main/character_sheet.gd" id="8_sheet"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_271kv"]
 font_size = 13
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l7pil"]
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0f027"]
 bg_color = Color(0, 0, 0, 1)
@@ -24,6 +18,18 @@ border_blend = true
 
 [sub_resource type="LabelSettings" id="LabelSettings_a4cr6"]
 font_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l7pil"]
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="LabelSettings" id="LabelSettings_0jrka"]
+font_size = 8
+
+[sub_resource type="LabelSettings" id="LabelSettings_l7pil"]
+font_size = 10
 
 [node name="MainScene" type="Node3D"]
 
@@ -67,6 +73,121 @@ offset_right = 59.0
 offset_bottom = 82.0
 text = "TEST"
 label_settings = SubResource("LabelSettings_271kv")
+
+[node name="TopBar" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ColorRect" type="Panel" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_right = 1921.0
+offset_bottom = 40.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_0f027")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_constants/separation = 104
+
+[node name="HPLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "HP:"
+
+[node name="BPLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "BP:"
+
+[node name="RRLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "RR:"
+
+[node name="HRLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "HR:"
+
+[node name="TemperatureLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "C°:"
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_left = 1558.0
+offset_right = 1753.0
+offset_bottom = 40.0
+theme_override_constants/separation = 104
+
+[node name="AmbientTempLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer2"]
+layout_mode = 2
+text = "Temp:"
+
+[node name="TimeLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer2"]
+layout_mode = 2
+text = "Time:"
+
+[node name="XPBar" type="Panel" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_top = 40.0
+offset_right = 1920.0
+offset_bottom = 49.0
+
+[node name="XPFill" type="ColorRect" parent="CanvasLayer/TopBar/XPBar"]
+layout_mode = 0
+offset_bottom = 9.0
+color = Color(0.1, 0.2, 0.5, 1)
+
+[node name="LevelLabel" type="Label" parent="CanvasLayer/TopBar/XPBar"]
+layout_mode = 0
+offset_top = -1.0
+offset_right = 40.0
+offset_bottom = 22.0
+text = "Level:"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="LevelAmount" type="Label" parent="CanvasLayer/TopBar/XPBar/LevelLabel"]
+layout_mode = 0
+offset_left = 23.0
+offset_right = 63.0
+offset_bottom = 23.0
+text = "x1"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="CurrentXPLabel" type="Label" parent="CanvasLayer/TopBar/XPBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -6.5
+offset_right = 20.0
+offset_bottom = 16.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "x"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="SlashLabel" type="Label" parent="CanvasLayer/TopBar/XPBar/CurrentXPLabel"]
+layout_mode = 0
+offset_left = 16.0
+offset_right = 56.0
+offset_bottom = 23.0
+text = "/"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="MaxXPLabel" type="Label" parent="CanvasLayer/TopBar/XPBar/CurrentXPLabel"]
+layout_mode = 0
+offset_left = 29.0
+offset_right = 69.0
+offset_bottom = 23.0
+text = "x"
+label_settings = SubResource("LabelSettings_a4cr6")
 
 [node name="CharacterSheet" type="Control" parent="CanvasLayer"]
 layout_mode = 3
@@ -203,6 +324,55 @@ offset_top = 97.0
 offset_right = 1136.0
 offset_bottom = 699.0
 
+[node name="ArmContainer" type="VBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = -76.0
+offset_top = 160.0
+offset_right = 142.0
+offset_bottom = 378.0
+
+[node name="ShoulderPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/ArmContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/ArmContainer/ShoulderPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Shoulder"
+label_settings = SubResource("LabelSettings_0jrka")
+
+[node name="BracersPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/ArmContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/ArmContainer/BracersPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Bracers"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="GlovesPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/ArmContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/ArmContainer/GlovesPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Gloves"
+label_settings = SubResource("LabelSettings_l7pil")
+
 [node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
 layout_mode = 0
 offset_left = 100.0
@@ -210,11 +380,37 @@ offset_top = 34.0
 offset_right = 318.0
 offset_bottom = 548.0
 
-[node name="HeadPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="HeadPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/HBoxContainer"]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/HBoxContainer/HeadPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Head"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="FacePanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/HBoxContainer/FacePanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Face"
+label_settings = SubResource("LabelSettings_l7pil")
 
 [node name="NeckPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
 custom_minimum_size = Vector2(70, 70)
@@ -222,14 +418,17 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
 
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/NeckPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Neck"
+label_settings = SubResource("LabelSettings_l7pil")
+
 [node name="Chest" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
 layout_mode = 2
-
-[node name="RShoulderPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+alignment = 1
 
 [node name="ChestPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
 custom_minimum_size = Vector2(70, 70)
@@ -238,34 +437,27 @@ size_flags_horizontal = 5
 size_flags_vertical = 5
 theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
 
-[node name="LShoulderPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 5
-size_flags_vertical = 5
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest/ChestPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Chest"
+label_settings = SubResource("LabelSettings_l7pil")
 
-[node name="Arms" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
-layout_mode = 2
-
-[node name="RArmPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Arms"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
-
-[node name="ShirtPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Arms"]
+[node name="ShirtPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
 
-[node name="LArmPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Arms"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 5
-size_flags_vertical = 5
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest/ShirtPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Shirt"
+label_settings = SubResource("LabelSettings_l7pil")
 
 [node name="BeltPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
 custom_minimum_size = Vector2(70, 70)
@@ -273,196 +465,180 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
 
-[node name="Legs" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
-layout_mode = 2
-alignment = 1
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/BeltPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Belt"
+label_settings = SubResource("LabelSettings_l7pil")
 
-[node name="RLegPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Legs"]
+[node name="LegsPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
 
-[node name="LLegPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Legs"]
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/LegsPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Legs"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Feet Panel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Feet Panel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Feet"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = 352.0
+offset_top = 130.0
+offset_right = 496.0
+offset_bottom = 402.0
+theme_override_constants/separation = 31
+
+[node name="OuterBack" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2"]
+layout_mode = 2
+
+[node name="Outerwear" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/OuterBack"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/OuterBack/Outerwear"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Outerwear"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="BackPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/OuterBack"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/OuterBack/BackPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Back"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Rings" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2"]
+layout_mode = 2
+
+[node name="Outerwear" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/Rings"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/Rings/Outerwear"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Ring 1"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="BackPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/Rings"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/Rings/BackPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Ring 2"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Trinkets" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2"]
+layout_mode = 2
+
+[node name="Outerwear" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/Trinkets"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/Trinkets/Outerwear"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Trinket 1"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="BackPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/Trinkets"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer2/Trinkets/BackPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Trinket 2"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Chest" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = 93.0
+offset_top = 274.0
+offset_right = 237.0
+offset_bottom = 344.0
+theme_override_constants/separation = 92
+alignment = 1
+
+[node name="ChestPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Chest"]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 size_flags_horizontal = 5
 size_flags_vertical = 5
 theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
 
-[node name="Feet" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
-layout_mode = 2
-alignment = 1
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Chest/ChestPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "R Hand"
+label_settings = SubResource("LabelSettings_l7pil")
 
-[node name="RFootPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Feet"]
+[node name="ShirtPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Chest"]
 custom_minimum_size = Vector2(70, 70)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
 
-[node name="LFootPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Feet"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 5
-size_flags_vertical = 5
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
-
-[node name="Legs" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
+[node name="Label" type="Label" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Chest/ShirtPanel"]
 layout_mode = 0
-offset_left = 13.0
-offset_top = 309.0
-offset_right = 402.0
-offset_bottom = 379.0
-theme_override_constants/separation = 249
-alignment = 1
-
-[node name="RHandPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Legs"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
-
-[node name="LHandPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Legs"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 5
-size_flags_vertical = 5
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
-
-[node name="BackFace" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
-layout_mode = 0
-offset_left = 3.0
-offset_top = 62.0
-offset_right = 221.0
-offset_bottom = 132.0
-theme_override_constants/separation = 272
-
-[node name="FacePanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/BackFace"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
-
-[node name="BackPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/BackFace"]
-custom_minimum_size = Vector2(70, 70)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
-
-[node name="TopBar" type="Control" parent="CanvasLayer"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="ColorRect" type="Panel" parent="CanvasLayer/TopBar"]
-layout_mode = 0
-offset_right = 1921.0
-offset_bottom = 40.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_0f027")
-
-[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/TopBar"]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-theme_override_constants/separation = 104
-
-[node name="HPLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
-layout_mode = 2
-text = "HP:"
-
-[node name="BPLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
-layout_mode = 2
-text = "BP:"
-
-[node name="RRLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
-layout_mode = 2
-text = "RR:"
-
-[node name="HRLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
-layout_mode = 2
-text = "HR:"
-
-[node name="TemperatureLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
-layout_mode = 2
-text = "C°:"
-
-[node name="HBoxContainer2" type="HBoxContainer" parent="CanvasLayer/TopBar"]
-layout_mode = 0
-offset_left = 1558.0
-offset_right = 1753.0
-offset_bottom = 40.0
-theme_override_constants/separation = 104
-
-[node name="AmbientTempLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer2"]
-layout_mode = 2
-text = "Temp:"
-
-[node name="TimeLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer2"]
-layout_mode = 2
-text = "Time:"
-
-[node name="XPBar" type="Panel" parent="CanvasLayer/TopBar"]
-layout_mode = 0
-offset_top = 40.0
-offset_right = 1920.0
-offset_bottom = 49.0
-
-[node name="XPFill" type="ColorRect" parent="CanvasLayer/TopBar/XPBar"]
-layout_mode = 0
-offset_bottom = 9.0
-color = Color(0.1, 0.2, 0.5, 1)
-
-[node name="LevelLabel" type="Label" parent="CanvasLayer/TopBar/XPBar"]
-layout_mode = 0
-offset_top = -1.0
-offset_right = 40.0
-offset_bottom = 22.0
-text = "Level:"
-label_settings = SubResource("LabelSettings_a4cr6")
-
-[node name="LevelAmount" type="Label" parent="CanvasLayer/TopBar/XPBar/LevelLabel"]
-layout_mode = 0
-offset_left = 23.0
-offset_right = 63.0
-offset_bottom = 23.0
-text = "x1"
-label_settings = SubResource("LabelSettings_a4cr6")
-
-[node name="CurrentXPLabel" type="Label" parent="CanvasLayer/TopBar/XPBar"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -6.5
-offset_right = 20.0
-offset_bottom = 16.5
-grow_horizontal = 2
-grow_vertical = 2
-text = "x"
-label_settings = SubResource("LabelSettings_a4cr6")
-
-[node name="SlashLabel" type="Label" parent="CanvasLayer/TopBar/XPBar/CurrentXPLabel"]
-layout_mode = 0
-offset_left = 16.0
-offset_right = 56.0
-offset_bottom = 23.0
-text = "/"
-label_settings = SubResource("LabelSettings_a4cr6")
-
-[node name="MaxXPLabel" type="Label" parent="CanvasLayer/TopBar/XPBar/CurrentXPLabel"]
-layout_mode = 0
-offset_left = 29.0
-offset_right = 69.0
-offset_bottom = 23.0
-text = "x"
-label_settings = SubResource("LabelSettings_a4cr6")
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "L Hand"
+label_settings = SubResource("LabelSettings_l7pil")
 
 [node name="GameLogic" type="Node" parent="."]
 

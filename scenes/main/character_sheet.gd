@@ -15,3 +15,4 @@ func _set_tab(tab: Tab) -> void:
 	$StatsPanel.visible = _tab == Tab.STATS
 	$SkillsPanel.visible = _tab == Tab.SKILLS
 	$InventoryPanel.visible = _tab == Tab.INVENTORY
+	get_viewport().gui_release_focus()
