@@ -8,10 +8,12 @@
 
 	"1": {
 		"name": "Water",
-		"description": "Cold, murky water.",
+		"description": "Cold, murky water. Looks drinkable, but you can't be sure.",
 		"walkable": false,
 		"sound_dampening": 0,
-		"blocks_vision": false },
+		"blocks_vision": false,
+		"liquid": "water",
+		"actions": ["Drink", "Inspect", "Collect", "Clean", "Fish"] },
 
 	"2": {
 		"name": "Sound",

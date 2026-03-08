@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://mjt58ix46v16"]
+[gd_scene load_steps=16 format=3 uid="uid://mjt58ix46v16"]
 
 [ext_resource type="Script" uid="uid://da2bhqgx7ybn4" path="res://scripts/turn_order.gd" id="1_271kv"]
 [ext_resource type="Texture2D" uid="uid://2666ys540gi" path="res://assets/images/ui/spr_menu_panel.png" id="1_s7l2u"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://gwl4g5mr80cv" path="res://scenes/character/character.tscn" id="7_a1617"]
 [ext_resource type="Script" uid="uid://c4528qwm1k3g0" path="res://scenes/main/character_sheet.gd" id="8_sheet"]
 [ext_resource type="Script" uid="uid://c7ksktlija60b" path="res://scenes/main/loot_modal.gd" id="9_lootmodal"]
+[ext_resource type="Script" uid="uid://dibgq023y76tl" path="res://scenes/main/fill_modal.gd" id="10_fillmodal"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_271kv"]
 font_size = 13
@@ -31,6 +32,9 @@ font_size = 8
 
 [sub_resource type="LabelSettings" id="LabelSettings_l7pil"]
 font_size = 10
+
+[sub_resource type="LabelSettings" id="LabelSettings_w4lj1"]
+font_size = 15
 
 [node name="MainScene" type="Node3D"]
 
@@ -782,6 +786,63 @@ layout_mode = 0
 
 [node name="ActionList" type="VBoxContainer" parent="CanvasLayer/LootModal/ActionPanel"]
 layout_mode = 2
+
+[node name="InteractModal" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("10_fillmodal")
+
+[node name="Panel" type="NinePatchRect" parent="CanvasLayer/InteractModal"]
+layout_mode = 0
+offset_right = 550.0
+offset_bottom = 456.0
+texture = ExtResource("1_s7l2u")
+
+[node name="VBox" type="VBoxContainer" parent="CanvasLayer/InteractModal/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="CanvasLayer/InteractModal/Panel/VBox"]
+layout_mode = 2
+text = "Water"
+horizontal_alignment = 1
+
+[node name="ActionList" type="VBoxContainer" parent="CanvasLayer/InteractModal/Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="InspectIcon" type="TextureRect" parent="CanvasLayer/InteractModal/Panel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.066
+anchor_right = 0.5
+anchor_bottom = 0.066
+offset_left = -100.0
+offset_right = 100.0
+offset_bottom = 200.0
+grow_horizontal = 2
+
+[node name="InfoLabel" type="Label" parent="CanvasLayer/InteractModal/Panel"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 266.0
+offset_right = 525.0
+offset_bottom = 428.0
+label_settings = SubResource("LabelSettings_w4lj1")
+autowrap_mode = 2
 
 [node name="GameLogic" type="Node" parent="."]
 

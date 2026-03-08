@@ -43,6 +43,7 @@ func load_game(main: Node) -> void:
 func _spawn_characters() -> void:
 	var player := _main.get_node("Character")
 	player.get_node("CharacterMovement").place(Vector2i(0, 0))
+	player.get_node("CharacterInventory").add_item("flask")
 	await _enemy_configurator.spawn()
 
 func _on_zone_exit(direction: Vector2i) -> void:

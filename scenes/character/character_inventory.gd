@@ -1,18 +1,23 @@
 extends Node
 
-signal item_clicked(label: Label)
+signal item_clicked(row: Control)
 
-const CATEGORY_ORDER: Array = ["melee", "ranged", "armor", "clothes", "medicine", "misc"]
+const CATEGORY_ORDER: Array = ["melee", "ranged", "armor", "clothes", "medicine", "container", "misc"]
 const CATEGORY_LABELS: Dictionary = {
 	"melee": "Melee Weapons",
 	"ranged": "Ranged Weapons",
 	"armor": "Armor",
 	"clothes": "Clothes",
 	"medicine": "Medicine",
+	"container": "Containers",
 	"misc": "Misc",
 }
 
 var items: Array[String] = []
+var item_uids: Array[int] = []
+# Maps uid -> { "liquid": String, "amount_liters": float } for container items
+var container_contents: Dictionary = {}
+var _next_uid: int = 0
 var collapsed: Dictionary = {}
 
 # Each entry: { "type": "header"/"item", "category": String, "node": Label }
@@ -51,6 +56,8 @@ func add_item(id: String) -> bool:
 	if not can_add(id):
 		return false
 	items.append(id)
+	item_uids.append(_next_uid)
+	_next_uid += 1
 	_refresh_ui()
 	return true
 
@@ -58,9 +65,27 @@ func remove_item(id: String) -> bool:
 	var idx := items.find(id)
 	if idx == -1:
 		return false
+	var uid: int = item_uids[idx]
 	items.remove_at(idx)
+	item_uids.remove_at(idx)
+	container_contents.erase(uid)
 	_refresh_ui()
 	return true
+
+func get_liquid(item_index: int) -> Dictionary:
+	var uid: int = item_uids[item_index]
+	return container_contents.get(uid, {})
+
+func set_liquid(item_index: int, liquid: String, amount_liters: float) -> void:
+	var uid: int = item_uids[item_index]
+	var data := ItemRegistry.get_item(items[item_index])
+	var capacity: float = data.get("capacity_liters", 0.0)
+	var allowed: Array = data.get("allowed_liquids", [])
+	if amount_liters <= 0.0:
+		container_contents.erase(uid)
+	elif allowed.has(liquid) and amount_liters <= capacity:
+		container_contents[uid] = {"liquid": liquid, "amount_liters": amount_liters}
+	_refresh_ui()
 
 func toggle_category(category: String) -> void:
 	collapsed[category] = not collapsed.get(category, false)
@@ -111,11 +136,41 @@ func _refresh_ui() -> void:
 			var qty: int = counts[id]
 			var unit_weight: float = data.get("weight", 0.0) as float
 			var prefix := "%dx  " % qty if qty > 1 else ""
+			var fill_suffix := ""
+			if data.get("category", "") == "container":
+				var capacity: float = data.get("capacity_liters", 0.0)
+				var idx := items.find(id)
+				if idx != -1:
+					var contents := get_liquid(idx)
+					if contents.is_empty():
+						fill_suffix = "  (%.2fL empty)" % capacity
+					else:
+						fill_suffix = "  (%.2f/%.2fL %s)" % [contents["amount_liters"], capacity, contents["liquid"]]
+
+			var row := PanelContainer.new()
+			row.mouse_filter = Control.MOUSE_FILTER_STOP
+			var hbox := HBoxContainer.new()
+			hbox.mouse_filter = Control.MOUSE_FILTER_PASS
+			row.add_child(hbox)
+
+			var sprite_path: String = data.get("sprite", "") as String
+			if sprite_path != "":
+				var icon := TextureRect.new()
+				icon.texture = load(sprite_path)
+				icon.custom_minimum_size = Vector2(28, 28)
+				icon.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+				icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				icon.mouse_filter = Control.MOUSE_FILTER_PASS
+				hbox.add_child(icon)
+
 			var label := Label.new()
-			label.text = "  %s%s  %.1fkg" % [prefix, data.get("name", id), unit_weight * qty]
-			label.mouse_filter = Control.MOUSE_FILTER_STOP
-			label.gui_input.connect(func(event: InputEvent) -> void:
+			label.text = "  %s%s  %.1fkg%s" % [prefix, data.get("name", id), unit_weight * qty, fill_suffix]
+			label.mouse_filter = Control.MOUSE_FILTER_PASS
+			hbox.add_child(label)
+
+			row.gui_input.connect(func(event: InputEvent) -> void:
 				if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-					item_clicked.emit(label))
-			item_list.add_child(label)
-			selectable_entries.append({"type": "item", "category": cat, "node": label, "id": id})
+					item_clicked.emit(row))
+			item_list.add_child(row)
+			selectable_entries.append({"type": "item", "category": cat, "node": row, "id": id})

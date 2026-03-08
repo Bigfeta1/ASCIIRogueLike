@@ -17,6 +17,8 @@ func _process(_delta: float) -> void:
 		position.z = _character.position.z
 
 func _input(event: InputEvent) -> void:
+	if _character.action_state == _character.ActionState.MENU:
+		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			zoom_index = min(zoom_index + 1, ZOOM_LEVELS.size() - 1)

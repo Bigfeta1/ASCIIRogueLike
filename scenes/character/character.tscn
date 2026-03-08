@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://gwl4g5mr80cv"]
+[gd_scene load_steps=22 format=3 uid="uid://gwl4g5mr80cv"]
 
 [ext_resource type="Texture2D" uid="uid://r360kik4wxvi" path="res://assets/images/character_sprites/spr_character_surgeon.png" id="1_2cgup"]
 [ext_resource type="Script" uid="uid://bd6yl36nwoj3r" path="res://scenes/character/character.gd" id="2_a5ia6"]
@@ -15,6 +15,7 @@
 [ext_resource type="Script" uid="uid://binrlapg1tfy8" path="res://scenes/character/character_combat.gd" id="13_combat"]
 [ext_resource type="Script" uid="uid://c25cc2k46u1ba" path="res://scenes/character/character_inventory.gd" id="14_inventory"]
 [ext_resource type="Script" uid="uid://csowy05ijgsmc" path="res://scenes/character/character_equipment.gd" id="15_equipment"]
+[ext_resource type="Script" uid="uid://tov18ktdrkvr" path="res://scenes/character/interact_cursor.gd" id="16_interact_cursor"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_nfk4m"]
 render_priority = 0
@@ -24,6 +25,13 @@ shader_parameter/border_thickness = 0.05
 shader_parameter/corner_length = 0.2
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_8mm7a"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_interact"]
+render_priority = 0
+shader = ExtResource("6_7eonc")
+shader_parameter/border_color = Color(0, 1, 0, 1)
+shader_parameter/border_thickness = 0.05
+shader_parameter/corner_length = 0.2
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_q52vl"]
 transparency = 1
@@ -68,6 +76,12 @@ transform = Transform3D(0.99999946, 0, 0, 0, 0.99999946, 0, 0, 0, 0.99999946, 0.
 material_override = SubResource("ShaderMaterial_nfk4m")
 mesh = SubResource("PlaneMesh_8mm7a")
 script = ExtResource("7_50cep")
+
+[node name="InteractCursor" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.99999946, 0, 0, 0, 0.99999946, 0, 0, 0, 0.99999946, 0.0426054, 0, 0.013404369)
+material_override = SubResource("ShaderMaterial_interact")
+mesh = SubResource("PlaneMesh_8mm7a")
+script = ExtResource("16_interact_cursor")
 
 [node name="CharacterSprite" type="MeshInstance3D" parent="."]
 transform = Transform3D(0.9999999, 0, 0, 0, 0.9999999, 0, 0, 0, 0.9999999, 0.10765792, 0, 0.019936677)

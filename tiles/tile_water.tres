@@ -11,8 +11,9 @@ shader_parameter/wave_scale = 0.8
 shader_parameter/noise_scale = 2.5
 shader_parameter/wave_brightness = 0.7
 shader_parameter/corner_radius = 6.0
-shader_parameter/lake_origin = Vector2(0, 0)
-shader_parameter/lake_size = Vector2(20, 30)
+shader_parameter/lake_count = 0
+shader_parameter/lake_origins = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+shader_parameter/lake_sizes = PackedVector2Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 [resource]
 material = SubResource("ShaderMaterial_water")

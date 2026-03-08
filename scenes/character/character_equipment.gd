@@ -26,6 +26,8 @@ const SLOT_PANEL_PATHS: Dictionary = {
 	"l_hand":    "CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Chest/ShirtPanel",
 }
 
+signal slot_clicked(slot: String)
+
 var _character: Node
 
 
@@ -34,6 +36,15 @@ func _ready() -> void:
 	if _character.character_role == _character.CharacterRole.PLAYER:
 		_refresh_attack_weight_label()
 		_refresh_armor_weight_label()
+		for slot in SLOT_PANEL_PATHS:
+			var panel := _get_slot_panel(slot)
+			if panel == null:
+				continue
+			panel.mouse_filter = Control.MOUSE_FILTER_STOP
+			panel.gui_input.connect(func(event: InputEvent) -> void:
+				if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+					if equipped.get(slot, "") != "":
+						slot_clicked.emit(slot))
 
 
 # slot_name -> item_id or ""

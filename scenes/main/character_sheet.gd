@@ -13,6 +13,7 @@ var _selected_index: int = 0
 var _action_index: int = 0
 var _current_actions: Array[String] = []
 var _active_item_id: String = ""
+var _active_slot: String = ""
 var _inventory: Node
 var _action_panel: PanelContainer
 var _action_list: VBoxContainer
@@ -28,12 +29,24 @@ func _ready() -> void:
 func init(inventory: Node) -> void:
 	_inventory = inventory
 	_inventory.item_clicked.connect(_open_item_action)
+	var equipment := inventory.get_parent().get_node("CharacterEquipment")
+	equipment.slot_clicked.connect(_open_slot_action)
+
+func select_item(item_id: String) -> void:
+	for i in _inventory.selectable_entries.size():
+		var entry: Dictionary = _inventory.selectable_entries[i]
+		if entry.get("type") == "item" and entry.get("id") == item_id:
+			_selected_index = i
+			_refresh_selection()
+			return
 
 func _set_tab(tab: Tab) -> void:
 	_tab = tab
 	$StatsPanel.visible = _tab == Tab.STATS
 	$SkillsPanel.visible = _tab == Tab.SKILLS
 	$InventoryPanel.visible = _tab == Tab.INVENTORY
+	if _tab == Tab.INVENTORY:
+		_inventory._refresh_ui()
 	_selected_index = 0
 	_set_inventory_state(InventoryState.BROWSING)
 	_refresh_selection()
@@ -47,18 +60,34 @@ func _set_inventory_state(state: InventoryState) -> void:
 		_rebuild_action_list()
 		_refresh_action_selection()
 
-func _open_item_action(item_label: Label) -> void:
-	var entry := _entry_for_label(item_label)
+func _open_item_action(row: Control) -> void:
+	var entry := _entry_for_node(row)
 	if entry.is_empty():
 		return
 	_active_item_id = entry["id"]
-	var label_global := item_label.get_global_rect()
-	_action_panel.position = label_global.position - _action_panel.get_parent().get_global_position() + Vector2(320.0, 0.0)
+	var row_global := row.get_global_rect()
+	_action_panel.position = row_global.position - _action_panel.get_parent().get_global_position() + Vector2(320.0, 0.0)
 	_set_inventory_state(InventoryState.ITEM_ACTION)
 
-func _entry_for_label(label: Label) -> Dictionary:
+func _open_slot_action(slot: String) -> void:
+	var equipment := _get_equipment()
+	var item_id: String = equipment.get_equipped(slot)
+	if item_id == "":
+		return
+	_active_slot = slot
+	_active_item_id = item_id
+	var panel: Control = equipment._get_slot_panel(slot)
+	var panel_global: Rect2 = panel.get_global_rect()
+	_action_panel.position = panel_global.position - _action_panel.get_parent().get_global_position() + Vector2(panel_global.size.x + 4.0, 0.0)
+	_current_actions = ["Unequip", "Inspect"]
+	_action_index = 0
+	_rebuild_action_list_from(_current_actions)
+	_action_panel.visible = true
+	_inventory_state = InventoryState.ITEM_ACTION
+
+func _entry_for_node(node: Control) -> Dictionary:
 	for entry in _inventory.selectable_entries:
-		if entry["node"] == label:
+		if entry["node"] == node:
 			return entry
 	return {}
 
@@ -70,6 +99,10 @@ func _build_actions_for(item_id: String) -> Array[String]:
 		actions.append("Equip")
 	elif interaction == "use":
 		actions.append("Use")
+		if data.get("category", "") == "container":
+			var idx: int = _inventory.items.find(item_id)
+			if idx != -1 and not _inventory.get_liquid(idx).is_empty():
+				actions.append("Drink")
 	actions.append("Inspect")
 	actions.append("Drop")
 	return actions
@@ -80,9 +113,12 @@ func _get_equipment() -> Node:
 
 func _rebuild_action_list() -> void:
 	_current_actions = _build_actions_for(_active_item_id)
+	_rebuild_action_list_from(_current_actions)
+
+func _rebuild_action_list_from(actions: Array[String]) -> void:
 	for child in _action_list.get_children():
 		child.queue_free()
-	for action in _current_actions:
+	for action in actions:
 		var label := Label.new()
 		label.text = action
 		_action_list.add_child(label)
@@ -148,6 +184,7 @@ func _handle_action_input(event: InputEvent) -> void:
 			_confirm_action()
 			accept_event()
 		KEY_ESCAPE, KEY_Q:
+			_active_slot = ""
 			_set_inventory_state(InventoryState.BROWSING)
 			accept_event()
 
@@ -155,12 +192,34 @@ func _confirm_action() -> void:
 	var action := _current_actions[_action_index]
 	match action:
 		"Use":
+			var data := ItemRegistry.get_item(_active_item_id)
+			if data.get("category", "") == "container":
+				_inventory.get_parent().activate_map_interaction(_active_item_id)
+				return
 			var vitals := _inventory.get_parent().get_node("CharacterVitals")
 			if vitals.hp < vitals.hp_max:
-				_inventory.get_parent().get_node("CharacterVitals").heal(5)
+				vitals.heal(5)
 				_inventory.remove_item(_active_item_id)
+		"Drink":
+			var idx: int = _inventory.items.find(_active_item_id)
+			var contents: Dictionary = _inventory.get_liquid(idx)
+			var current: float = contents.get("amount_liters", 0.0)
+			var liquid: String = contents.get("liquid", "")
+			_inventory.get_parent().open_drink_modal(_active_item_id, liquid, current)
+			return
+		"Inspect":
+			var data := ItemRegistry.get_item(_active_item_id)
+			_inventory.get_parent().open_inspect_modal(
+				data.get("name", _active_item_id),
+				data.get("description", ""),
+				data.get("sprite", "")
+			)
+			return
 		"Equip":
 			_get_equipment().equip(_active_item_id)
+		"Unequip":
+			_get_equipment().unequip(_active_slot)
+	_active_slot = ""
 	_set_inventory_state(InventoryState.BROWSING)
 
 func _refresh_selection() -> void:
@@ -168,11 +227,12 @@ func _refresh_selection() -> void:
 		return
 	var entries: Array = _inventory.selectable_entries
 	for i in entries.size():
-		var label: Label = entries[i]["node"]
+		var node: Control = entries[i]["node"]
+		var stylebox_slot := "panel" if entries[i]["type"] == "item" else "normal"
 		if i == _selected_index:
-			label.add_theme_stylebox_override("normal", _make_highlight_box())
+			node.add_theme_stylebox_override(stylebox_slot, _make_highlight_box())
 		else:
-			label.remove_theme_stylebox_override("normal")
+			node.remove_theme_stylebox_override(stylebox_slot)
 
 func _refresh_action_selection() -> void:
 	for i in _action_list.get_child_count():

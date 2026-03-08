@@ -6,6 +6,7 @@
 		"category": "melee",
 		"interaction": "equip",
 		"sprite": "res://assets/images/inventory_items/weapons_melee/knife/spr_knife1.png",
+		"description": "A serrated combat knife. Reliable in close quarters.",
 		"slot": "r_hand",
 		"damage_die": 4,
 		"hit_bonus": 8
@@ -16,15 +17,29 @@
 		"weight": 0.1,
 		"category": "medicine",
 		"interaction": "use",
-		"sprite": "res://assets/images/items/spr_field_bandage.png",
+		"sprite": "res://assets/images/inventory_items/medical/spr_bandages.png",
+		"description": "A roll of sterile bandaging. Stops bleeding and closes minor wounds.",
 		"slot": null
-	}
-	,{
+	},
+	{
+		"id": "flask",
+		"name": "Flask",
+		"weight": 0.2,
+		"category": "container",
+		"interaction": "use",
+		"sprite": "res://assets/images/inventory_items/containers_liquid/flasks/spr_flask1.png",
+		"description": "A small metal flask. Can hold up to 250 mL of liquid.",
+		"slot": null,
+		"capacity_liters": 0.25,
+		"allowed_liquids": ["water", "alcohol", "medicine"]
+	},
+	{
 		"id": "corpse_soldier",
 		"name": "Soldier Corpse",
 		"weight": 80.0,
 		"category": "misc",
 		"interaction": null,
+		"description": "The body of a fallen soldier.",
 		"slot": null
 	},
 	{
@@ -33,6 +48,7 @@
 		"weight": 100.0,
 		"category": "misc",
 		"interaction": null,
+		"description": "The body of a fallen brute.",
 		"slot": null
 	}
 ]
