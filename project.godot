@@ -17,9 +17,9 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-WorldState="*res://scripts/world_state.gd"
 TileRegistry="*res://tile_registry.gd"
 SceneLoader="*res://scripts/scene_loader.gd"
+WorldState="*res://scripts/world_state.gd"
 ItemRegistry="*res://scripts/item_registry.gd"
 
 [display]

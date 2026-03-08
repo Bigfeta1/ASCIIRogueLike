@@ -3,24 +3,68 @@
 ## Full Resolution Order (`_apply_damage`)
 
 ```
+0. Weight class matchup → hit_penalty (0, -4, or -8)
+
 1. Hit roll
+   attacker: d20 + stat_hit_mod + weapon_hit_bonus - hit_penalty vs 10 + defender_hit_mod
    └─ Miss → "Miss!" label, return
 
 2. Damage roll + crit check (simultaneous)
-   ├─ Crit  → damage = 3 + floor((adrenal_mod + muscle_mod + sympathetic_mod) / 3)
-   └─ Normal → damage = max(1, 1d3 + muscle_mod)
+   ├─ Crit  → damage = weapon_die + floor((adrenal_mod + muscle_mod + sympathetic_mod) / 3)
+   └─ Normal → damage = max(1, 1dWeaponDie + muscle_mod)
 
 3. Parry (defender)
+   d20 + parry_mod vs 19 + attacker parry_mod
    └─ Success → 1 reflected to attacker, "Parry!" label, return
 
 4. Dodge (defender)
+   d20 + dodge_mod vs 19
    └─ Success → "Dodge!" label, adrenal debt, return
 
 5. Block (defender)
-   └─ Success → damage = max(1, damage - (1d6 + block_mod))
+   d20 + block_mod vs 19 → d6 + block_mod reduction
+   └─ Success → damage = max(1, damage - block_roll)
 
 6. Damage lands → hp reduced, label spawned, death check
 ```
+
+---
+
+## 0. Weight Class Matchup
+
+Attack weight class = computed from combined r_hand + l_hand item weights.
+Armor weight class = computed from total weight of all non-hand armor slots.
+
+| Total Attack Weight | Class |
+|---------------------|-------|
+| < 5 lbs | Light |
+| 5 – 15 lbs | Medium |
+| > 15 lbs | Heavy |
+
+| Total Armor Weight | Class |
+|--------------------|-------|
+| < 25 lbs | Light |
+| 25 – 60 lbs | Medium |
+| > 60 lbs | Heavy |
+
+**Hit penalty:**
+
+| Attacker \ Defender | Light | Medium | Heavy |
+|---------------------|-------|--------|-------|
+| Light | 0 | -4 | -8 |
+| Medium | -4 | 0 | -4 |
+| Heavy | -8 | -4 | 0 |
+
+**Available defenses after a hit lands:**
+
+| Attacker \ Defender | Light | Medium | Heavy |
+|---------------------|-------|--------|-------|
+| Light | parry, dodge, block | parry, block | block |
+| Medium | parry, dodge | parry, dodge, block | parry, block |
+| Heavy | dodge | parry, dodge | parry, dodge, block |
+
+Defenses not in the available set are skipped entirely for that exchange.
+Unarmed = light attack. Unarmored = light defense.
 
 ---
 
@@ -28,31 +72,44 @@
 
 | Component | Formula |
 |-----------|---------|
-| Attacker roll | `d20 + hit_mod` |
-| Defender threshold | `10 + defender hit_mod` |
-| Hit mod | `floor((cardio_mod + adrenal_mod + sympathetic_mod + parasympathetic_mod) / 4)` |
-| Each stat mod | `floor((stat - 10) / 2)` |
+| Attacker roll | `d20 + stat_hit_mod + weapon_hit_bonus - weight_penalty` |
+| Defender threshold | `10 + defender stat_hit_mod` |
+| Stat hit mod | `floor((cardio_mod + adrenal_mod + sympathetic_mod + parasympathetic_mod) / 4)` |
+| Weapon hit bonus | per-item `hit_bonus` field (e.g. combat knife = +1) |
 
-At all-10 stats: hits on 10+, ~55% baseline.
-Miss → gray "Miss!" label, function returns.
+At all-10 stats, matched weight, no weapon: hits on 10+, ~55% baseline.
+Miss → gray "Miss!" label, return.
 
 ---
 
-## 2. Parry
+## 2. Damage Roll + Crit Check
+
+| Component | Formula |
+|-----------|---------|
+| Weapon die | per-item `damage_die` field (unarmed = 3) |
+| Crit chance | `0.05 + affect_mod * 0.025` |
+| Crit damage | `weapon_die + floor((adrenal_mod + muscle_mod + sympathetic_mod) / 3)` |
+| Normal damage | `max(1, 1d[weapon_die] + muscle_mod)` |
+
+Both rolled simultaneously. Crit uses max die value instead of rolling. Gold "CRIT -NHP" label.
+
+Crit chance examples: affect 10 → 5%, affect 14 → 10%, affect 18 → 15%
+
+---
+
+## 3. Parry
 
 | Component | Formula |
 |-----------|---------|
 | Defender roll | `d20 + parry_mod` |
-| Threshold | `19 + attacker parry_mod` |
+| Threshold | `19 + attacker parry_mod` (contested) |
 | Parry mod | `floor((muscle_mod + parasympathetic_mod) / 2)` |
 
-- Baseline: 10% chance (19–20 on d20 with 0 mods each side)
-- Success: 0 damage to defender, 1 HP reflected to attacker, cyan "Parry!" label
-- No stat debt
+Success: 0 damage, 1 HP reflected to attacker, cyan "Parry!" label, return. No stat debt.
 
 ---
 
-## 3. Dodge
+## 4. Dodge
 
 | Component | Formula |
 |-----------|---------|
@@ -60,26 +117,8 @@ Miss → gray "Miss!" label, function returns.
 | Threshold | `19` (flat) |
 | Dodge mod | `floor((cardio_mod + adrenal_mod + affect_mod) / 3)` |
 
-- Baseline: 10% chance (19–20 on d20)
-- Success: 0 damage, green "Dodge!" label
-- **Adrenal debt**: `vitals.stat_debt["adrenal"] += adrenal_mod` (only if mod > 0)
-
----
-
-## 4. Crit Check
-
-| Component | Formula |
-|-----------|---------|
-| Crit chance | `0.05 + affect_mod * 0.025` |
-| Crit damage | `3 + floor((adrenal_mod + muscle_mod + sympathetic_mod) / 3)` |
-| Normal damage | `max(1, 1d3 + muscle_mod)` |
-
-Crit chance examples:
-- Affect 10 (mod 0) → 5%
-- Affect 14 (mod +2) → 10%
-- Affect 18 (mod +4) → 15%
-
-Crit uses max die value (3) instead of rolling. Gold "CRIT -NHP" label.
+Success: 0 damage, green "Dodge!" label, return.
+Adrenal debt: `vitals.stat_debt["adrenal"] += adrenal_mod` (if mod > 0).
 
 ---
 
@@ -87,12 +126,12 @@ Crit uses max die value (3) instead of rolling. Gold "CRIT -NHP" label.
 
 | Component | Formula |
 |-----------|---------|
-| Activation roll | `d20 + block_mod` vs threshold `19` |
+| Activation roll | `d20 + block_mod` vs `19` |
 | Block mod | `floor((muscle_mod + sympathetic_mod) / 2)` |
 | Reduction roll | `1d6 + block_mod` |
-| Damage floor | `1` (block cannot fully negate) |
+| Damage floor | `1` |
 
-Block reduces the damage value from step 4 — including crit damage.
+Reduces damage from step 2 (including crit). Cannot fully negate.
 
 ---
 
@@ -105,14 +144,28 @@ Block reduces the damage value from step 4 — including crit damage.
 
 ---
 
-## Stat Reference Summary
+## TODO
 
-| Defense | Mod Stats | Notes |
-|---------|-----------|-------|
-| Hit | cardio, adrenal, sympathetic, parasympathetic | avg of 4 |
-| Parry | muscle, parasympathetic | avg of 2, contested |
-| Dodge | cardio, adrenal, affect | avg of 3 |
-| Block | muscle, sympathetic | avg of 2 |
-| Crit chance | affect | flat scaling |
-| Crit damage | adrenal, muscle, sympathetic | avg of 3 |
-| Normal damage | muscle | flat mod |
+- **Unarmed viability**: unarmed needs a distinct advantage once weapons exist (extra attack, parry bonus, stronger muscle scaling, or crit debuff) — design TBD
+
+---
+
+## Stat Reference
+
+| Roll | Stats Used | Formula |
+|------|-----------|---------|
+| Stat hit mod | cardio, adrenal, sympathetic, parasympathetic | avg of 4 mods |
+| Parry mod | muscle, parasympathetic | avg of 2 mods |
+| Dodge mod | cardio, adrenal, affect | avg of 3 mods |
+| Block mod | muscle, sympathetic | avg of 2 mods |
+| Crit chance | affect | `0.05 + affect_mod * 0.025` |
+| Crit damage | adrenal, muscle, sympathetic | avg of 3 mods + weapon_die |
+| Normal damage | muscle | `1d[weapon_die] + muscle_mod` |
+
+## Item Fields (combat-relevant)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `weight` | float | Weight in lbs, contributes to attack/armor class computation |
+| `damage_die` | int | Die size for damage roll (e.g. 4 = 1d4). Unarmed default = 3 |
+| `hit_bonus` | int | Flat bonus to hit roll. Unarmed default = 0 |

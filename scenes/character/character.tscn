@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://gwl4g5mr80cv"]
+[gd_scene load_steps=20 format=3 uid="uid://gwl4g5mr80cv"]
 
 [ext_resource type="Texture2D" uid="uid://r360kik4wxvi" path="res://assets/images/character_sprites/spr_character_surgeon.png" id="1_2cgup"]
 [ext_resource type="Script" uid="uid://bd6yl36nwoj3r" path="res://scenes/character/character.gd" id="2_a5ia6"]
@@ -13,7 +13,8 @@
 [ext_resource type="Script" uid="uid://2khxtxptmbeo" path="res://scenes/character/character_ai.gd" id="11_ai"]
 [ext_resource type="Script" uid="uid://urqnxk88qgnp" path="res://scenes/character/character_actions.gd" id="12_actions"]
 [ext_resource type="Script" uid="uid://binrlapg1tfy8" path="res://scenes/character/character_combat.gd" id="13_combat"]
-[ext_resource type="Script" path="res://scenes/character/character_inventory.gd" id="14_inventory"]
+[ext_resource type="Script" uid="uid://c25cc2k46u1ba" path="res://scenes/character/character_inventory.gd" id="14_inventory"]
+[ext_resource type="Script" uid="uid://csowy05ijgsmc" path="res://scenes/character/character_equipment.gd" id="15_equipment"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_nfk4m"]
 render_priority = 0
@@ -55,6 +56,9 @@ script = ExtResource("13_combat")
 
 [node name="CharacterInventory" type="Node" parent="."]
 script = ExtResource("14_inventory")
+
+[node name="CharacterEquipment" type="Node" parent="."]
+script = ExtResource("15_equipment")
 
 [node name="CharacterSound" type="Node" parent="."]
 script = ExtResource("5_irmqu")

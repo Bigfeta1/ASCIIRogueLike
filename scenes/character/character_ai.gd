@@ -1,7 +1,7 @@
 extends Node
 
 enum Disposition { HOSTILE, NEUTRAL, FRIENDLY }
-enum BehaviorState { RELAXED, SUSPICIOUS, SLEEPING, PATROL, COMBAT, INVESTIGATE, ALERT, RETURN }
+enum BehaviorState { RELAXED, SUSPICIOUS, SLEEPING, PATROL, COMBAT, INVESTIGATE, ALERT, RETURN, KNOCKED_OUT, DEAD }
 enum FacingDirection { LEFT, RIGHT, UP, DOWN }
 
 const LOS_TILE = 4
@@ -197,6 +197,8 @@ func _update_facing(delta: Vector2i) -> void:
 	sprite.face(sprite.FacingState.RIGHT if facing == FacingDirection.RIGHT else sprite.FacingState.LEFT, sprite.FacingState.RIGHT)
 
 func take_turn_step() -> void:
+	if behavior_state == BehaviorState.KNOCKED_OUT or behavior_state == BehaviorState.DEAD:
+		return
 	_check_vision()
 	match behavior_state:
 		BehaviorState.PATROL:

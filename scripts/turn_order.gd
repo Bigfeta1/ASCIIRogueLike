@@ -38,7 +38,10 @@ func _on_player_waited() -> void:
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
 	await get_tree().create_timer(0.1).timeout
 	for enemy in _enemies:
-		enemy.get_node("CharacterAI").take_turn_step()
+		var ai: Node = enemy.get_node("CharacterAI")
+		if ai.behavior_state == ai.BehaviorState.KNOCKED_OUT or ai.behavior_state == ai.BehaviorState.DEAD:
+			continue
+		ai.take_turn_step()
 		enemy.get_node("CharacterVitals").tick_regen()
 	WorldState.tick_off_screen_enemies()
 	_map_params.advance_time(15)
@@ -57,7 +60,10 @@ func _on_player_moved() -> void:
 		return
 	await get_tree().create_timer(0.1).timeout
 	for enemy in _enemies:
-		enemy.get_node("CharacterAI").take_turn_step()
+		var ai: Node = enemy.get_node("CharacterAI")
+		if ai.behavior_state == ai.BehaviorState.KNOCKED_OUT or ai.behavior_state == ai.BehaviorState.DEAD:
+			continue
+		ai.take_turn_step()
 		enemy.get_node("CharacterVitals").tick_regen()
 	WorldState.tick_off_screen_enemies()
 	_map_params.advance_time(15)

@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://dsr7bbb2q3474"]
+
+[ext_resource type="Script" path="res://scenes/items/equipment_item.gd" id="1_eqitem"]
+
+[node name="EquipmentItem" type="TextureRect"]
+offset_right = 70.0
+offset_bottom = 70.0
+expand_mode = 1
+script = ExtResource("1_eqitem")

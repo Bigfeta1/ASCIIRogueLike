@@ -5,8 +5,10 @@
 		"weight": 0.5,
 		"category": "melee",
 		"interaction": "equip",
-		"sprite": "res://assets/images/items/spr_combat_knife.png",
-		"slot": "r_hand"
+		"sprite": "res://assets/images/inventory_items/weapons_melee/knife/spr_knife1.png",
+		"slot": "r_hand",
+		"damage_die": 4,
+		"hit_bonus": 8
 	},
 	{
 		"id": "field_bandage",

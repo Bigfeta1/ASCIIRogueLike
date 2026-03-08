@@ -74,6 +74,10 @@ func _build_actions_for(item_id: String) -> Array[String]:
 	actions.append("Drop")
 	return actions
 
+
+func _get_equipment() -> Node:
+	return _inventory.get_parent().get_node("CharacterEquipment")
+
 func _rebuild_action_list() -> void:
 	_current_actions = _build_actions_for(_active_item_id)
 	for child in _action_list.get_children():
@@ -155,6 +159,8 @@ func _confirm_action() -> void:
 			if vitals.hp < vitals.hp_max:
 				_inventory.get_parent().get_node("CharacterVitals").heal(5)
 				_inventory.remove_item(_active_item_id)
+		"Equip":
+			_get_equipment().equip(_active_item_id)
 	_set_inventory_state(InventoryState.BROWSING)
 
 func _refresh_selection() -> void:

@@ -87,6 +87,11 @@ func _check_move(delta: Vector2i) -> void:
 		if other_movement == null or other_movement.grid_pos != target:
 			continue
 		var other_ai := node.get_node_or_null("CharacterAI")
+		if other_ai != null:
+			print("[MOVE] %s behavior_state=%d KNOCKED_OUT=%d DEAD=%d" % [node.name, other_ai.behavior_state, other_ai.BehaviorState.KNOCKED_OUT, other_ai.BehaviorState.DEAD])
+		if other_ai != null and (other_ai.behavior_state == other_ai.BehaviorState.KNOCKED_OUT or other_ai.behavior_state == other_ai.BehaviorState.DEAD):
+			print("[MOVE] skipping %s — incapacitated" % node.name)
+			continue
 		var different_faction: bool = node.faction != _character.faction
 		if other_ai != null and other_ai.disposition == other_ai.Disposition.HOSTILE and different_faction:
 			if other_ai.behavior_state != other_ai.BehaviorState.COMBAT:

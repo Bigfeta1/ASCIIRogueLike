@@ -92,7 +92,7 @@ func _alert_npc_at(cell: Vector3i, intensity: int, origin: Vector2i) -> void:
 		var ai := node.get_node_or_null("CharacterAI")
 		if ai == null:
 			continue
-		if ai.disposition == ai.Disposition.HOSTILE and ai.behavior_state != ai.BehaviorState.COMBAT:
+		if ai.disposition == ai.Disposition.HOSTILE and ai.behavior_state != ai.BehaviorState.COMBAT and ai.behavior_state != ai.BehaviorState.KNOCKED_OUT and ai.behavior_state != ai.BehaviorState.DEAD:
 			ai.hear_sound(intensity, origin)
 
 func _restore_ring(wave: Dictionary, r: int) -> void:
