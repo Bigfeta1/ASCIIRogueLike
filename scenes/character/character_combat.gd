@@ -197,5 +197,7 @@ func _incapacitate(target: Node, state: int) -> void:
 	ai.set_process(false)
 	target.get_node("CharacterMovement").set_process(false)
 	target.get_node("CharacterCombat").set_process(false)
+	if target.corpse_item_id != "":
+		target.get_node("CharacterInventory").add_item(target.corpse_item_id)
 	print("[INCAP] calling set_defeated on %s with sprite='%s'" % [target.name, target.defeated_sprite])
 	target.get_node("CharacterSprite").set_defeated(target.defeated_sprite)

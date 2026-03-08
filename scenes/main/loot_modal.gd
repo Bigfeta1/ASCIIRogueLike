@@ -121,7 +121,7 @@ func _open_action_menu() -> void:
 	if qty > 1:
 		_current_actions.insert(1, "Take All")
 	for child in _action_list.get_children():
-		child.queue_free()
+		child.free()
 	for action in _current_actions:
 		var label := Label.new()
 		label.text = action
@@ -144,6 +144,11 @@ func _refresh_action_selection() -> void:
 			label.remove_theme_stylebox_override("normal")
 
 
+func _remove_corpse_from_world(inv: Node) -> void:
+	var character := inv.get_parent()
+	character.get_node("CharacterSprite").visible = false
+
+
 func _confirm_action() -> void:
 	var action: String = _current_actions[_action_index]
 	var entry: Dictionary = _entries[_selected_index]
@@ -152,7 +157,10 @@ func _confirm_action() -> void:
 	match action:
 		"Take":
 			if _player_inventory.add_item(id):
+				var is_corpse: bool = id == inv.get_parent().corpse_item_id
 				inv.remove_item(id)
+				if is_corpse:
+					_remove_corpse_from_world(inv)
 			_state = ModalState.BROWSING
 			_action_panel.visible = false
 			_rebuild()

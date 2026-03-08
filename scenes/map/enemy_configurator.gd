@@ -74,6 +74,7 @@ func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 			if stats.has("affect"): levels.affect = stats["affect"]
 
 			enemy.defeated_sprite = def.get("defeated_sprite", "") as String
+			enemy.corpse_item_id = def.get("corpse_item_id", "") as String
 			enemy.get_node("CharacterAI").disposition = enemy.get_node("CharacterAI").Disposition.HOSTILE
 			main.add_child(enemy)
 			enemy.get_node("CharacterMovement").place(_random_walkable_cell(grid_map), zone_id)

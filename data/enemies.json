@@ -6,6 +6,7 @@
 		"count": 5,
 		"hp": 8,
 		"defeated_sprite": "res://assets/images/world_items/enemy_defeated/spr_soldier_knocked_oud.png",
+		"corpse_item_id": "corpse_soldier",
 		"inventory_items": ["field_bandage", "field_bandage", "field_bandage"],
 		"stats": {
 			"muscle": 10,
@@ -23,6 +24,7 @@
 		"count": 2,
 		"hp": 14,
 		"defeated_sprite": "res://assets/images/world_items/enemy_defeated/spr_soldier_knocked_oud.png",
+		"corpse_item_id": "corpse_brute",
 		"inventory_items": ["field_bandage", "field_bandage", "field_bandage"],
 		"stats": {
 			"muscle": 15,

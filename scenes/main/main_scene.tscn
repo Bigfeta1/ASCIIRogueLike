@@ -6,7 +6,7 @@
 [ext_resource type="Script" uid="uid://dalh8tnvbvoyj" path="res://scripts/camera.gd" id="6_3mcv8"]
 [ext_resource type="PackedScene" uid="uid://gwl4g5mr80cv" path="res://scenes/character/character.tscn" id="7_a1617"]
 [ext_resource type="Script" uid="uid://c4528qwm1k3g0" path="res://scenes/main/character_sheet.gd" id="8_sheet"]
-[ext_resource type="Script" path="res://scenes/main/loot_modal.gd" id="9_lootmodal"]
+[ext_resource type="Script" uid="uid://c7ksktlija60b" path="res://scenes/main/loot_modal.gd" id="9_lootmodal"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_271kv"]
 font_size = 13

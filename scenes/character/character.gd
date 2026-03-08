@@ -10,6 +10,7 @@ enum CharacterRole { PLAYER, NPC }
 var faction: String = ""
 var action_state: ActionState = ActionState.MOVEMENT
 var defeated_sprite: String = ""
+var corpse_item_id: String = ""
 
 var _look_cursor: Node
 var _character_sheet: Control
