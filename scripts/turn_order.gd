@@ -40,6 +40,7 @@ func _on_player_waited() -> void:
 	for enemy in _enemies:
 		enemy.get_node("CharacterAI").take_turn_step()
 		enemy.get_node("CharacterVitals").tick_regen()
+	WorldState.tick_off_screen_enemies()
 	_map_params.advance_time(15)
 	_player.get_node("CharacterVitals").tick_regen()
 	current_turn_state = TurnState.PLAYER_TURN
@@ -58,6 +59,7 @@ func _on_player_moved() -> void:
 	for enemy in _enemies:
 		enemy.get_node("CharacterAI").take_turn_step()
 		enemy.get_node("CharacterVitals").tick_regen()
+	WorldState.tick_off_screen_enemies()
 	_map_params.advance_time(15)
 	_player.get_node("CharacterVitals").tick_regen()
 	current_turn_state = TurnState.PLAYER_TURN

@@ -1,0 +1,136 @@
+extends Node
+
+# Zone dimensions
+const ZONE_WIDTH: int = 80
+const ZONE_HEIGHT: int = 40
+
+# BehaviorState.PATROL = 3 (matches CharacterAI enum order: RELAXED=0, SUSPICIOUS=1, SLEEPING=2, PATROL=3)
+const _BEHAVIOR_PATROL: int = 3
+
+# Patrol sequence mirrored from CharacterAI
+const _PATROL_SEQ: Array = [
+	Vector2i(-1, 0), Vector2i(-1, 0), Vector2i(-1, 0),
+	Vector2i(0,  1), Vector2i(0,  1), Vector2i(0,  1),
+	Vector2i(1,  0), Vector2i(1,  0), Vector2i(1,  0),
+	Vector2i(0, -1), Vector2i(0, -1), Vector2i(0, -1),
+]
+
+# zones[Vector2i] = { "tiles": { Vector2i: int }, "items": [ { "id": String, "local_pos": Vector2i } ] }
+var zones: Dictionary = {}
+
+# Zones where the full load sequence (tiles + items + enemies) has completed
+var visited_zones: Dictionary = {}
+
+# Each record: { world_pos, behavior_state, patrol_origin_world, patrol_index,
+#                faction, character_type, hp, hp_max, disposition,
+#                muscle, cardio, adrenal, sympathetic, parasympathetic, affect, name }
+var off_screen_enemies: Array = []
+
+var current_zone: Vector2i = Vector2i.ZERO
+
+
+# --- Coordinate helpers ---
+
+func world_to_zone(world_pos: Vector2i) -> Vector2i:
+	return Vector2i(floori(world_pos.x / float(ZONE_WIDTH)), floori(world_pos.y / float(ZONE_HEIGHT)))
+
+func world_to_local(world_pos: Vector2i) -> Vector2i:
+	# posmod avoids negative-remainder issue with GDScript's % operator
+	return Vector2i(posmod(world_pos.x, ZONE_WIDTH) - ZONE_WIDTH / 2,
+					posmod(world_pos.y, ZONE_HEIGHT) - ZONE_HEIGHT / 2)
+
+func local_to_world(zone_id: Vector2i, local_pos: Vector2i) -> Vector2i:
+	return Vector2i(zone_id.x * ZONE_WIDTH  + (local_pos.x + ZONE_WIDTH  / 2),
+					zone_id.y * ZONE_HEIGHT + (local_pos.y + ZONE_HEIGHT / 2))
+
+
+# --- Zone tile persistence ---
+
+func has_zone(zone_id: Vector2i) -> bool:
+	return zones.has(zone_id)
+
+func mark_visited(zone_id: Vector2i) -> void:
+	visited_zones[zone_id] = true
+
+func is_visited(zone_id: Vector2i) -> bool:
+	return visited_zones.has(zone_id)
+
+func save_zone_tiles(zone_id: Vector2i, grid_map: GridMap) -> void:
+	var tile_dict: Dictionary = {}
+	for cell in grid_map.get_used_cells():
+		tile_dict[Vector2i(cell.x, cell.z)] = grid_map.get_cell_item(cell)
+	if not zones.has(zone_id):
+		zones[zone_id] = {"tiles": {}, "items": []}
+	zones[zone_id]["tiles"] = tile_dict
+
+func load_zone_tiles(zone_id: Vector2i, grid_map: GridMap) -> void:
+	grid_map.clear()
+	for local_pos in zones[zone_id]["tiles"]:
+		grid_map.set_cell_item(Vector3i(local_pos.x, 0, local_pos.y), zones[zone_id]["tiles"][local_pos])
+
+
+# --- Zone item persistence ---
+
+func save_zone_items(zone_id: Vector2i, item_nodes: Array, grid_map: GridMap) -> void:
+	var records: Array = []
+	for item in item_nodes:
+		var cell := grid_map.local_to_map(grid_map.to_local(item.global_position))
+		records.append({"id": item.name, "local_pos": Vector2i(cell.x, cell.z)})
+	if not zones.has(zone_id):
+		zones[zone_id] = {"tiles": {}, "items": []}
+	zones[zone_id]["items"] = records
+
+func load_zone_items(zone_id: Vector2i) -> Array:
+	if not zones.has(zone_id):
+		return []
+	return zones[zone_id].get("items", [])
+
+
+# --- Enemy persistence ---
+
+func serialize_enemy(enemy_node: Node, zone_id: Vector2i) -> Dictionary:
+	var movement := enemy_node.get_node("CharacterMovement")
+	var vitals := enemy_node.get_node("CharacterVitals")
+	var levels := enemy_node.get_node("CharacterLevels")
+	var ai := enemy_node.get_node("CharacterAI")
+	return {
+		"world_pos": local_to_world(zone_id, movement.grid_pos),
+		"behavior_state": ai.behavior_state,
+		"patrol_origin_world": local_to_world(zone_id, ai._patrol_origin),
+		"patrol_index": ai._patrol_index,
+		"faction": enemy_node.faction,
+		"character_type": enemy_node.character_type,
+		"hp": vitals.hp,
+		"hp_max": vitals.hp_max,
+		"disposition": ai.disposition,
+		"muscle": levels.muscle,
+		"cardio": levels.cardio,
+		"adrenal": levels.adrenal,
+		"sympathetic": levels.sympathetic,
+		"parasympathetic": levels.parasympathetic,
+		"affect": levels.affect,
+		"name": enemy_node.name,
+	}
+
+func add_off_screen_enemy(record: Dictionary) -> void:
+	off_screen_enemies.append(record)
+
+func remove_enemies_in_zone(zone_id: Vector2i) -> Array:
+	var result: Array = []
+	var remaining: Array = []
+	for record in off_screen_enemies:
+		if world_to_zone(record["world_pos"]) == zone_id:
+			result.append(record)
+		else:
+			remaining.append(record)
+	off_screen_enemies = remaining
+	return result
+
+func tick_off_screen_enemies() -> void:
+	for record in off_screen_enemies:
+		if record["behavior_state"] == _BEHAVIOR_PATROL:
+			var idx: int = record["patrol_index"]
+			record["world_pos"] = record["world_pos"] + _PATROL_SEQ[idx]
+			record["patrol_index"] = (idx + 1) % _PATROL_SEQ.size()
+		else:
+			record["patrol_index"] = (record["patrol_index"] + 1) % _PATROL_SEQ.size()

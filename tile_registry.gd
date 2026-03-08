@@ -68,3 +68,7 @@ func vision_release(cell: Vector3i, grid_map: GridMap) -> void:
 	_vision_originals.erase(cell)
 	# if sound still owns this cell, restore to sound tile not the underlying tile
 	grid_map.set_cell_item(cell, SOUND_TILE if _sound_originals.has(cell) else restore)
+
+func clear_state() -> void:
+	_sound_originals.clear()
+	_vision_originals.clear()

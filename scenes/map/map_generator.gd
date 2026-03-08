@@ -12,9 +12,14 @@ var _lake_origins: Array[Vector2] = []
 var _lake_sizes: Array[Vector2] = []
 var home_interiors: Array[Array] = []
 
-func generate() -> void:
+func generate(zone_id: Vector2i = Vector2i.ZERO) -> void:
 	grid_map = get_parent()
 	initialize_tiles()
+	if WorldState.has_zone(zone_id):
+		WorldState.load_zone_tiles(zone_id, grid_map)
+		_rebuild_lake_data()
+		_apply_lake_shader()
+		return
 	grid_map.clear()
 	_lake_origins.clear()
 	_lake_sizes.clear()
@@ -25,6 +30,7 @@ func generate() -> void:
 	for i in range(7):
 		create_home()
 	_apply_lake_shader()
+	WorldState.save_zone_tiles(zone_id, grid_map)
 
 
 func initialize_tiles() -> void:
@@ -119,6 +125,39 @@ func create_structure(pattern: Array, width: int, height: int) -> Vector2i:
 		_lake_sizes.append(Vector2(width * grid_cell_size, height * grid_cell_size))
 
 	return origin
+
+func _rebuild_lake_data() -> void:
+	_lake_origins.clear()
+	_lake_sizes.clear()
+	var visited: Dictionary = {}
+	var grid_cell_size := grid_map.cell_size.x
+	var grid_origin := grid_map.global_position
+	for cell in grid_map.get_used_cells():
+		if grid_map.get_cell_item(cell) != TILE_WATER:
+			continue
+		var key := Vector2i(cell.x, cell.z)
+		if visited.has(key):
+			continue
+		# Flood fill to find this lake's extents
+		var queue: Array = [key]
+		var min_x := key.x
+		var max_x := key.x
+		var min_z := key.y
+		var max_z := key.y
+		while queue.size() > 0:
+			var curr: Vector2i = queue.pop_front()
+			if visited.has(curr):
+				continue
+			visited[curr] = true
+			min_x = mini(min_x, curr.x)
+			max_x = maxi(max_x, curr.x)
+			min_z = mini(min_z, curr.y)
+			max_z = maxi(max_z, curr.y)
+			for nb in [Vector2i(curr.x+1,curr.y), Vector2i(curr.x-1,curr.y), Vector2i(curr.x,curr.y+1), Vector2i(curr.x,curr.y-1)]:
+				if not visited.has(nb) and grid_map.get_cell_item(Vector3i(nb.x, 0, nb.y)) == TILE_WATER:
+					queue.append(nb)
+		_lake_origins.append(Vector2(min_x * grid_cell_size + grid_origin.x, min_z * grid_cell_size + grid_origin.z))
+		_lake_sizes.append(Vector2((max_x - min_x + 1) * grid_cell_size, (max_z - min_z + 1) * grid_cell_size))
 
 func _apply_lake_shader() -> void:
 	var mat: ShaderMaterial = grid_map.mesh_library.get_item_mesh(TILE_WATER).surface_get_material(0)

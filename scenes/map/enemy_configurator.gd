@@ -6,9 +6,44 @@ const ENEMY_DATA_PATH = "res://data/enemies.json"
 const MAP_WIDTH: int = 80
 const MAP_HEIGHT: int = 40
 
-func spawn() -> void:
+func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 	var main := get_parent().get_parent()
 	var grid_map: GridMap = get_parent()
+
+	# Restore enemies that were in this zone when the player last left
+	var returning: Array = WorldState.remove_enemies_in_zone(zone_id)
+	for record in returning:
+		var enemy: Node = CHARACTER_SCENE.instantiate()
+		enemy.name = record["name"]
+		enemy.character_type = record["character_type"]
+		enemy.character_role = enemy.CharacterRole.NPC
+		enemy.faction = record["faction"]
+
+		var vitals := enemy.get_node("CharacterVitals")
+		vitals.hp = record["hp"]
+		vitals.hp_max = record["hp_max"]
+
+		var levels := enemy.get_node("CharacterLevels")
+		levels.muscle = record["muscle"]
+		levels.cardio = record["cardio"]
+		levels.adrenal = record["adrenal"]
+		levels.sympathetic = record["sympathetic"]
+		levels.parasympathetic = record["parasympathetic"]
+		levels.affect = record["affect"]
+
+		# add_child triggers CharacterAI._ready, so AI state is set after
+		main.add_child(enemy)
+		var local_pos := WorldState.world_to_local(record["world_pos"])
+		enemy.get_node("CharacterMovement").place(local_pos, zone_id)
+		var ai := enemy.get_node("CharacterAI")
+		ai.disposition = record["disposition"]
+		ai.behavior_state = record["behavior_state"]
+		ai._patrol_index = record["patrol_index"]
+		ai._patrol_origin = WorldState.world_to_local(record["patrol_origin_world"])
+
+	# Only spawn fresh enemies if this zone has not been fully loaded before
+	if WorldState.is_visited(zone_id):
+		return
 
 	var file := FileAccess.open(ENEMY_DATA_PATH, FileAccess.READ)
 	var enemy_defs: Array = JSON.parse_string(file.get_as_text())
@@ -40,7 +75,7 @@ func spawn() -> void:
 
 			enemy.get_node("CharacterAI").disposition = enemy.get_node("CharacterAI").Disposition.HOSTILE
 			main.add_child(enemy)
-			enemy.get_node("CharacterMovement").place(_random_walkable_cell(grid_map))
+			enemy.get_node("CharacterMovement").place(_random_walkable_cell(grid_map), zone_id)
 			enemy.get_node("CharacterAI").start_patrol()
 			spawn_index += 1
 

@@ -2,8 +2,10 @@ extends Node
 
 signal moved
 signal waited
+signal zone_exit(direction: Vector2i)
 
 var grid_pos: Vector2i = Vector2i.ZERO
+var zone: Vector2i = Vector2i.ZERO
 var facing_state: int  # CharacterSprite.FacingState
 
 var _held_keys: Dictionary = {}
@@ -72,6 +74,8 @@ func _check_move(delta: Vector2i) -> void:
 	var cell := Vector3i(target.x, 0, target.y)
 	var tile_id := _grid_map.get_cell_item(cell)
 	if tile_id == GridMap.INVALID_CELL_ITEM:
+		if _character.character_role == _character.CharacterRole.PLAYER:
+			zone_exit.emit(delta)
 		return
 	var true_tile := TileRegistry.get_original_tile(cell, tile_id)
 	if not TileRegistry.is_walkable(true_tile):
@@ -117,8 +121,9 @@ func set_look_mode(enabled: bool) -> void:
 func step(delta: Vector2i) -> void:
 	_check_move(delta)
 
-func place(pos: Vector2i) -> void:
+func place(pos: Vector2i, new_zone: Vector2i = Vector2i.ZERO) -> void:
 	grid_pos = pos
+	zone = new_zone
 	_snap()
 
 func _snap() -> void:

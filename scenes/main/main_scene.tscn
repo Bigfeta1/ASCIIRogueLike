@@ -1,12 +1,20 @@
-[gd_scene load_steps=8 format=3 uid="uid://mjt58ix46v16"]
+[gd_scene load_steps=11 format=3 uid="uid://mjt58ix46v16"]
 
 [ext_resource type="Script" uid="uid://da2bhqgx7ybn4" path="res://scripts/turn_order.gd" id="1_271kv"]
+[ext_resource type="Texture2D" uid="uid://2666ys540gi" path="res://assets/images/ui/spr_menu_panel.png" id="1_s7l2u"]
 [ext_resource type="PackedScene" uid="uid://btoovjkj3xjl5" path="res://scenes/map/grid_map.tscn" id="2_24sno"]
 [ext_resource type="Script" uid="uid://dalh8tnvbvoyj" path="res://scripts/camera.gd" id="6_3mcv8"]
 [ext_resource type="PackedScene" uid="uid://gwl4g5mr80cv" path="res://scenes/character/character.tscn" id="7_a1617"]
+[ext_resource type="Script" path="res://scenes/main/character_sheet.gd" id="8_sheet"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_271kv"]
 font_size = 13
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l7pil"]
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0f027"]
 bg_color = Color(0, 0, 0, 1)
@@ -65,56 +73,281 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 45.0
+offset_top = 72.0
+offset_right = 45.0
+offset_bottom = 72.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("8_sheet")
 
-[node name="Panel" type="Panel" parent="CanvasLayer/CharacterSheet"]
+[node name="Panel" type="NinePatchRect" parent="CanvasLayer/CharacterSheet"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_right = -90.0
+offset_bottom = -141.0
 grow_horizontal = 2
 grow_vertical = 2
+texture = ExtResource("1_s7l2u")
+patch_margin_left = 140
+patch_margin_top = 155
+patch_margin_right = 295
+patch_margin_bottom = 175
 
-[node name="Stats" type="Control" parent="CanvasLayer/CharacterSheet"]
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer/CharacterSheet/Panel"]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 1820.0
+offset_bottom = 929.0
+color = Color(0.06469653, 0.06469653, 0.06469653, 1)
+
+[node name="TabBar" type="HBoxContainer" parent="CanvasLayer/CharacterSheet"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.005
+anchor_top = 0.01
+anchor_right = 1.0
+anchor_bottom = 0.01
+offset_right = -99.0
+offset_bottom = 31.0
+grow_horizontal = 2
+theme_override_constants/separation = 813
+
+[node name="StatsButton" type="Button" parent="CanvasLayer/CharacterSheet/TabBar"]
+layout_mode = 2
+text = "Stats"
+
+[node name="SkillsButton" type="Button" parent="CanvasLayer/CharacterSheet/TabBar"]
+layout_mode = 2
+text = "Skills"
+
+[node name="InventoryButton" type="Button" parent="CanvasLayer/CharacterSheet/TabBar"]
+layout_mode = 2
+text = "Inventory"
+
+[node name="StatsPanel" type="Control" parent="CanvasLayer/CharacterSheet"]
 layout_mode = 1
 anchor_left = 0.04
 anchor_top = 0.328
 anchor_right = 0.04
 anchor_bottom = 0.328
-offset_top = -20.0
-offset_right = 40.0
-offset_bottom = 20.0
+offset_left = -45.0
+offset_top = -92.0
+offset_right = -5.0
+offset_bottom = -52.0
 grow_vertical = 2
 
-[node name="HBoxContainer" type="VBoxContainer" parent="CanvasLayer/CharacterSheet/Stats"]
+[node name="HBoxContainer" type="VBoxContainer" parent="CanvasLayer/CharacterSheet/StatsPanel"]
 layout_mode = 0
 offset_right = 461.0
 offset_bottom = 158.0
 
-[node name="MuscleLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+[node name="MuscleLabel" type="Label" parent="CanvasLayer/CharacterSheet/StatsPanel/HBoxContainer"]
 layout_mode = 2
 text = "Muscle"
 
-[node name="CardioLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+[node name="CardioLabel" type="Label" parent="CanvasLayer/CharacterSheet/StatsPanel/HBoxContainer"]
 layout_mode = 2
 text = "Cardio"
 
-[node name="AdrenalLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+[node name="AdrenalLabel" type="Label" parent="CanvasLayer/CharacterSheet/StatsPanel/HBoxContainer"]
 layout_mode = 2
 text = "Adrenal"
 
-[node name="SympatheticLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+[node name="SympatheticLabel" type="Label" parent="CanvasLayer/CharacterSheet/StatsPanel/HBoxContainer"]
 layout_mode = 2
 text = "Sympathetic"
 
-[node name="ParasympatheticLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+[node name="ParasympatheticLabel" type="Label" parent="CanvasLayer/CharacterSheet/StatsPanel/HBoxContainer"]
 layout_mode = 2
 text = "Parasympathetic"
 
-[node name="AffectLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+[node name="AffectLabel" type="Label" parent="CanvasLayer/CharacterSheet/StatsPanel/HBoxContainer"]
 layout_mode = 2
 text = "Affect"
+
+[node name="SkillsPanel" type="Control" parent="CanvasLayer/CharacterSheet"]
+layout_mode = 1
+anchor_left = 0.04
+anchor_top = 0.18
+anchor_right = 0.96
+anchor_bottom = 0.95
+offset_left = -45.0
+offset_top = -72.0
+offset_right = -45.0
+offset_bottom = -72.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="InventoryPanel" type="Control" parent="CanvasLayer/CharacterSheet"]
+layout_mode = 1
+anchor_left = 0.04
+anchor_top = 0.18
+anchor_right = 0.96
+anchor_bottom = 0.95
+offset_left = -66.799995
+offset_top = -122.40001
+offset_right = -26.199951
+offset_bottom = -100.400024
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EquipmentSlots" type="Control" parent="CanvasLayer/CharacterSheet/InventoryPanel"]
+anchors_preset = 0
+offset_left = 725.0
+offset_top = 97.0
+offset_right = 1136.0
+offset_bottom = 699.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 34.0
+offset_right = 318.0
+offset_bottom = 548.0
+
+[node name="HeadPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="NeckPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Chest" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+layout_mode = 2
+
+[node name="RShoulderPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="ChestPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="LShoulderPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Arms" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+layout_mode = 2
+
+[node name="RArmPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Arms"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="ShirtPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Arms"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="LArmPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Arms"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="BeltPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Legs" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="RLegPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Legs"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="LLegPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Legs"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Feet" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="RFootPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Feet"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="LFootPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/VBoxContainer/Feet"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Legs" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = 13.0
+offset_top = 309.0
+offset_right = 402.0
+offset_bottom = 379.0
+theme_override_constants/separation = 249
+alignment = 1
+
+[node name="RHandPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Legs"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="LHandPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/Legs"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="BackFace" type="HBoxContainer" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = 3.0
+offset_top = 62.0
+offset_right = 221.0
+offset_bottom = 132.0
+theme_override_constants/separation = 272
+
+[node name="FacePanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/BackFace"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="BackPanel" type="Panel" parent="CanvasLayer/CharacterSheet/InventoryPanel/EquipmentSlots/BackFace"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
 
 [node name="TopBar" type="Control" parent="CanvasLayer"]
 layout_mode = 3
@@ -123,6 +356,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
 [node name="ColorRect" type="Panel" parent="CanvasLayer/TopBar"]
 layout_mode = 0

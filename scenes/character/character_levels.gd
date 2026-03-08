@@ -57,7 +57,7 @@ func _ready() -> void:
 	var character := get_parent()
 	if character.character_role != character.CharacterRole.PLAYER:
 		return
-	var stats_hbox := character.get_parent().get_node("CanvasLayer/CharacterSheet/Stats/HBoxContainer")
+	var stats_hbox := character.get_parent().get_node("CanvasLayer/CharacterSheet/StatsPanel/HBoxContainer")
 	_label_muscle = stats_hbox.get_node("MuscleLabel")
 	_label_cardio = stats_hbox.get_node("CardioLabel")
 	_label_adrenal = stats_hbox.get_node("AdrenalLabel")
