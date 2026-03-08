@@ -1,0 +1,46 @@
+[gd_resource type="MeshLibrary" load_steps=6 format=3 uid="uid://b1v6rer8kbtx7"]
+
+[ext_resource type="PlaneMesh" uid="uid://cpcymc5t7xo3t" path="res://tiles/tile_generic.tres" id="1_b2ypd"]
+[ext_resource type="PlaneMesh" uid="uid://5gjtd5c5dgdg" path="res://tiles/tile_water.tres" id="2_8r4mu"]
+[ext_resource type="PlaneMesh" uid="uid://bfdl6qvrba5a2" path="res://tiles/tile_sound_emitted.tres" id="3_u77in"]
+[ext_resource type="PlaneMesh" uid="uid://b152k382n47ow" path="res://tiles/tile_enemy_vision.tres" id="4_itxva"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_u77in"]
+size = Vector2(5, 5)
+
+[resource]
+item/0/name = "Tile"
+item/0/mesh = ExtResource("1_b2ypd")
+item/0/mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/0/mesh_cast_shadow = 1
+item/0/shapes = []
+item/0/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/0/navigation_layers = 1
+item/1/name = "Water"
+item/1/mesh = ExtResource("2_8r4mu")
+item/1/mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/1/mesh_cast_shadow = 1
+item/1/shapes = []
+item/1/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/1/navigation_layers = 1
+item/2/name = "SoundEmitted"
+item/2/mesh = ExtResource("3_u77in")
+item/2/mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/2/mesh_cast_shadow = 1
+item/2/shapes = []
+item/2/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/2/navigation_layers = 1
+item/3/name = "Wall"
+item/3/mesh = SubResource("PlaneMesh_u77in")
+item/3/mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/3/mesh_cast_shadow = 1
+item/3/shapes = []
+item/3/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/3/navigation_layers = 1
+item/4/name = ""
+item/4/mesh = ExtResource("4_itxva")
+item/4/mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/4/mesh_cast_shadow = 1
+item/4/shapes = []
+item/4/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/4/navigation_layers = 1

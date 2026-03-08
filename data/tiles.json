@@ -1,0 +1,36 @@
+{
+	"0": {
+		"name": "Floor",
+		"description": "A worn stone floor.",
+		"walkable": true,
+		"sound_dampening": 0,
+		"blocks_vision": false },
+
+	"1": {
+		"name": "Water",
+		"description": "Cold, murky water.",
+		"walkable": false,
+		"sound_dampening": 0,
+		"blocks_vision": false },
+
+	"2": {
+		"name": "Sound",
+		"description": "A ripple of sound emanating from movement.",
+		"walkable": true,
+		"sound_dampening": 0,
+		"blocks_vision": false },
+
+	"3": {
+		"name": "Wall",
+		"description": "A concrete wall.",
+		"walkable": false,
+		"sound_dampening": 3,
+		"blocks_vision": true },
+
+	"4": {
+		"name": "Enemy LOS",
+		"description": "Enemy vision.",
+		"walkable": true,
+		"sound_dampening": 0,
+		"blocks_vision": false },
+}

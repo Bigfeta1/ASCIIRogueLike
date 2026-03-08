@@ -1,0 +1,254 @@
+[gd_scene load_steps=8 format=3 uid="uid://mjt58ix46v16"]
+
+[ext_resource type="Script" uid="uid://da2bhqgx7ybn4" path="res://scripts/turn_order.gd" id="1_271kv"]
+[ext_resource type="PackedScene" uid="uid://btoovjkj3xjl5" path="res://scenes/map/grid_map.tscn" id="2_24sno"]
+[ext_resource type="Script" uid="uid://dalh8tnvbvoyj" path="res://scripts/camera.gd" id="6_3mcv8"]
+[ext_resource type="PackedScene" uid="uid://gwl4g5mr80cv" path="res://scenes/character/character.tscn" id="7_a1617"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_271kv"]
+font_size = 13
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0f027"]
+bg_color = Color(0, 0, 0, 1)
+border_width_top = 27
+border_color = Color(0.21520296, 0.92219245, 0.78291094, 1)
+border_blend = true
+
+[sub_resource type="LabelSettings" id="LabelSettings_a4cr6"]
+font_size = 8
+
+[node name="MainScene" type="Node3D"]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="LookModeInfo" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1008.0
+offset_top = 472.0
+offset_right = 1048.0
+offset_bottom = 512.0
+
+[node name="Label" type="Label" parent="CanvasLayer/LookModeInfo"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "TEST"
+
+[node name="Label2" type="Label" parent="CanvasLayer/LookModeInfo"]
+layout_mode = 0
+offset_top = 26.0
+offset_right = 40.0
+offset_bottom = 49.0
+text = "TEST"
+
+[node name="DispositionLabel" type="Label" parent="CanvasLayer/LookModeInfo"]
+layout_mode = 0
+offset_left = 19.0
+offset_top = 47.0
+offset_right = 59.0
+offset_bottom = 70.0
+text = "TEST"
+label_settings = SubResource("LabelSettings_271kv")
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer/LookModeInfo"]
+layout_mode = 0
+offset_left = 19.0
+offset_top = 59.0
+offset_right = 59.0
+offset_bottom = 82.0
+text = "TEST"
+label_settings = SubResource("LabelSettings_271kv")
+
+[node name="CharacterSheet" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="CanvasLayer/CharacterSheet"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Stats" type="Control" parent="CanvasLayer/CharacterSheet"]
+layout_mode = 1
+anchor_left = 0.04
+anchor_top = 0.328
+anchor_right = 0.04
+anchor_bottom = 0.328
+offset_top = -20.0
+offset_right = 40.0
+offset_bottom = 20.0
+grow_vertical = 2
+
+[node name="HBoxContainer" type="VBoxContainer" parent="CanvasLayer/CharacterSheet/Stats"]
+layout_mode = 0
+offset_right = 461.0
+offset_bottom = 158.0
+
+[node name="MuscleLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+layout_mode = 2
+text = "Muscle"
+
+[node name="CardioLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+layout_mode = 2
+text = "Cardio"
+
+[node name="AdrenalLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+layout_mode = 2
+text = "Adrenal"
+
+[node name="SympatheticLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+layout_mode = 2
+text = "Sympathetic"
+
+[node name="ParasympatheticLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+layout_mode = 2
+text = "Parasympathetic"
+
+[node name="AffectLabel" type="Label" parent="CanvasLayer/CharacterSheet/Stats/HBoxContainer"]
+layout_mode = 2
+text = "Affect"
+
+[node name="TopBar" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect" type="Panel" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_right = 1921.0
+offset_bottom = 40.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_0f027")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_constants/separation = 104
+
+[node name="HPLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "HP:"
+
+[node name="BPLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "BP:"
+
+[node name="RRLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "RR:"
+
+[node name="HRLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "HR:"
+
+[node name="TemperatureLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer"]
+layout_mode = 2
+text = "C°:"
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_left = 1558.0
+offset_right = 1753.0
+offset_bottom = 40.0
+theme_override_constants/separation = 104
+
+[node name="AmbientTempLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer2"]
+layout_mode = 2
+text = "Temp:"
+
+[node name="TimeLabel" type="Label" parent="CanvasLayer/TopBar/HBoxContainer2"]
+layout_mode = 2
+text = "Time:"
+
+[node name="XPBar" type="Panel" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_top = 40.0
+offset_right = 1920.0
+offset_bottom = 49.0
+
+[node name="XPFill" type="ColorRect" parent="CanvasLayer/TopBar/XPBar"]
+layout_mode = 0
+offset_bottom = 9.0
+color = Color(0.1, 0.2, 0.5, 1)
+
+[node name="LevelLabel" type="Label" parent="CanvasLayer/TopBar/XPBar"]
+layout_mode = 0
+offset_top = -1.0
+offset_right = 40.0
+offset_bottom = 22.0
+text = "Level:"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="LevelAmount" type="Label" parent="CanvasLayer/TopBar/XPBar/LevelLabel"]
+layout_mode = 0
+offset_left = 23.0
+offset_right = 63.0
+offset_bottom = 23.0
+text = "x1"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="CurrentXPLabel" type="Label" parent="CanvasLayer/TopBar/XPBar"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -6.5
+offset_right = 20.0
+offset_bottom = 16.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "x"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="SlashLabel" type="Label" parent="CanvasLayer/TopBar/XPBar/CurrentXPLabel"]
+layout_mode = 0
+offset_left = 16.0
+offset_right = 56.0
+offset_bottom = 23.0
+text = "/"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="MaxXPLabel" type="Label" parent="CanvasLayer/TopBar/XPBar/CurrentXPLabel"]
+layout_mode = 0
+offset_left = 29.0
+offset_right = 69.0
+offset_bottom = 23.0
+text = "x"
+label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="GameLogic" type="Node" parent="."]
+
+[node name="TurnOrder" type="Node" parent="GameLogic"]
+script = ExtResource("1_271kv")
+
+[node name="GridMap" parent="." instance=ExtResource("2_24sno")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.0562134, 0, 0)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 15.09041, 0.43926144)
+projection = 1
+current = true
+fov = 168.0
+size = 230.0
+script = ExtResource("6_3mcv8")
+
+[node name="Character" parent="." instance=ExtResource("7_a1617")]
+transform = Transform3D(3.876, 0, 0, 0, 3.876, 0, 0, 0, 3.876, -1.8585205, 8.44029, -2.5454617)

@@ -1,0 +1,72 @@
+[gd_scene load_steps=18 format=3 uid="uid://gwl4g5mr80cv"]
+
+[ext_resource type="Texture2D" uid="uid://r360kik4wxvi" path="res://assets/images/character_sprites/spr_character_surgeon.png" id="1_2cgup"]
+[ext_resource type="Script" uid="uid://bd6yl36nwoj3r" path="res://scenes/character/character.gd" id="2_a5ia6"]
+[ext_resource type="Script" uid="uid://dtpkokws0erwj" path="res://scenes/character/character_vitals.gd" id="3_0dpix"]
+[ext_resource type="Script" uid="uid://cxob7cetkc20r" path="res://scenes/character/character_levels.gd" id="4_2hyy3"]
+[ext_resource type="Script" uid="uid://gcpitafs07wu" path="res://scenes/character/character_sound.gd" id="5_irmqu"]
+[ext_resource type="Shader" uid="uid://dbx2bawjro8kx" path="res://scenes/look_cursor/look_cursor.gdshader" id="6_7eonc"]
+[ext_resource type="Script" uid="uid://c3146oj5p7sv1" path="res://scenes/look_cursor/look_cursor.gd" id="7_50cep"]
+[ext_resource type="Texture2D" uid="uid://c0b1neg4bxnkp" path="res://assets/images/enemies/spr_enemy_soldier_1.png" id="8_soldier"]
+[ext_resource type="Script" uid="uid://bk2awg6ur8l52" path="res://scenes/character/character_movement.gd" id="9_movement"]
+[ext_resource type="Script" uid="uid://cgh7ndtr3243u" path="res://scenes/character/character_sprite.gd" id="10_sprite"]
+[ext_resource type="Script" uid="uid://2khxtxptmbeo" path="res://scenes/character/character_ai.gd" id="11_ai"]
+[ext_resource type="Script" uid="uid://urqnxk88qgnp" path="res://scenes/character/character_actions.gd" id="12_actions"]
+[ext_resource type="Script" uid="uid://binrlapg1tfy8" path="res://scenes/character/character_combat.gd" id="13_combat"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nfk4m"]
+render_priority = 0
+shader = ExtResource("6_7eonc")
+shader_parameter/border_color = Color(0, 0.6, 1, 1)
+shader_parameter/border_thickness = 0.05
+shader_parameter/corner_length = 0.2
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_8mm7a"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_q52vl"]
+transparency = 1
+albedo_texture = ExtResource("1_2cgup")
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_l884r"]
+size = Vector2(2, 2.545)
+
+[node name="Character" type="Node3D"]
+transform = Transform3D(3.876, 0, 0, 0, 3.876, 0, 0, 0, 3.876, 0, 0, 0)
+script = ExtResource("2_a5ia6")
+
+[node name="CharacterAI" type="Node" parent="."]
+script = ExtResource("11_ai")
+
+[node name="CharacterLevels" type="Node" parent="."]
+script = ExtResource("4_2hyy3")
+
+[node name="CharacterVitals" type="Node" parent="."]
+script = ExtResource("3_0dpix")
+
+[node name="CharacterActions" type="Node" parent="."]
+script = ExtResource("12_actions")
+
+[node name="CharacterMovement" type="Node" parent="."]
+script = ExtResource("9_movement")
+
+[node name="CharacterCombat" type="Node" parent="."]
+script = ExtResource("13_combat")
+
+[node name="CharacterInventory" type="Node" parent="."]
+
+[node name="CharacterSound" type="Node" parent="."]
+script = ExtResource("5_irmqu")
+
+[node name="LookCursor" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.99999946, 0, 0, 0, 0.99999946, 0, 0, 0, 0.99999946, 0.0426054, 0, 0.013404369)
+material_override = SubResource("ShaderMaterial_nfk4m")
+mesh = SubResource("PlaneMesh_8mm7a")
+script = ExtResource("7_50cep")
+
+[node name="CharacterSprite" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.9999999, 0, 0, 0, 0.9999999, 0, 0, 0, 0.9999999, 0.10765792, 0, 0.019936677)
+material_override = SubResource("StandardMaterial3D_q52vl")
+mesh = SubResource("PlaneMesh_l884r")
+script = ExtResource("10_sprite")
+texture_surgeon = ExtResource("1_2cgup")
+texture_enemy_soldier = ExtResource("8_soldier")

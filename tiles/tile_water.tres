@@ -1,0 +1,21 @@
+[gd_resource type="PlaneMesh" load_steps=3 format=3 uid="uid://5gjtd5c5dgdg"]
+
+[ext_resource type="Shader" uid="uid://lggf53fgf6d4" path="res://tiles/water.gdshader" id="1_water"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_water"]
+render_priority = 0
+shader = ExtResource("1_water")
+shader_parameter/water_color = Color(0, 0.35, 0.6, 1)
+shader_parameter/wave_speed = 0.3
+shader_parameter/wave_scale = 0.8
+shader_parameter/noise_scale = 2.5
+shader_parameter/wave_brightness = 0.7
+shader_parameter/corner_radius = 6.0
+shader_parameter/lake_origin = Vector2(0, 0)
+shader_parameter/lake_size = Vector2(20, 30)
+
+[resource]
+material = SubResource("ShaderMaterial_water")
+size = Vector2(5, 5)
+subdivide_width = 8
+subdivide_depth = 8

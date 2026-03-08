@@ -1,0 +1,32 @@
+[
+	{
+		"id": "soldier",
+		"name": "Soldier",
+		"faction": "military",
+		"count": 5,
+		"hp": 8,
+		"stats": {
+			"muscle": 12,
+			"cardio": 10,
+			"adrenal": 11,
+			"sympathetic": 10,
+			"parasympathetic": 9,
+			"affect": 8
+		}
+	},
+	{
+		"id": "brute",
+		"name": "Brute",
+		"faction": "gang",
+		"count": 2,
+		"hp": 14,
+		"stats": {
+			"muscle": 15,
+			"cardio": 12,
+			"adrenal": 10,
+			"sympathetic": 8,
+			"parasympathetic": 7,
+			"affect": 6
+		}
+	}
+]
