@@ -18,6 +18,15 @@ func _ready() -> void:
 	if character_role == CharacterRole.PLAYER:
 		_character_sheet = get_parent().get_node("CanvasLayer/CharacterSheet")
 		_character_sheet.visible = false
+		_character_sheet.init(get_node("CharacterInventory"))
+		_character_sheet.close_requested.connect(func() -> void:
+			action_state = ActionState.MOVEMENT
+			_character_sheet.visible = false)
+
+		get_node("CharacterInventory").add_item("combat_knife")
+		get_node("CharacterInventory").add_item("field_bandage")
+		get_node("CharacterInventory").add_item("field_bandage")
+		get_node("CharacterInventory").add_item("field_bandage")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if character_role != CharacterRole.PLAYER:
@@ -28,12 +37,30 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	match event.keycode:
 		KEY_TAB:
-			if action_state == ActionState.MENU:
-				action_state = ActionState.MOVEMENT
-				_character_sheet.visible = false
-			else:
+			if action_state != ActionState.MENU:
 				action_state = ActionState.MENU
 				_character_sheet.visible = true
+			elif _character_sheet._inventory_state == _character_sheet.InventoryState.ITEM_ACTION:
+				pass
+			elif _character_sheet._tab == _character_sheet.Tab.STATS:
+				action_state = ActionState.MOVEMENT
+				_character_sheet.close()
+				_character_sheet.visible = false
+			else:
+				_character_sheet._set_tab(_character_sheet.Tab.STATS)
+		KEY_I:
+			if action_state != ActionState.MENU:
+				action_state = ActionState.MENU
+				_character_sheet.visible = true
+				_character_sheet._set_tab(_character_sheet.Tab.INVENTORY)
+			elif _character_sheet._inventory_state == _character_sheet.InventoryState.ITEM_ACTION:
+				pass
+			elif _character_sheet._tab == _character_sheet.Tab.INVENTORY:
+				action_state = ActionState.MOVEMENT
+				_character_sheet.close()
+				_character_sheet.visible = false
+			else:
+				_character_sheet._set_tab(_character_sheet.Tab.INVENTORY)
 		KEY_C:
 			if action_state == ActionState.MENU:
 				return

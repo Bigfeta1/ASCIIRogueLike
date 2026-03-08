@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 WorldState="*res://scripts/world_state.gd"
 TileRegistry="*res://tile_registry.gd"
 SceneLoader="*res://scripts/scene_loader.gd"
+ItemRegistry="*res://scripts/item_registry.gd"
 
 [display]
 
