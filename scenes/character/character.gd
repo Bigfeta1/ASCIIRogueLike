@@ -130,6 +130,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if action_state == ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
 				action_state = ActionState.MOVEMENT
 				interaction_sub_state = InteractionSubState.NONE
+				_collect_item_id = ""
 				_interact_cursor.deactivate()
 
 func _on_modal_visibility_changed() -> void:
@@ -161,7 +162,7 @@ func _on_modal_closed() -> void:
 				_character_sheet._set_tab(_character_sheet.Tab.INVENTORY)
 				_character_sheet.visible = true
 		ModalContext.TILE_ACTIONS, ModalContext.TILE_FILL:
-			interaction_sub_state = InteractionSubState.COLLECT_LIQUID
+			interaction_sub_state = InteractionSubState.MOVE_CURSOR
 
 func _on_fill_modal_went_back() -> void:
 	_modal_context = ModalContext.NONE
@@ -173,6 +174,20 @@ func _open_interaction_menu() -> void:
 	var tile_id: int = grid_map.get_cell_item(Vector3i(cursor_pos.x, 0, cursor_pos.y))
 	var true_tile: int = TileRegistry.get_original_tile(Vector3i(cursor_pos.x, 0, cursor_pos.y), tile_id)
 	var tile_data := TileRegistry.get_tile(true_tile)
+	_collect_liquid = tile_data.get("liquid", "")
+	if _collect_item_id != "":
+		var item_data := ItemRegistry.get_item(_collect_item_id)
+		if item_data.get("category", "") == "container":
+			var allowed: Array = item_data.get("allowed_liquids", [])
+			if _collect_liquid != "" and allowed.has(_collect_liquid):
+				var inventory: Node = get_node("CharacterInventory")
+				var idx: int = inventory.items.find(_collect_item_id)
+				var current: float = inventory.get_liquid(idx).get("amount_liters", 0.0)
+				var capacity: float = item_data.get("capacity_liters", 0.0)
+				_modal_context = ModalContext.TILE_FILL
+				interaction_sub_state = InteractionSubState.COLLECT_LIQUID
+				_fill_modal.open(_collect_liquid, capacity, current)
+				return
 	var actions: Array[String] = []
 	for node in get_parent().get_children():
 		if node == self:
@@ -190,7 +205,6 @@ func _open_interaction_menu() -> void:
 		actions.append("Inspect")
 	_tile_action_name = tile_data.get("name", "")
 	_tile_actions = actions
-	_collect_liquid = tile_data.get("liquid", "")
 	interaction_sub_state = InteractionSubState.INTERACTION_MENU
 	_fill_modal.open_actions(_tile_action_name, actions)
 
@@ -332,7 +346,7 @@ func activate_map_interaction(item_id: String) -> void:
 	_character_sheet._set_tab(_character_sheet.Tab.STATS)
 	_character_sheet.visible = false
 	action_state = ActionState.INTERACTION
-	interaction_sub_state = InteractionSubState.COLLECT_LIQUID
+	interaction_sub_state = InteractionSubState.MOVE_CURSOR
 	_interact_cursor.activate()
 
 func deactivate_map_interaction() -> void:
