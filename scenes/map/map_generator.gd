@@ -22,6 +22,11 @@ func generate(zone_id: Vector2i = Vector2i.ZERO) -> void:
 		WorldState.load_zone_tiles(zone_id, grid_map)
 		_rebuild_lake_data()
 		_apply_lake_shader()
+		var main := grid_map.get_parent()
+		for pos in WorldState.load_zone_trees(zone_id):
+			var tree: Node = TREE_SCENE.instantiate()
+			main.add_child(tree)
+			tree.place(pos)
 		return
 	grid_map.clear()
 	_lake_origins.clear()
@@ -36,6 +41,7 @@ func generate(zone_id: Vector2i = Vector2i.ZERO) -> void:
 	scatter_trees()
 	_apply_lake_shader()
 	WorldState.save_zone_tiles(zone_id, grid_map)
+	WorldState.save_zone_trees(zone_id, get_tree().get_nodes_in_group("trees"))
 
 
 func initialize_tiles() -> void:

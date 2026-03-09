@@ -18,6 +18,8 @@ func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 		enemy.character_type = record["character_type"]
 		enemy.character_role = enemy.CharacterRole.NPC
 		enemy.faction = record["faction"]
+		enemy.defeated_sprite = record.get("defeated_sprite", "")
+		enemy.corpse_item_id = record.get("corpse_item_id", "")
 
 		var vitals := enemy.get_node("CharacterVitals")
 		vitals.hp = record["hp"]
@@ -37,9 +39,40 @@ func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 		enemy.get_node("CharacterMovement").place(local_pos, zone_id)
 		var ai := enemy.get_node("CharacterAI")
 		ai.disposition = record["disposition"]
-		ai.behavior_state = record["behavior_state"]
 		ai._patrol_index = record["patrol_index"]
 		ai._patrol_origin = WorldState.world_to_local(record["patrol_origin_world"])
+
+		var saved_state: int = record["behavior_state"]
+		var knocked_out_val: int = ai.BehaviorState.KNOCKED_OUT
+		var dead_val: int = ai.BehaviorState.DEAD
+		if saved_state == knocked_out_val or saved_state == dead_val:
+			ai.behavior_state = saved_state
+			ai._clear_vision_tiles()
+			ai.set_process(false)
+			enemy.get_node("CharacterMovement").set_process(false)
+			enemy.get_node("CharacterCombat").set_process(false)
+			enemy.get_node("CharacterSprite").set_defeated(enemy.defeated_sprite)
+			if not record.get("has_blood_splatter", false):
+				# set_defeated always spawns a splatter; remove it if the original didn't have one
+				for child in enemy.get_children():
+					if child is MeshInstance3D and child.get_script() == null:
+						child.queue_free()
+						break
+		else:
+			ai.behavior_state = saved_state
+
+		# Restore inventory directly, bypassing weight checks
+		var inv := enemy.get_node("CharacterInventory")
+		for inv_record in record.get("inventory", []):
+			var id: String = inv_record["id"]
+			var uid: int = inv._next_uid
+			inv.items.append(id)
+			inv.item_uids.append(uid)
+			inv._next_uid += 1
+			if inv_record.has("durability"):
+				inv.item_durability[uid] = inv_record["durability"]
+			if inv_record.has("contents"):
+				inv.container_contents[uid] = inv_record["contents"]
 
 	# Only spawn fresh enemies if this zone has not been fully loaded before
 	if WorldState.is_visited(zone_id):

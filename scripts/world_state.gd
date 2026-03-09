@@ -60,7 +60,7 @@ func save_zone_tiles(zone_id: Vector2i, grid_map: GridMap) -> void:
 	for cell in grid_map.get_used_cells():
 		tile_dict[Vector2i(cell.x, cell.z)] = grid_map.get_cell_item(cell)
 	if not zones.has(zone_id):
-		zones[zone_id] = {"tiles": {}, "items": []}
+		zones[zone_id] = {"tiles": {}, "items": [], "trees": []}
 	zones[zone_id]["tiles"] = tile_dict
 
 func load_zone_tiles(zone_id: Vector2i, grid_map: GridMap) -> void:
@@ -86,6 +86,22 @@ func load_zone_items(zone_id: Vector2i) -> Array:
 	return zones[zone_id].get("items", [])
 
 
+# --- Zone tree persistence ---
+
+func save_zone_trees(zone_id: Vector2i, tree_nodes: Array) -> void:
+	var records: Array = []
+	for tree in tree_nodes:
+		records.append(tree.grid_pos)
+	if not zones.has(zone_id):
+		zones[zone_id] = {"tiles": {}, "items": [], "trees": []}
+	zones[zone_id]["trees"] = records
+
+func load_zone_trees(zone_id: Vector2i) -> Array:
+	if not zones.has(zone_id):
+		return []
+	return zones[zone_id].get("trees", [])
+
+
 # --- Enemy persistence ---
 
 func serialize_enemy(enemy_node: Node, zone_id: Vector2i) -> Dictionary:
@@ -93,6 +109,22 @@ func serialize_enemy(enemy_node: Node, zone_id: Vector2i) -> Dictionary:
 	var vitals := enemy_node.get_node("CharacterVitals")
 	var levels := enemy_node.get_node("CharacterLevels")
 	var ai := enemy_node.get_node("CharacterAI")
+	var inv := enemy_node.get_node("CharacterInventory")
+	var has_blood_splatter := false
+	for child in enemy_node.get_children():
+		if child is MeshInstance3D and child.get_script() == null:
+			has_blood_splatter = true
+			break
+	# Serialize inventory: items by index with durability and container contents
+	var inv_records: Array = []
+	for i in inv.items.size():
+		var uid: int = inv.item_uids[i]
+		var record: Dictionary = {"id": inv.items[i]}
+		if inv.item_durability.has(uid):
+			record["durability"] = inv.item_durability[uid]
+		if inv.container_contents.has(uid):
+			record["contents"] = inv.container_contents[uid]
+		inv_records.append(record)
 	return {
 		"world_pos": local_to_world(zone_id, movement.grid_pos),
 		"behavior_state": ai.behavior_state,
@@ -110,6 +142,10 @@ func serialize_enemy(enemy_node: Node, zone_id: Vector2i) -> Dictionary:
 		"parasympathetic": levels.parasympathetic,
 		"affect": levels.affect,
 		"name": enemy_node.name,
+		"defeated_sprite": enemy_node.defeated_sprite,
+		"corpse_item_id": enemy_node.corpse_item_id,
+		"has_blood_splatter": has_blood_splatter,
+		"inventory": inv_records,
 	}
 
 func add_off_screen_enemy(record: Dictionary) -> void:

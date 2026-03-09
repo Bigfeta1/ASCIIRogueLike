@@ -7,6 +7,7 @@ var block_mod: int = 5
 var _grid_map: GridMap
 
 func _ready() -> void:
+	add_to_group("trees")
 	_grid_map = get_parent().get_node("GridMap")
 
 func place(pos: Vector2i) -> void:

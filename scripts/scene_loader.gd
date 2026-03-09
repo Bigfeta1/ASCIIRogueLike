@@ -80,6 +80,12 @@ func _on_zone_exit(direction: Vector2i) -> void:
 	for item in items_to_free:
 		item.queue_free()
 
+	# Save and clear trees
+	var trees_to_free: Array = get_tree().get_nodes_in_group("trees")
+	WorldState.save_zone_trees(current_zone, trees_to_free)
+	for tree in trees_to_free:
+		tree.queue_free()
+
 	# Clear TileRegistry overlay state before wiping the grid
 	# (queue_free is deferred so _exit_tree hasn't run yet — clear manually)
 	TileRegistry.clear_state()
