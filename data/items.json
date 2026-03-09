@@ -52,7 +52,7 @@
 		"weight": 3.0,
 		"category": "camping",
 		"interaction": null,
-		"sprite": "res://assets/images/inventory_items/camp_items/spr_tinderbox.png",
+		"sprite": "res://assets/images/inventory_items/camp_items/spr_logs1.png",
 		"description": "A bundle of rough-cut logs. Good for building a fire.",
 		"slot": null
 	},

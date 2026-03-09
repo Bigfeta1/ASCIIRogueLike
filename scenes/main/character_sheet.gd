@@ -102,7 +102,7 @@ func _entry_for_node(node: Control) -> Dictionary:
 func _build_actions_for(item_id: String) -> Array[String]:
 	var data := ItemRegistry.get_item(item_id)
 	var actions: Array[String] = []
-	var interaction: String = data.get("interaction", "") as String
+	var interaction: String = str(data.get("interaction", "") if data.get("interaction", null) != null else "")
 	if interaction == "equip":
 		actions.append("Equip")
 	elif interaction == "use":
