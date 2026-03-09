@@ -7,10 +7,13 @@ var TILE_FLOOR: int
 var TILE_WATER: int
 var TILE_WALL: int
 
+const TREE_SCENE = preload("res://scenes/tree/tree.tscn")
+
 var grid_map: GridMap
 var _lake_origins: Array[Vector2] = []
 var _lake_sizes: Array[Vector2] = []
 var home_interiors: Array[Array] = []
+var _home_rects: Array[Rect2i] = []
 
 func generate(zone_id: Vector2i = Vector2i.ZERO) -> void:
 	grid_map = get_parent()
@@ -24,11 +27,13 @@ func generate(zone_id: Vector2i = Vector2i.ZERO) -> void:
 	_lake_origins.clear()
 	_lake_sizes.clear()
 	home_interiors.clear()
+	_home_rects.clear()
 	create_floor()
 	for i in range(4):
 		create_lake()
 	for i in range(7):
 		create_home()
+	scatter_trees()
 	_apply_lake_shader()
 	WorldState.save_zone_tiles(zone_id, grid_map)
 
@@ -73,6 +78,34 @@ func create_home():
 	)
 	var interior: Array = [origin + corners[0], origin + corners[1]]
 	home_interiors.append(interior)
+	_home_rects.append(Rect2i(origin.x, origin.y, home_width, home_height))
+
+
+func scatter_trees() -> void:
+	var x_left := 0 - (MAP_WIDTH / 2)
+	var x_right := MAP_WIDTH / 2
+	var z_top := 0 - (MAP_HEIGHT / 2)
+	var z_bottom := MAP_HEIGHT / 2
+	var floor_cells: Array[Vector3i] = []
+	for x in range(x_left, x_right):
+		for z in range(z_top, z_bottom):
+			if grid_map.get_cell_item(Vector3i(x, 0, z)) != TILE_FLOOR:
+				continue
+			var in_house := false
+			for rect in _home_rects:
+				if rect.has_point(Vector2i(x, z)):
+					in_house = true
+					break
+			if not in_house:
+				floor_cells.append(Vector3i(x, 0, z))
+	floor_cells.shuffle()
+	var tree_count := randi_range(15, 60)
+	var main := grid_map.get_parent()
+	for i in range(mini(tree_count, floor_cells.size())):
+		var cell := floor_cells[i]
+		var tree: Node = TREE_SCENE.instantiate()
+		main.add_child(tree)
+		tree.place(Vector2i(cell.x, cell.z))
 
 
 #region PATTERNS

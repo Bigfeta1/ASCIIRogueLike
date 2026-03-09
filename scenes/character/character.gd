@@ -17,10 +17,12 @@ var corpse_item_id: String = ""
 
 var _look_cursor: Node
 var _interact_cursor: Node
+var _target_cursor: MeshInstance3D
 var _character_sheet: Control
 var _loot_modal: Control
 var _fill_modal: Control
 var _loot_interrupted: bool = false
+var _loot_inspect: bool = false
 
 var _modal_context: ModalContext = ModalContext.NONE
 var _collect_item_id: String = ""
@@ -28,11 +30,16 @@ var _use_item_id: String = ""
 var _collect_liquid: String = ""
 var _tile_action_name: String = ""
 var _tile_actions: Array = []
+var _cursor_entities: Array = []
+var _selected_entity: Dictionary = {}
+var _pending_action: String = ""
+var _pending_target: Node = null
 
 func _ready() -> void:
 	_look_cursor = get_node("LookCursor")
 	_interact_cursor = get_node("InteractCursor")
 	if character_role == CharacterRole.PLAYER:
+		get_node("CharacterMovement").moved.connect(_on_player_moved)
 		_character_sheet = get_parent().get_node("CanvasLayer/CharacterSheet")
 		_loot_modal = get_parent().get_node("CanvasLayer/LootModal")
 		_fill_modal = get_parent().get_node("CanvasLayer/InteractModal")
@@ -46,6 +53,23 @@ func _ready() -> void:
 			interaction_sub_state = InteractionSubState.NONE
 			_loot_modal.visible = false
 			_interact_cursor.deactivate())
+		_loot_modal.inspect_requested.connect(func(item_id: String) -> void:
+			_loot_inspect = true
+			_loot_modal.visible = false
+			var data := ItemRegistry.get_item(item_id)
+			var dur_current: int = -1
+			var dur_max: int = -1
+			if data.has("durability_max"):
+				dur_max = data["durability_max"] as int
+				dur_current = dur_max
+			open_inspect_modal(
+				data.get("name", item_id),
+				data.get("description", ""),
+				data.get("sprite", ""),
+				dur_current,
+				dur_max,
+				data.get("hit_bonus", -1) as int,
+				data.get("damage_die", -1) as int))
 		_character_sheet.visible = false
 		_character_sheet.init(get_node("CharacterInventory"))
 		_character_sheet.close_requested.connect(func() -> void:
@@ -74,10 +98,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	match event.keycode:
 		KEY_TAB:
 			if action_state == ActionState.INTERACTION:
-				if interaction_sub_state != InteractionSubState.LOOT:
-					return
-				_loot_interrupted = true
-				_loot_modal.visible = false
+				return
 			if action_state != ActionState.MENU:
 				action_state = ActionState.MENU
 				interaction_sub_state = InteractionSubState.NONE
@@ -91,10 +112,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_character_sheet._set_tab(_character_sheet.Tab.STATS)
 		KEY_I:
 			if action_state == ActionState.INTERACTION:
-				if interaction_sub_state != InteractionSubState.LOOT:
-					return
-				_loot_interrupted = true
-				_loot_modal.visible = false
+				return
 			if action_state != ActionState.MENU:
 				action_state = ActionState.MENU
 				interaction_sub_state = InteractionSubState.NONE
@@ -109,11 +127,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				_character_sheet._set_tab(_character_sheet.Tab.INVENTORY)
 		KEY_E:
 			if action_state == ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
-				_open_interaction_menu()
+				if _pending_action != "":
+					_execute_pending_action()
+				else:
+					_open_interaction_menu()
 				get_viewport().set_input_as_handled()
 				return
 			if action_state != ActionState.MOVEMENT:
 				return
+			_pending_action = ""
 			action_state = ActionState.INTERACTION
 			interaction_sub_state = InteractionSubState.MOVE_CURSOR
 			_interact_cursor.activate()
@@ -126,6 +148,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				_look_cursor.deactivate()
 		KEY_Q, KEY_ESCAPE:
+			if _pending_target != null:
+				_pending_action = ""
+				_pending_target = null
+				_unlock()
 			if action_state == ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
 				action_state = ActionState.MOVEMENT
 				interaction_sub_state = InteractionSubState.NONE
@@ -151,11 +177,16 @@ func _on_modal_closed() -> void:
 	match ctx:
 		ModalContext.NONE:
 			if interaction_sub_state == InteractionSubState.INSPECTION:
-				print("[DBG] restoring sheet from INSPECTION")
 				interaction_sub_state = InteractionSubState.NONE
-				action_state = ActionState.MENU
-				_character_sheet._set_tab(_character_sheet.Tab.INVENTORY)
-				_character_sheet.visible = true
+				if _loot_inspect:
+					_loot_inspect = false
+					_loot_modal.visible = true
+					action_state = ActionState.INTERACTION
+					interaction_sub_state = InteractionSubState.LOOT
+				else:
+					action_state = ActionState.MENU
+					_character_sheet._set_tab(_character_sheet.Tab.INVENTORY)
+					_character_sheet.visible = true
 			elif interaction_sub_state == InteractionSubState.USE_ITEM:
 				interaction_sub_state = InteractionSubState.NONE
 				action_state = ActionState.MENU
@@ -167,7 +198,73 @@ func _on_modal_closed() -> void:
 func _on_fill_modal_went_back() -> void:
 	print("[DBG] went_back fired: sub was=", interaction_sub_state)
 	_modal_context = ModalContext.NONE
-	interaction_sub_state = InteractionSubState.INTERACTION_MENU
+	if not _fill_modal.visible:
+		# Modal closed — return to cursor
+		interaction_sub_state = InteractionSubState.MOVE_CURSOR
+		_selected_entity = {}
+	else:
+		interaction_sub_state = InteractionSubState.INTERACTION_MENU
+		# Check if restored view is an entity's action list or the picker
+		var restored_title: String = _fill_modal._title_label.text
+		var restored_to_entity := false
+		for entity in _cursor_entities:
+			if entity["name"] == restored_title:
+				_selected_entity = entity
+				restored_to_entity = true
+				break
+		if not restored_to_entity:
+			_selected_entity = {}
+
+func _lock_on(target: Node) -> void:
+	_pending_target = target
+	if _target_cursor != null:
+		_target_cursor.queue_free()
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://scenes/look_cursor/look_cursor.gdshader")
+	mat.set_shader_parameter("border_color", Color(1, 0, 0, 1))
+	mat.set_shader_parameter("border_thickness", 0.05)
+	mat.set_shader_parameter("corner_length", 0.2)
+	_target_cursor = MeshInstance3D.new()
+	_target_cursor.mesh = PlaneMesh.new()
+	_target_cursor.scale = Vector3(3.876, 3.876, 3.876)
+	_target_cursor.material_override = mat
+	get_parent().add_child(_target_cursor)
+	_update_target_cursor()
+
+func _unlock() -> void:
+	if _target_cursor != null:
+		_target_cursor.queue_free()
+		_target_cursor = null
+
+func _on_player_moved() -> void:
+	if _target_cursor != null:
+		_update_target_cursor()
+
+func _update_target_cursor() -> void:
+	if _pending_target == null or not is_instance_valid(_pending_target):
+		_unlock()
+		return
+	var grid_map: GridMap = get_parent().get_node("GridMap")
+	var world := grid_map.to_global(grid_map.map_to_local(Vector3i(_pending_target.grid_pos.x, 0, _pending_target.grid_pos.y)))
+	_target_cursor.global_position = Vector3(world.x, 0.0, world.z)
+
+func _execute_pending_action() -> void:
+	match _pending_action:
+		"chop":
+			if _pending_target == null or not is_instance_valid(_pending_target):
+				_pending_action = ""
+				_pending_target = null
+				return
+			var combat := get_node_or_null("CharacterCombat")
+			if combat != null:
+				combat.bump_attack(_pending_target.grid_pos)
+				combat._apply_damage_to_tree(_pending_target)
+			_unlock()
+			_pending_action = ""
+			_pending_target = null
+			action_state = ActionState.MOVEMENT
+			interaction_sub_state = InteractionSubState.NONE
+			get_node("CharacterMovement").moved.emit()
 
 func _open_interaction_menu() -> void:
 	var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
@@ -189,7 +286,12 @@ func _open_interaction_menu() -> void:
 				interaction_sub_state = InteractionSubState.COLLECT_LIQUID
 				_fill_modal.open(_collect_liquid, capacity, current)
 				return
-	var actions: Array[String] = []
+
+	# Build entity list for all things on this tile
+	_cursor_entities.clear()
+	_selected_entity = {}
+
+	# Characters (lootable)
 	for node in get_parent().get_children():
 		if node == self:
 			continue
@@ -198,16 +300,37 @@ func _open_interaction_menu() -> void:
 			continue
 		var other_ai := node.get_node_or_null("CharacterAI")
 		if other_ai != null and (other_ai.behavior_state == other_ai.BehaviorState.KNOCKED_OUT or other_ai.behavior_state == other_ai.BehaviorState.DEAD):
-			actions.append("Loot")
-			break
+			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": ["Loot", "Inspect"], "data": {} })
+
+	# Trees
+	for node in get_parent().get_children():
+		if node.has_method("take_damage") and node.grid_pos == cursor_pos:
+			var tree_actions: Array[String] = ["Chop", "Inspect"]
+			if _pending_target == node:
+				tree_actions.append("Unlock Target")
+			_cursor_entities.append({ "name": "Tree", "type": "tree", "node": node, "actions": tree_actions, "data": { "name": "Tree", "description": "A gnarled tree. Looks like it could be chopped for logs." } })
+
+	# Tile
+	var tile_actions: Array[String] = []
 	for action in tile_data.get("actions", []):
-		actions.append(action as String)
-	if not actions.has("Inspect"):
-		actions.append("Inspect")
-	_tile_action_name = tile_data.get("name", "")
-	_tile_actions = actions
+		tile_actions.append(action as String)
+	tile_actions.append("Inspect")
+	_cursor_entities.append({ "name": tile_data.get("name", "Tile"), "type": "tile", "node": null, "actions": tile_actions, "data": tile_data })
+
 	interaction_sub_state = InteractionSubState.INTERACTION_MENU
-	_fill_modal.open_actions(_tile_action_name, actions)
+	if _cursor_entities.size() == 1:
+		_open_entity_actions(_cursor_entities[0])
+	else:
+		var names: Array[String] = []
+		for e in _cursor_entities:
+			names.append(e["name"] as String)
+		_fill_modal.open_actions("What?", names)
+
+func _open_entity_actions(entity: Dictionary) -> void:
+	_selected_entity = entity
+	_tile_action_name = entity["name"]
+	_tile_actions = entity["actions"]
+	_fill_modal.open_actions(entity["name"], entity["actions"], _cursor_entities.size() > 1)
 
 func _try_map_interact() -> void:
 	var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
@@ -261,7 +384,36 @@ func _on_fill_confirmed(liquid: String, amount_liters: float) -> void:
 	_character_sheet.visible = true
 
 func _on_tile_action_selected(action: String) -> void:
-	if action == "Loot":
+	# Entity picker level: action is an entity name
+	if _selected_entity.is_empty():
+		for entity in _cursor_entities:
+			if entity["name"] == action:
+				_open_entity_actions(entity)
+				return
+		return
+	if action == "Unlock Target":
+		_pending_action = ""
+		_pending_target = null
+		_unlock()
+		_fill_modal.visible = false
+		action_state = ActionState.MOVEMENT
+		interaction_sub_state = InteractionSubState.NONE
+		_interact_cursor.deactivate()
+	elif action == "Chop":
+		var tree_node: Node = _selected_entity.get("node", null)
+		_pending_action = "chop"
+		_fill_modal.visible = false
+		action_state = ActionState.MOVEMENT
+		interaction_sub_state = InteractionSubState.NONE
+		_interact_cursor.deactivate()
+		_lock_on(tree_node)
+		if tree_node != null:
+			var combat := get_node_or_null("CharacterCombat")
+			if combat != null:
+				combat.bump_attack(tree_node.grid_pos)
+				combat._apply_damage_to_tree(tree_node)
+		get_node("CharacterMovement").moved.emit()
+	elif action == "Loot":
 		var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
 		var target_inventories: Array[Node] = []
 		for node in get_parent().get_children():
@@ -303,17 +455,13 @@ func _on_tile_action_selected(action: String) -> void:
 			return
 		_fill_modal.open_container_picker(_collect_liquid, labels, indices)
 	elif action == "Inspect":
-		var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
-		var grid_map: GridMap = get_parent().get_node("GridMap")
-		var tile_id: int = grid_map.get_cell_item(Vector3i(cursor_pos.x, 0, cursor_pos.y))
-		var true_tile: int = TileRegistry.get_original_tile(Vector3i(cursor_pos.x, 0, cursor_pos.y), tile_id)
-		var tile_data := TileRegistry.get_tile(true_tile)
+		var entity_data: Dictionary = _selected_entity.get("data", {})
 		_modal_context = ModalContext.INSPECT_TILE
 		interaction_sub_state = InteractionSubState.INSPECTION
 		_fill_modal.open_inspect(
-			tile_data.get("name", ""),
-			tile_data.get("description", ""),
-			tile_data.get("sprite", ""),
+			entity_data.get("name", _selected_entity.get("name", "")),
+			entity_data.get("description", ""),
+			entity_data.get("sprite", ""),
 			true
 		)
 	else:

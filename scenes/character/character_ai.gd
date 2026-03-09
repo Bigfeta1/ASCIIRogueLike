@@ -114,6 +114,9 @@ func can_see(target_pos: Vector2i) -> bool:
 		var tile_id := TileRegistry.get_original_tile(cell3, _grid_map.get_cell_item(cell3))
 		if TileRegistry.blocks_vision(tile_id):
 			return false
+		for node in _grid_map.get_parent().get_children():
+			if node.has_method("take_damage") and node.grid_pos == cell:
+				return false
 	return true
 
 func _facing_vector() -> Vector2:

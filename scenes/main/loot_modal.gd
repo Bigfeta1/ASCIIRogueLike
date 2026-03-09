@@ -1,6 +1,7 @@
 extends Control
 
 signal closed
+signal inspect_requested(item_id: String)
 
 enum ModalState { BROWSING, ITEM_ACTION }
 
@@ -191,6 +192,7 @@ func _confirm_action() -> void:
 		"Inspect":
 			_state = ModalState.BROWSING
 			_action_panel.visible = false
+			inspect_requested.emit(id)
 
 
 func _unhandled_input(event: InputEvent) -> void:

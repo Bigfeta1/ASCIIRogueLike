@@ -837,11 +837,11 @@ offset_bottom = 107.0
 expand_mode = 1
 
 [node name="InfoLabel" type="Label" parent="CanvasLayer/InteractModal/Panel/InspectItems"]
-custom_minimum_size = Vector2(400, 100)
+custom_minimum_size = Vector2(350, 100)
 layout_mode = 0
 offset_left = 25.0
 offset_top = 96.0
-offset_right = 425.0
+offset_right = 413.0
 offset_bottom = 196.0
 label_settings = SubResource("LabelSettings_w4lj1")
 autowrap_mode = 2

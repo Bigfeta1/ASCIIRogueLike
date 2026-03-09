@@ -72,7 +72,11 @@ func _do_move() -> void:
 		_look_cursor.move(delta)
 	elif _character.action_state == _character.ActionState.INTERACTION:
 		if _character.interaction_sub_state == _character.InteractionSubState.MOVE_CURSOR:
-			_interact_cursor.move(delta)
+			if _character._pending_action != "":
+				_check_move(delta)
+			else:
+				_interact_cursor.move(delta)
+
 
 func _check_move(delta: Vector2i) -> void:
 	var target := grid_pos + delta
@@ -88,6 +92,15 @@ func _check_move(delta: Vector2i) -> void:
 	for node in _character.get_parent().get_children():
 		if node == _character:
 			continue
+		if node.has_method("take_damage") and node.grid_pos == target:
+			if _character._pending_target == node and _character.action_state == _character.ActionState.MOVEMENT:
+				_face(delta)
+				var combat := _character.get_node_or_null("CharacterCombat")
+				if combat != null:
+					combat.bump_attack(target)
+					combat._apply_damage_to_tree(node)
+				moved.emit()
+			return
 		var other_movement := node.get_node_or_null("CharacterMovement")
 		if other_movement == null or other_movement.grid_pos != target:
 			continue

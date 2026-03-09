@@ -1,12 +1,21 @@
-[gd_resource type="MeshLibrary" load_steps=6 format=3 uid="uid://b1v6rer8kbtx7"]
+[gd_resource type="MeshLibrary" load_steps=9 format=3 uid="uid://b1v6rer8kbtx7"]
 
 [ext_resource type="PlaneMesh" uid="uid://cpcymc5t7xo3t" path="res://tiles/tile_generic.tres" id="1_b2ypd"]
 [ext_resource type="PlaneMesh" uid="uid://5gjtd5c5dgdg" path="res://tiles/tile_water.tres" id="2_8r4mu"]
 [ext_resource type="PlaneMesh" uid="uid://bfdl6qvrba5a2" path="res://tiles/tile_sound_emitted.tres" id="3_u77in"]
 [ext_resource type="PlaneMesh" uid="uid://b152k382n47ow" path="res://tiles/tile_enemy_vision.tres" id="4_itxva"]
+[ext_resource type="Texture2D" uid="uid://bvjgifd2rxl1" path="res://assets/images/tiles/spr_tree1.png" id="5_xf4kk"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_u77in"]
 size = Vector2(5, 5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1k8ev"]
+transparency = 1
+albedo_texture = ExtResource("5_xf4kk")
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ss3tb"]
+material = SubResource("StandardMaterial3D_1k8ev")
+size = Vector2(7, 7)
 
 [resource]
 item/0/name = "Tile"
@@ -37,10 +46,17 @@ item/3/mesh_cast_shadow = 1
 item/3/shapes = []
 item/3/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 item/3/navigation_layers = 1
-item/4/name = ""
+item/4/name = "Vision"
 item/4/mesh = ExtResource("4_itxva")
 item/4/mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 item/4/mesh_cast_shadow = 1
 item/4/shapes = []
 item/4/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 item/4/navigation_layers = 1
+item/5/name = "Tree"
+item/5/mesh = SubResource("PlaneMesh_ss3tb")
+item/5/mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/5/mesh_cast_shadow = 1
+item/5/shapes = []
+item/5/navigation_mesh_transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+item/5/navigation_layers = 1

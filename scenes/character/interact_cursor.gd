@@ -14,6 +14,11 @@ func activate() -> void:
 	_snap()
 	visible = true
 
+func activate_at(pos: Vector2i) -> void:
+	_cursor_grid_pos = pos
+	_snap()
+	visible = true
+
 func deactivate() -> void:
 	visible = false
 

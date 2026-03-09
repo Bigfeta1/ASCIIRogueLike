@@ -20,8 +20,8 @@ var _action_options: Array[String] = []
 var _container_indices: Array[int] = []
 var _selected_index: int = 0
 var _liquid: String = ""
-var _back_title: String = ""
-var _back_actions: Array[String] = []
+# Stack of { "title": String, "actions": Array[String], "mode": Mode }
+var _back_stack: Array = []
 
 var _title_label: Label
 var _action_list: VBoxContainer
@@ -62,10 +62,12 @@ func open(liquid: String, capacity_liters: float, current_liters: float) -> void
 	_rebuild_fill()
 	visible = true
 
-func open_actions(title: String, actions: Array) -> void:
+func open_actions(title: String, actions: Array, save_back: bool = false) -> void:
+	if save_back:
+		_back_stack.push_back({ "title": _title_label.text, "actions": _action_options.duplicate(), "mode": mode })
+	else:
+		_back_stack.clear()
 	mode = Mode.ACTIONS
-	_back_title = ""
-	_back_actions.clear()
 	_action_options.clear()
 	for a in actions:
 		_action_options.append(a as String)
@@ -77,8 +79,7 @@ func open_actions(title: String, actions: Array) -> void:
 	visible = true
 
 func open_container_picker(liquid: String, labels: Array[String], indices: Array[int]) -> void:
-	_back_title = _title_label.text
-	_back_actions.assign(_action_options)
+	_back_stack.push_back({ "title": _title_label.text, "actions": _action_options.duplicate(), "mode": mode })
 	mode = Mode.CONTAINER_PICK
 	_liquid = liquid
 	_action_options.clear()
@@ -94,11 +95,9 @@ func open_container_picker(liquid: String, labels: Array[String], indices: Array
 
 func open_inspect(title: String, description: String, sprite_path: String, save_back: bool = false, dur_current: int = -1, dur_max: int = -1, hit_bonus: int = -1, damage_die: int = -1) -> void:
 	if save_back:
-		_back_title = _title_label.text
-		_back_actions.assign(_action_options)
+		_back_stack.push_back({ "title": _title_label.text, "actions": _action_options.duplicate(), "mode": mode })
 	else:
-		_back_title = ""
-		_back_actions.clear()
+		_back_stack.clear()
 	mode = Mode.INSPECT
 	_title_label.text = title
 	_action_list.visible = false
@@ -123,17 +122,18 @@ func open_inspect(title: String, description: String, sprite_path: String, save_
 	visible = true
 
 func go_back() -> void:
-	print("[DBG] go_back: mode=", mode, " back_title='", _back_title, "'")
-	if (mode == Mode.CONTAINER_PICK or mode == Mode.INSPECT) and not _back_title.is_empty():
+	if not _back_stack.is_empty():
+		var prev: Dictionary = _back_stack.pop_back()
 		mode = Mode.ACTIONS
-		_action_options.assign(_back_actions)
-		_title_label.text = _back_title
+		_action_options.assign(prev["actions"])
+		_title_label.text = prev["title"]
 		_selected_index = 0
 		_inspect_items.visible = false
 		_action_list.visible = true
 		_rebuild_actions()
 		went_back.emit()
 	else:
+		went_back.emit()
 		visible = false
 
 func confirm() -> void:
@@ -147,7 +147,7 @@ func confirm() -> void:
 			visible = false
 			container_selected.emit(_container_indices[_selected_index])
 		Mode.INSPECT:
-			if not _back_title.is_empty():
+			if not _back_stack.is_empty():
 				go_back()
 			else:
 				visible = false

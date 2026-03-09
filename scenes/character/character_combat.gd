@@ -174,6 +174,51 @@ func _apply_damage(target: Node) -> void:
 		_incapacitate(target, target.get_node("CharacterAI").BehaviorState.DEAD)
 
 
+func _apply_damage_to_tree(tree: Node) -> void:
+	var attacker_levels := _character.get_node("CharacterLevels")
+	var attacker_equip := _character.get_node_or_null("CharacterEquipment")
+	var weapon: Dictionary = attacker_equip.weapon_info() if attacker_equip else {"damage_die": 3, "weight_class": "light", "hit_bonus": 0}
+
+	# Hit roll — tree has no evasion
+	var hit_roll: int = randi_range(1, 20) + attacker_levels.hit_mod() + weapon.hit_bonus
+	if hit_roll < 10:
+		_spawn_label(tree, "Miss!", Color.GRAY)
+		return
+
+	# Damage roll
+	var muscle_mod: int = attacker_levels.stat_mod(attacker_levels.muscle)
+	var affect_mod: int = attacker_levels.stat_mod(attacker_levels.affect)
+	var crit_chance: float = 0.05 + affect_mod * 0.025
+	var is_crit: bool = randf() < crit_chance
+	var damage: int
+	if is_crit:
+		var crit_mod: int = floori((attacker_levels.stat_mod(attacker_levels.adrenal) + muscle_mod + attacker_levels.stat_mod(attacker_levels.sympathetic)) / 3.0)
+		damage = weapon.damage_die + crit_mod
+	else:
+		damage = maxi(1, randi_range(1, weapon.damage_die) + muscle_mod)
+
+	# Block — tree only has block
+	var block_check: int = randi_range(1, 20) + tree.block_mod
+	if block_check >= 19:
+		var block_roll: int = randi_range(1, 6) + tree.block_mod
+		damage = maxi(1, damage - block_roll)
+
+	# Durability cost
+	if attacker_equip != null:
+		var cur_dur: int = attacker_equip.get_equipped_durability("r_hand")
+		if cur_dur != -1:
+			attacker_equip.set_equipped_durability("r_hand", cur_dur - 2)
+
+	if is_crit:
+		_spawn_crit_label(tree, damage)
+	else:
+		_spawn_damage_label(tree, damage)
+	var inventory := _character.get_node_or_null("CharacterInventory")
+	if inventory != null:
+		inventory.add_item("logs")
+	tree.take_damage(damage, _character)
+
+
 func _spawn_label(target: Node, text: String, color: Color) -> void:
 	var label: Label = DamageLabelScript.new()
 	_character.get_parent().get_node("CanvasLayer").add_child(label)
