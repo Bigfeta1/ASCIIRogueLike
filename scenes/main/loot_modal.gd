@@ -63,10 +63,26 @@ func _rebuild() -> void:
 			_entries.append({"id": id, "inventory": inv})
 			var data := ItemRegistry.get_item(id)
 			var qty: int = counts[id]
+			var row := PanelContainer.new()
+			var hbox := HBoxContainer.new()
+			hbox.mouse_filter = Control.MOUSE_FILTER_PASS
+			row.add_child(hbox)
+			var sprite_path: String = data.get("sprite", "") as String
+			if sprite_path != "":
+				var icon := TextureRect.new()
+				icon.texture = load(sprite_path)
+				icon.custom_minimum_size = Vector2(28, 28)
+				icon.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+				icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				icon.mouse_filter = Control.MOUSE_FILTER_PASS
+				hbox.add_child(icon)
 			var label := Label.new()
 			label.text = "%s x%d" % [data.get("name", id), qty]
 			label.custom_minimum_size.y = _ITEM_HEIGHT
-			_item_list.add_child(label)
+			label.mouse_filter = Control.MOUSE_FILTER_PASS
+			hbox.add_child(label)
+			_item_list.add_child(row)
 
 	if _entries.is_empty():
 		var empty_label := Label.new()
@@ -96,15 +112,15 @@ func _resize() -> void:
 
 func _refresh_selection() -> void:
 	for i in _item_list.get_child_count():
-		var label := _item_list.get_child(i) as Label
-		if label == null:
+		var row := _item_list.get_child(i) as PanelContainer
+		if row == null:
 			continue
 		if not _entries.is_empty() and i == _selected_index:
 			var box := StyleBoxFlat.new()
 			box.bg_color = _HIGHLIGHT_COLOR
-			label.add_theme_stylebox_override("normal", box)
+			row.add_theme_stylebox_override("panel", box)
 		else:
-			label.remove_theme_stylebox_override("normal")
+			row.remove_theme_stylebox_override("panel")
 
 
 func _open_action_menu() -> void:

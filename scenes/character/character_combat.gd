@@ -153,6 +153,12 @@ func _apply_damage(target: Node) -> void:
 			var block_roll: int = randi_range(1, 6) + defender_levels.block_mod()
 			damage = maxi(1, damage - block_roll)
 
+	var attacker_equip_node := _character.get_node_or_null("CharacterEquipment")
+	if attacker_equip_node != null:
+		var weapon_slot := "r_hand"
+		var cur_dur: int = attacker_equip_node.get_equipped_durability(weapon_slot)
+		if cur_dur != -1:
+			attacker_equip_node.set_equipped_durability(weapon_slot, cur_dur - 2)
 	vitals.hp = maxi(0, vitals.hp - damage)
 	if is_crit:
 		_spawn_crit_label(target, damage)

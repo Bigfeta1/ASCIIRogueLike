@@ -17,6 +17,7 @@ var _active_slot: String = ""
 var _inventory: Node
 var _action_panel: PanelContainer
 var _action_list: VBoxContainer
+var _info_row: String = ""
 
 func _ready() -> void:
 	$TabBar/StatsButton.pressed.connect(_set_tab.bind(Tab.STATS))
@@ -55,6 +56,8 @@ func _set_tab(tab: Tab) -> void:
 func _set_inventory_state(state: InventoryState) -> void:
 	_inventory_state = state
 	_action_panel.visible = _inventory_state == InventoryState.ITEM_ACTION
+	if _inventory_state != InventoryState.ITEM_ACTION:
+		_info_row = ""
 	if _inventory_state == InventoryState.ITEM_ACTION:
 		_action_index = 0
 		_rebuild_action_list()
@@ -81,6 +84,11 @@ func _open_slot_action(slot: String) -> void:
 	_action_panel.position = panel_global.position - _action_panel.get_parent().get_global_position() + Vector2(panel_global.size.x + 4.0, 0.0)
 	_current_actions = ["Unequip", "Inspect"]
 	_action_index = 0
+	_info_row = ""
+	var dur: int = equipment.get_equipped_durability(slot)
+	if dur != -1:
+		var dur_max: int = ItemRegistry.get_item(item_id).get("durability_max", 0) as int
+		_info_row = "%d/%d dur" % [dur, dur_max]
 	_rebuild_action_list_from(_current_actions)
 	_action_panel.visible = true
 	_inventory_state = InventoryState.ITEM_ACTION
@@ -118,6 +126,12 @@ func _rebuild_action_list() -> void:
 func _rebuild_action_list_from(actions: Array[String]) -> void:
 	for child in _action_list.get_children():
 		child.queue_free()
+	if _info_row != "":
+		var info_label := Label.new()
+		info_label.text = _info_row
+		info_label.add_theme_color_override("font_color", Color.GRAY)
+		info_label.add_theme_font_size_override("font_size", 10)
+		_action_list.add_child(info_label)
 	for action in actions:
 		var label := Label.new()
 		label.text = action
@@ -235,9 +249,12 @@ func _refresh_selection() -> void:
 			node.remove_theme_stylebox_override(stylebox_slot)
 
 func _refresh_action_selection() -> void:
+	var offset: int = 1 if _info_row != "" else 0
 	for i in _action_list.get_child_count():
 		var label := _action_list.get_child(i) as Label
-		if i == _action_index:
+		if label == null:
+			continue
+		if i == _action_index + offset:
 			label.add_theme_stylebox_override("normal", _make_highlight_box())
 		else:
 			label.remove_theme_stylebox_override("normal")

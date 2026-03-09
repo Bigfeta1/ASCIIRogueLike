@@ -28,6 +28,9 @@ const SLOT_PANEL_PATHS: Dictionary = {
 
 signal slot_clicked(slot: String)
 
+# slot_name -> current durability for equipped items that have durability_max
+var equipped_durability: Dictionary = {}
+
 var _character: Node
 
 
@@ -68,7 +71,15 @@ func equip(item_id: String) -> bool:
 	var inventory := _character.get_node("CharacterInventory")
 	if equipped[slot] != "":
 		inventory.add_item(equipped[slot])
+		if equipped_durability.has(slot):
+			var idx: int = inventory.items.rfind(equipped[slot])
+			if idx != -1:
+				inventory.set_durability(idx, equipped_durability[slot])
+		equipped_durability.erase(slot)
 		_remove_visual(slot)
+	var inv_idx: int = inventory.items.find(item_id)
+	if data.has("durability_max") and inv_idx != -1:
+		equipped_durability[slot] = inventory.get_durability(inv_idx)
 	equipped[slot] = item_id
 	inventory.remove_item(item_id)
 	_spawn_visual(slot, data.get("sprite", "") as String)
@@ -82,6 +93,11 @@ func unequip(slot: String) -> bool:
 		return false
 	var inventory := _character.get_node("CharacterInventory")
 	inventory.add_item(equipped[slot])
+	if equipped_durability.has(slot):
+		var idx: int = inventory.items.rfind(equipped[slot])
+		if idx != -1:
+			inventory.set_durability(idx, equipped_durability[slot])
+		equipped_durability.erase(slot)
 	equipped[slot] = ""
 	_remove_visual(slot)
 	_refresh_attack_weight_label()
@@ -91,6 +107,18 @@ func unequip(slot: String) -> bool:
 
 func get_equipped(slot: String) -> String:
 	return equipped.get(slot, "")
+
+func get_equipped_durability(slot: String) -> int:
+	return equipped_durability.get(slot, -1)
+
+func set_equipped_durability(slot: String, value: int) -> void:
+	if not equipped_durability.has(slot):
+		return
+	var item_id: String = equipped.get(slot, "")
+	if item_id == "":
+		return
+	var dur_max: int = ItemRegistry.get_item(item_id).get("durability_max", 0) as int
+	equipped_durability[slot] = clampi(value, 0, dur_max)
 
 
 func equipped_in_slot(item_id: String) -> String:

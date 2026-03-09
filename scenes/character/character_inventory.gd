@@ -2,7 +2,7 @@ extends Node
 
 signal item_clicked(row: Control)
 
-const CATEGORY_ORDER: Array = ["melee", "ranged", "armor", "clothes", "medicine", "container", "misc"]
+const CATEGORY_ORDER: Array = ["melee", "ranged", "armor", "clothes", "medicine", "container", "camping", "misc"]
 const CATEGORY_LABELS: Dictionary = {
 	"melee": "Melee Weapons",
 	"ranged": "Ranged Weapons",
@@ -10,6 +10,7 @@ const CATEGORY_LABELS: Dictionary = {
 	"clothes": "Clothes",
 	"medicine": "Medicine",
 	"container": "Containers",
+	"camping": "Camping",
 	"misc": "Misc",
 }
 
@@ -17,6 +18,8 @@ var items: Array[String] = []
 var item_uids: Array[int] = []
 # Maps uid -> { "liquid": String, "amount_liters": float } for container items
 var container_contents: Dictionary = {}
+# Maps uid -> current durability for items with durability_max
+var item_durability: Dictionary = {}
 var _next_uid: int = 0
 var collapsed: Dictionary = {}
 
@@ -55,9 +58,13 @@ func can_add(id: String) -> bool:
 func add_item(id: String) -> bool:
 	if not can_add(id):
 		return false
+	var uid: int = _next_uid
 	items.append(id)
-	item_uids.append(_next_uid)
+	item_uids.append(uid)
 	_next_uid += 1
+	var data := ItemRegistry.get_item(id)
+	if data.has("durability_max"):
+		item_durability[uid] = data["durability_max"] as int
 	_refresh_ui()
 	return true
 
@@ -69,8 +76,20 @@ func remove_item(id: String) -> bool:
 	items.remove_at(idx)
 	item_uids.remove_at(idx)
 	container_contents.erase(uid)
+	item_durability.erase(uid)
 	_refresh_ui()
 	return true
+
+func get_durability(item_index: int) -> int:
+	var uid: int = item_uids[item_index]
+	return item_durability.get(uid, -1)
+
+func set_durability(item_index: int, value: int) -> void:
+	var uid: int = item_uids[item_index]
+	var data := ItemRegistry.get_item(items[item_index])
+	var max_dur: int = data.get("durability_max", 0) as int
+	item_durability[uid] = clampi(value, 0, max_dur)
+	_refresh_ui()
 
 func get_liquid(item_index: int) -> Dictionary:
 	var uid: int = item_uids[item_index]
@@ -146,6 +165,12 @@ func _refresh_ui() -> void:
 						fill_suffix = "  (%.2fL empty)" % capacity
 					else:
 						fill_suffix = "  (%.2f/%.2fL %s)" % [contents["amount_liters"], capacity, contents["liquid"]]
+			if data.has("durability_max"):
+				var idx := items.find(id)
+				if idx != -1:
+					var dur: int = get_durability(idx)
+					var dur_max: int = data["durability_max"] as int
+					fill_suffix = "  (%d/%d)" % [dur, dur_max]
 
 			var row := PanelContainer.new()
 			row.mouse_filter = Control.MOUSE_FILTER_STOP

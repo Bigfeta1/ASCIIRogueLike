@@ -44,7 +44,8 @@ func _ready() -> void:
 		_loot_modal.closed.connect(func() -> void:
 			action_state = ActionState.MOVEMENT
 			interaction_sub_state = InteractionSubState.NONE
-			_loot_modal.visible = false)
+			_loot_modal.visible = false
+			_interact_cursor.deactivate())
 		_character_sheet.visible = false
 		_character_sheet.init(get_node("CharacterInventory"))
 		_character_sheet.close_requested.connect(func() -> void:
@@ -112,9 +113,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 			if action_state != ActionState.MOVEMENT:
-				print("[CHARACTER] KEY_E blocked — action_state=%d interaction_sub_state=%d" % [action_state, interaction_sub_state])
 				return
-			print("[CHARACTER] KEY_E — entering INTERACTION/MOVE_CURSOR")
 			action_state = ActionState.INTERACTION
 			interaction_sub_state = InteractionSubState.MOVE_CURSOR
 			_interact_cursor.activate()
@@ -134,28 +133,29 @@ func _unhandled_input(event: InputEvent) -> void:
 				_interact_cursor.deactivate()
 
 func _on_modal_visibility_changed() -> void:
-	print("[CHARACTER] _on_modal_visibility_changed fill_modal.visible=%s action_state=%d interaction_sub_state=%d" % [_fill_modal.visible, action_state, interaction_sub_state])
+	print("[DBG] visibility_changed: fill_modal.visible=", _fill_modal.visible, " action_state=", action_state, " sub=", interaction_sub_state)
 	if _fill_modal.visible or action_state != ActionState.INTERACTION:
 		return
 	match interaction_sub_state:
 		InteractionSubState.INTERACTION_MENU:
-			print("[CHARACTER] modal closed from INTERACTION_MENU -> MOVEMENT")
 			action_state = ActionState.MOVEMENT
 			interaction_sub_state = InteractionSubState.NONE
 			_interact_cursor.deactivate()
 		InteractionSubState.COLLECT_LIQUID, InteractionSubState.INSPECTION, InteractionSubState.USE_ITEM:
-			print("[CHARACTER] modal closed from sub_state=%d -> _on_modal_closed" % interaction_sub_state)
 			_on_modal_closed()
 
 func _on_modal_closed() -> void:
 	var ctx := _modal_context
+	print("[DBG] _on_modal_closed: ctx=", ctx, " sub=", interaction_sub_state)
 	_modal_context = ModalContext.NONE
 	match ctx:
 		ModalContext.NONE:
 			if interaction_sub_state == InteractionSubState.INSPECTION:
+				print("[DBG] restoring sheet from INSPECTION")
 				interaction_sub_state = InteractionSubState.NONE
-				action_state = ActionState.MOVEMENT
-				_interact_cursor.deactivate()
+				action_state = ActionState.MENU
+				_character_sheet._set_tab(_character_sheet.Tab.INVENTORY)
+				_character_sheet.visible = true
 			elif interaction_sub_state == InteractionSubState.USE_ITEM:
 				interaction_sub_state = InteractionSubState.NONE
 				action_state = ActionState.MENU
@@ -165,6 +165,7 @@ func _on_modal_closed() -> void:
 			interaction_sub_state = InteractionSubState.MOVE_CURSOR
 
 func _on_fill_modal_went_back() -> void:
+	print("[DBG] went_back fired: sub was=", interaction_sub_state)
 	_modal_context = ModalContext.NONE
 	interaction_sub_state = InteractionSubState.INTERACTION_MENU
 

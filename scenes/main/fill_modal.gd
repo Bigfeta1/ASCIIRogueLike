@@ -11,10 +11,6 @@ const _TITLE_HEIGHT := 28.0
 const _PADDING := 24.0
 const _MIN_WIDTH := 160.0
 const _CHAR_WIDTH := 8.0
-const _INSPECT_ICON_SIZE := 96.0
-const _INSPECT_WIDTH := 320.0
-const _INSPECT_LINE_HEIGHT := 18.0
-const _INSPECT_CHARS_PER_LINE := 36
 
 enum Mode { FILL, ACTIONS, CONTAINER_PICK, INSPECT }
 
@@ -31,14 +27,15 @@ var _title_label: Label
 var _action_list: VBoxContainer
 var _inspect_icon: TextureRect
 var _info_label: Label
+var _inspect_items: Control
 
 func _ready() -> void:
 	_title_label = $Panel/VBox/TitleLabel
 	_action_list = $Panel/VBox/ActionList
-	_inspect_icon = $Panel/InspectIcon
-	_info_label = $Panel/InfoLabel
-	_inspect_icon.visible = false
-	_info_label.visible = false
+	_inspect_items = $Panel/InspectItems
+	_inspect_icon = $Panel/InspectItems/InspectIcon
+	_info_label = $Panel/InspectItems/InfoLabel
+	_inspect_items.visible = false
 	visible = false
 
 func open(liquid: String, capacity_liters: float, current_liters: float) -> void:
@@ -56,8 +53,7 @@ func open(liquid: String, capacity_liters: float, current_liters: float) -> void
 		return
 	_title_label.text = liquid.capitalize()
 	_selected_index = _options.size() - 1
-	_inspect_icon.visible = false
-	_info_label.visible = false
+	_inspect_items.visible = false
 	_action_list.visible = true
 	_rebuild_fill()
 	visible = true
@@ -71,8 +67,7 @@ func open_actions(title: String, actions: Array) -> void:
 		_action_options.append(a as String)
 	_title_label.text = title
 	_selected_index = 0
-	_inspect_icon.visible = false
-	_info_label.visible = false
+	_inspect_items.visible = false
 	_action_list.visible = true
 	_rebuild_actions()
 	visible = true
@@ -88,8 +83,7 @@ func open_container_picker(liquid: String, labels: Array[String], indices: Array
 	_container_indices = indices.duplicate()
 	_title_label.text = "Choose container"
 	_selected_index = 0
-	_inspect_icon.visible = false
-	_info_label.visible = false
+	_inspect_items.visible = false
 	_action_list.visible = true
 	_rebuild_actions()
 	visible = true
@@ -110,18 +104,18 @@ func open_inspect(title: String, description: String, sprite_path: String, save_
 	else:
 		_inspect_icon.visible = false
 	_info_label.text = description
-	_info_label.visible = true
-	_resize_inspect_panel(description)
+	_inspect_items.visible = true
+	_resize_inspect_panel()
 	visible = true
 
 func go_back() -> void:
-	if mode == Mode.CONTAINER_PICK or mode == Mode.INSPECT:
+	print("[DBG] go_back: mode=", mode, " back_title='", _back_title, "'")
+	if (mode == Mode.CONTAINER_PICK or mode == Mode.INSPECT) and not _back_title.is_empty():
 		mode = Mode.ACTIONS
 		_action_options.assign(_back_actions)
 		_title_label.text = _back_title
 		_selected_index = 0
-		_inspect_icon.visible = false
-		_info_label.visible = false
+		_inspect_items.visible = false
 		_action_list.visible = true
 		_rebuild_actions()
 		went_back.emit()
@@ -179,21 +173,21 @@ func _resize_panel() -> void:
 	panel.size = Vector2(w, h)
 	panel.position = (viewport_size - panel.size) / 2.0
 
-func _resize_inspect_panel(description: String) -> void:
+
+func _resize_inspect_panel() -> void:
 	var panel: NinePatchRect = $Panel
-	var w := _INSPECT_WIDTH
-	var icon_h := _INSPECT_ICON_SIZE + _PADDING if _inspect_icon.visible else 0.0
-	var line_count := ceili(float(description.length()) / float(_INSPECT_CHARS_PER_LINE))
-	var text_h := maxi(line_count, 2) * _INSPECT_LINE_HEIGHT
-	var h := _TITLE_HEIGHT + icon_h + text_h + _PADDING * 2.0
 	var viewport_size := get_viewport().get_visible_rect().size
+	# Derive panel size from the editor-placed InspectItems children
+	var content_bottom := 0.0
+	for child in _inspect_items.get_children():
+		var c := child as Control
+		if c != null and c.visible:
+			content_bottom = maxf(content_bottom, c.position.y + c.size.y)
+	var inspect_top: float = _inspect_items.position.y
+	var h := inspect_top + content_bottom + _PADDING
+	var w := _inspect_items.position.x + _info_label.size.x + _PADDING
 	panel.size = Vector2(w, h)
 	panel.position = (viewport_size - panel.size) / 2.0
-	var icon_y := _TITLE_HEIGHT + _PADDING
-	_inspect_icon.position = Vector2((w - _INSPECT_ICON_SIZE) / 2.0, icon_y)
-	_inspect_icon.size = Vector2(_INSPECT_ICON_SIZE, _INSPECT_ICON_SIZE)
-	_info_label.position = Vector2(_PADDING, icon_y + icon_h)
-	_info_label.size = Vector2(w - _PADDING * 2.0, text_h)
 
 func _refresh_selection() -> void:
 	for i in _action_list.get_child_count():

@@ -44,19 +44,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	var dir_keys := [KEY_D, KEY_RIGHT, KEY_A, KEY_LEFT, KEY_S, KEY_DOWN, KEY_W, KEY_UP]
 	if not event.keycode in dir_keys:
 		return
-	print("[MOVEMENT INPUT] keycode=%d pressed=%s echo=%s action_state=%d interaction_sub_state=%d" % [
-		event.keycode, event.pressed, event.echo,
-		_character.action_state, _character.interaction_sub_state
-	])
 	if not event.pressed:
 		_held_keys.erase(event.keycode)
-		print("[MOVEMENT INPUT] key released, held_keys=%s" % str(_held_keys))
 		return
 	if _turn_order.current_turn_state != _turn_order.TurnState.PLAYER_TURN:
-		print("[MOVEMENT INPUT] blocked — not player turn")
 		return
 	_held_keys[event.keycode] = true
-	print("[MOVEMENT INPUT] added to held_keys=%s move_pending will be=%s" % [str(_held_keys), not event.echo])
 	if not event.echo:
 		_move_pending = true
 	else:
@@ -71,29 +64,17 @@ func _do_move() -> void:
 	var dx := int(_held_keys.get(KEY_D, false) or _held_keys.get(KEY_RIGHT, false)) - int(_held_keys.get(KEY_A, false) or _held_keys.get(KEY_LEFT, false))
 	var dy := int(_held_keys.get(KEY_S, false) or _held_keys.get(KEY_DOWN, false)) - int(_held_keys.get(KEY_W, false) or _held_keys.get(KEY_UP, false))
 	var delta := Vector2i(dx, dy)
-	print("[DO_MOVE] delta=%s action_state=%d interaction_sub_state=%d held_keys=%s" % [
-		str(delta), _character.action_state, _character.interaction_sub_state, str(_held_keys)
-	])
 	if delta == Vector2i.ZERO:
-		print("[DO_MOVE] delta zero, returning")
 		return
 	if _character.action_state == _character.ActionState.MOVEMENT:
-		print("[DO_MOVE] -> _check_move")
 		_check_move(delta)
 	elif _character.action_state == _character.ActionState.LOOK:
-		print("[DO_MOVE] -> look cursor move")
 		_look_cursor.move(delta)
 	elif _character.action_state == _character.ActionState.INTERACTION:
 		if _character.interaction_sub_state == _character.InteractionSubState.MOVE_CURSOR:
-			print("[DO_MOVE] -> interact cursor move")
 			_interact_cursor.move(delta)
-		else:
-			print("[DO_MOVE] INTERACTION but sub_state=%d — movement blocked" % _character.interaction_sub_state)
-	else:
-		print("[DO_MOVE] unhandled action_state=%d — movement blocked" % _character.action_state)
 
 func _check_move(delta: Vector2i) -> void:
-	print("[CHECK_MOVE] delta=%s action_state=%d interaction_sub_state=%d" % [str(delta), _character.action_state, _character.interaction_sub_state])
 	var target := grid_pos + delta
 	var cell := Vector3i(target.x, 0, target.y)
 	var tile_id := _grid_map.get_cell_item(cell)
@@ -111,10 +92,7 @@ func _check_move(delta: Vector2i) -> void:
 		if other_movement == null or other_movement.grid_pos != target:
 			continue
 		var other_ai := node.get_node_or_null("CharacterAI")
-		if other_ai != null:
-			print("[MOVE] %s behavior_state=%d KNOCKED_OUT=%d DEAD=%d" % [node.name, other_ai.behavior_state, other_ai.BehaviorState.KNOCKED_OUT, other_ai.BehaviorState.DEAD])
 		if other_ai != null and (other_ai.behavior_state == other_ai.BehaviorState.KNOCKED_OUT or other_ai.behavior_state == other_ai.BehaviorState.DEAD):
-			print("[MOVE] skipping %s — incapacitated" % node.name)
 			continue
 		var different_faction: bool = node.faction != _character.faction
 		if other_ai != null and other_ai.disposition == other_ai.Disposition.HOSTILE and different_faction:

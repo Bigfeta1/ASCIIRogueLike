@@ -9,7 +9,8 @@
 		"description": "A serrated combat knife. Reliable in close quarters.",
 		"slot": "r_hand",
 		"damage_die": 4,
-		"hit_bonus": 8
+		"hit_bonus": 8,
+		"durability_max": 100
 	},
 	{
 		"id": "field_bandage",
@@ -32,6 +33,17 @@
 		"slot": null,
 		"capacity_liters": 0.25,
 		"allowed_liquids": ["water", "alcohol", "medicine"]
+	},
+	{
+		"id": "tinder_box",
+		"name": "Tinder Box",
+		"weight": 1.0,
+		"category": "camping",
+		"interaction": "use",
+		"sprite": "res://assets/images/inventory_items/camp_items/spr_tinderbox.png",
+		"description": "A tin box containing flint, steel, and char cloth. Used to start fires.",
+		"slot": null,
+		"durability_max": 100
 	},
 	{
 		"id": "corpse_soldier",
