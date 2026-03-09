@@ -23,6 +23,8 @@ var _loot_modal: Control
 var _fill_modal: Control
 var _loot_interrupted: bool = false
 var _loot_inspect: bool = false
+var _look_interrupted: bool = false
+var _look_interrupted_pos: Vector2i = Vector2i.ZERO
 
 var _modal_context: ModalContext = ModalContext.NONE
 var _collect_item_id: String = ""
@@ -126,6 +128,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				_character_sheet._set_tab(_character_sheet.Tab.INVENTORY)
 		KEY_E:
+			if action_state == ActionState.LOOK:
+				var look_pos: Vector2i = _look_cursor._cursor_grid_pos
+				_look_interrupted = true
+				_look_interrupted_pos = look_pos
+				_look_cursor.deactivate()
+				action_state = ActionState.INTERACTION
+				_open_interaction_menu(look_pos, true)
+				get_viewport().set_input_as_handled()
+				return
 			if action_state == ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
 				if _pending_action != "":
 					_execute_pending_action()
@@ -152,7 +163,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_pending_action = ""
 				_pending_target = null
 				_unlock()
-			if action_state == ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
+			if action_state == ActionState.LOOK:
+				action_state = ActionState.MOVEMENT
+				_look_cursor.deactivate()
+			elif action_state == ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
 				action_state = ActionState.MOVEMENT
 				interaction_sub_state = InteractionSubState.NONE
 				_collect_item_id = ""
@@ -164,9 +178,14 @@ func _on_modal_visibility_changed() -> void:
 		return
 	match interaction_sub_state:
 		InteractionSubState.INTERACTION_MENU:
-			action_state = ActionState.MOVEMENT
-			interaction_sub_state = InteractionSubState.NONE
-			_interact_cursor.deactivate()
+			if _look_interrupted:
+				_look_interrupted = false
+				action_state = ActionState.LOOK
+				_look_cursor.activate_at(_look_interrupted_pos)
+			else:
+				action_state = ActionState.MOVEMENT
+				interaction_sub_state = InteractionSubState.NONE
+				_interact_cursor.deactivate()
 		InteractionSubState.COLLECT_LIQUID, InteractionSubState.INSPECTION, InteractionSubState.USE_ITEM:
 			_on_modal_closed()
 
@@ -199,9 +218,15 @@ func _on_fill_modal_went_back() -> void:
 	print("[DBG] went_back fired: sub was=", interaction_sub_state)
 	_modal_context = ModalContext.NONE
 	if not _fill_modal.visible:
-		# Modal closed — return to cursor
-		interaction_sub_state = InteractionSubState.MOVE_CURSOR
+		# Modal closed
 		_selected_entity = {}
+		if _look_interrupted:
+			_look_interrupted = false
+			action_state = ActionState.LOOK
+			interaction_sub_state = InteractionSubState.NONE
+			_look_cursor.activate_at(_look_interrupted_pos)
+		else:
+			interaction_sub_state = InteractionSubState.MOVE_CURSOR
 	else:
 		interaction_sub_state = InteractionSubState.INTERACTION_MENU
 		# Check if restored view is an entity's action list or the picker
@@ -266,8 +291,9 @@ func _execute_pending_action() -> void:
 			interaction_sub_state = InteractionSubState.NONE
 			get_node("CharacterMovement").moved.emit()
 
-func _open_interaction_menu() -> void:
-	var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
+func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_only: bool = false) -> void:
+	if cursor_pos == Vector2i(-9999, -9999):
+		cursor_pos = _interact_cursor.get_grid_pos()
 	var grid_map: GridMap = get_parent().get_node("GridMap")
 	var tile_id: int = grid_map.get_cell_item(Vector3i(cursor_pos.x, 0, cursor_pos.y))
 	var true_tile: int = TileRegistry.get_original_tile(Vector3i(cursor_pos.x, 0, cursor_pos.y), tile_id)
@@ -291,7 +317,7 @@ func _open_interaction_menu() -> void:
 	_cursor_entities.clear()
 	_selected_entity = {}
 
-	# Characters (lootable)
+	# Characters
 	for node in get_parent().get_children():
 		if node == self:
 			continue
@@ -299,22 +325,34 @@ func _open_interaction_menu() -> void:
 		if other_movement == null or other_movement.grid_pos != cursor_pos:
 			continue
 		var other_ai := node.get_node_or_null("CharacterAI")
-		if other_ai != null and (other_ai.behavior_state == other_ai.BehaviorState.KNOCKED_OUT or other_ai.behavior_state == other_ai.BehaviorState.DEAD):
+		if look_only:
+			var char_actions: Array[String] = ["Inspect"]
+			if _pending_target == node:
+				char_actions.append("Unlock Target")
+			else:
+				char_actions.append("Lock On")
+			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": char_actions, "data": {} })
+		elif other_ai != null and (other_ai.behavior_state == other_ai.BehaviorState.KNOCKED_OUT or other_ai.behavior_state == other_ai.BehaviorState.DEAD):
 			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": ["Loot", "Inspect"], "data": {} })
 
 	# Trees
 	for node in get_parent().get_children():
 		if node.has_method("take_damage") and node.grid_pos == cursor_pos:
-			var tree_actions: Array[String] = ["Chop", "Inspect"]
+			var tree_actions: Array[String] = []
+			if not look_only:
+				tree_actions.append("Chop")
+			tree_actions.append("Inspect")
 			if _pending_target == node:
 				tree_actions.append("Unlock Target")
+			else:
+				tree_actions.append("Lock On")
 			_cursor_entities.append({ "name": "Tree", "type": "tree", "node": node, "actions": tree_actions, "data": { "name": "Tree", "description": "A gnarled tree. Looks like it could be chopped for logs." } })
 
 	# Tile
-	var tile_actions: Array[String] = []
-	for action in tile_data.get("actions", []):
-		tile_actions.append(action as String)
-	tile_actions.append("Inspect")
+	var tile_actions: Array[String] = ["Inspect"]
+	if not look_only:
+		for action in tile_data.get("actions", []):
+			tile_actions.insert(tile_actions.size() - 1, action as String)
 	_cursor_entities.append({ "name": tile_data.get("name", "Tile"), "type": "tile", "node": null, "actions": tile_actions, "data": tile_data })
 
 	interaction_sub_state = InteractionSubState.INTERACTION_MENU
@@ -391,10 +429,19 @@ func _on_tile_action_selected(action: String) -> void:
 				_open_entity_actions(entity)
 				return
 		return
-	if action == "Unlock Target":
+	if action == "Lock On":
+		var target_node: Node = _selected_entity.get("node", null)
+		_look_interrupted = false
+		_fill_modal.visible = false
+		action_state = ActionState.MOVEMENT
+		interaction_sub_state = InteractionSubState.NONE
+		_interact_cursor.deactivate()
+		_lock_on(target_node)
+	elif action == "Unlock Target":
 		_pending_action = ""
 		_pending_target = null
 		_unlock()
+		_look_interrupted = false
 		_fill_modal.visible = false
 		action_state = ActionState.MOVEMENT
 		interaction_sub_state = InteractionSubState.NONE

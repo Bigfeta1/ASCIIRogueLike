@@ -46,6 +46,16 @@ func activate() -> void:
 	visible = true
 	_tile_label.visible = true
 	_update_tile_label()
+
+func activate_at(pos: Vector2i) -> void:
+	_cursor_grid_pos = pos
+	var local := _grid_map.map_to_local(Vector3i(pos.x, 0, pos.y))
+	var world := _grid_map.to_global(local)
+	global_position.x = world.x
+	global_position.z = world.z
+	visible = true
+	_tile_label.visible = true
+	_update_tile_label()
 	for node in get_parent().get_parent().get_children():
 		var ai := node.get_node_or_null("CharacterAI")
 		if ai != null and node.character_role == node.CharacterRole.NPC:
