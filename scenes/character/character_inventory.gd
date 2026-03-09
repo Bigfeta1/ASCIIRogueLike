@@ -49,6 +49,12 @@ func current_weight() -> float:
 	var total := 0.0
 	for id in items:
 		total += ItemRegistry.get_item(id).get("weight", 0.0) as float
+	var equipment := get_parent().get_node_or_null("CharacterEquipment")
+	if equipment != null:
+		for slot in equipment.equipped:
+			var id: String = equipment.equipped[slot]
+			if id != "":
+				total += ItemRegistry.get_item(id).get("weight", 0.0) as float
 	return total
 
 func can_add(id: String) -> bool:
@@ -170,7 +176,7 @@ func _refresh_ui() -> void:
 				if idx != -1:
 					var dur: int = get_durability(idx)
 					var dur_max: int = data["durability_max"] as int
-					fill_suffix = "  (%d/%d)" % [dur, dur_max]
+					fill_suffix += "  (%d/%d dur)" % [dur, dur_max]
 
 			var row := PanelContainer.new()
 			row.mouse_filter = Control.MOUSE_FILTER_STOP
