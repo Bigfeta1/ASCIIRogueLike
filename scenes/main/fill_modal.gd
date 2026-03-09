@@ -28,6 +28,8 @@ var _action_list: VBoxContainer
 var _inspect_icon: TextureRect
 var _info_label: Label
 var _inspect_items: Control
+var _durability_label: Label
+var _damage_output_label: Label
 
 func _ready() -> void:
 	_title_label = $Panel/VBox/TitleLabel
@@ -35,6 +37,8 @@ func _ready() -> void:
 	_inspect_items = $Panel/InspectItems
 	_inspect_icon = $Panel/InspectItems/InspectIcon
 	_info_label = $Panel/InspectItems/InfoLabel
+	_durability_label = $Panel/InspectItems/DurabilityLabel
+	_damage_output_label = $Panel/InspectItems/DamageOutputLabel
 	_inspect_items.visible = false
 	visible = false
 
@@ -88,7 +92,7 @@ func open_container_picker(liquid: String, labels: Array[String], indices: Array
 	_rebuild_actions()
 	visible = true
 
-func open_inspect(title: String, description: String, sprite_path: String, save_back: bool = false) -> void:
+func open_inspect(title: String, description: String, sprite_path: String, save_back: bool = false, dur_current: int = -1, dur_max: int = -1, hit_bonus: int = -1, damage_die: int = -1) -> void:
 	if save_back:
 		_back_title = _title_label.text
 		_back_actions.assign(_action_options)
@@ -104,6 +108,16 @@ func open_inspect(title: String, description: String, sprite_path: String, save_
 	else:
 		_inspect_icon.visible = false
 	_info_label.text = description
+	if dur_current != -1:
+		_durability_label.text = "Durability: %d / %d" % [dur_current, dur_max]
+		_durability_label.visible = true
+	else:
+		_durability_label.visible = false
+	if hit_bonus != -1 and damage_die != -1:
+		_damage_output_label.text = "Damage: %dd(1-%d)" % [hit_bonus, damage_die]
+		_damage_output_label.visible = true
+	else:
+		_damage_output_label.visible = false
 	_inspect_items.visible = true
 	_resize_inspect_panel()
 	visible = true

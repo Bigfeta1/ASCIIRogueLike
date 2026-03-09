@@ -328,11 +328,11 @@ func _on_container_selected(inventory_index: int) -> void:
 	_collect_item_id = inventory.items[inventory_index]
 	_fill_modal.open(_collect_liquid, capacity, current)
 
-func open_inspect_modal(title: String, description: String, sprite_path: String) -> void:
+func open_inspect_modal(title: String, description: String, sprite_path: String, dur_current: int = -1, dur_max: int = -1, hit_bonus: int = -1, damage_die: int = -1) -> void:
 	_character_sheet.visible = false
 	action_state = ActionState.INTERACTION
 	interaction_sub_state = InteractionSubState.INSPECTION
-	_fill_modal.open_inspect(title, description, sprite_path)
+	_fill_modal.open_inspect(title, description, sprite_path, false, dur_current, dur_max, hit_bonus, damage_die)
 
 func open_drink_modal(item_id: String, liquid: String, current_liters: float) -> void:
 	_use_item_id = item_id

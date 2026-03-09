@@ -223,10 +223,25 @@ func _confirm_action() -> void:
 			return
 		"Inspect":
 			var data := ItemRegistry.get_item(_active_item_id)
+			var dur_current: int = -1
+			var dur_max: int = -1
+			if data.has("durability_max"):
+				dur_max = data["durability_max"] as int
+				var idx: int = _inventory.items.find(_active_item_id)
+				if idx != -1:
+					dur_current = _inventory.get_durability(idx)
+				elif _active_slot != "":
+					dur_current = _get_equipment().get_equipped_durability(_active_slot)
+			var hit_bonus: int = data.get("hit_bonus", -1) as int
+			var damage_die: int = data.get("damage_die", -1) as int
 			_inventory.get_parent().open_inspect_modal(
 				data.get("name", _active_item_id),
 				data.get("description", ""),
-				data.get("sprite", "")
+				data.get("sprite", ""),
+				dur_current,
+				dur_max,
+				hit_bonus,
+				damage_die
 			)
 			return
 		"Equip":

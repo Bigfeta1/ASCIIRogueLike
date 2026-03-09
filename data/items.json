@@ -32,7 +32,8 @@
 		"description": "A small metal flask. Can hold up to 250 mL of liquid.",
 		"slot": null,
 		"capacity_liters": 0.25,
-		"allowed_liquids": ["water", "alcohol", "medicine"]
+		"allowed_liquids": ["water", "alcohol", "medicine"],
+		"durability_max": 100
 	},
 	{
 		"id": "tinder_box",
