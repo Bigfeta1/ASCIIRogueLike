@@ -361,21 +361,33 @@ func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_
 					char_actions.append("Unlock Target")
 				else:
 					char_actions.append("Lock On")
-				_cursor_entities.append({ "name": solid.name, "type": "character", "node": solid, "actions": char_actions, "data": {} })
+				var char_data := { "name": solid.display_name, "description": solid.description, "sprite": solid.sprite_path }
+				_cursor_entities.append({ "name": solid.display_name, "type": "character", "node": solid, "actions": char_actions, "data": char_data })
 
 	for node in occupancy_map.get_passable(cursor_pos):
 		var other_ai: Node = node.get_node_or_null("CharacterAI")
 		if other_ai == null or other_ai.life_state == other_ai.LifeState.ALIVE:
 			continue
+		var char_sprite: String = node.defeated_sprite if node.defeated_sprite != "" else node.sprite_path
+		var char_name: String
+		var char_desc: String
+		if other_ai.life_state == other_ai.LifeState.DEAD:
+			var corpse_data := ItemRegistry.get_item(node.corpse_item_id)
+			char_name = corpse_data.get("name", node.display_name)
+			char_desc = corpse_data.get("description", node.description)
+		else:
+			char_name = "%s (Incapacitated)" % node.display_name
+			char_desc = node.description
+		var char_data := { "name": char_name, "description": char_desc, "sprite": char_sprite }
 		if look_only:
 			var char_actions: Array[String] = ["Inspect"]
 			if pending_target == node:
 				char_actions.append("Unlock Target")
 			else:
 				char_actions.append("Lock On")
-			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": char_actions, "data": {} })
+			_cursor_entities.append({ "name": char_name, "type": "character", "node": node, "actions": char_actions, "data": char_data })
 		else:
-			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": ["Loot", "Inspect"], "data": {} })
+			_cursor_entities.append({ "name": char_name, "type": "character", "node": node, "actions": ["Loot", "Inspect"], "data": char_data })
 
 	var cell_world: Vector3 = _grid_map.to_global(_grid_map.map_to_local(Vector3i(cursor_pos.x, 0, cursor_pos.y)))
 	for child in _grid_map.get_children():

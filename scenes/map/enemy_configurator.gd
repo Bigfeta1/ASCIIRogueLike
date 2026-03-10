@@ -20,6 +20,9 @@ func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 		enemy.faction = record["faction"]
 		enemy.defeated_sprite = record.get("defeated_sprite", "")
 		enemy.corpse_item_id = record.get("corpse_item_id", "")
+		enemy.display_name = record.get("display_name", "")
+		enemy.description = record.get("description", "")
+		enemy.sprite_path = record.get("sprite_path", "")
 
 		var vitals := enemy.get_node("CharacterVitals")
 		vitals.hp = record["hp"]
@@ -101,6 +104,9 @@ func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 
 			enemy.defeated_sprite = def.get("defeated_sprite", "") as String
 			enemy.corpse_item_id = def.get("corpse_item_id", "") as String
+			enemy.display_name = def.get("name", def["id"]) as String
+			enemy.description = def.get("description", "") as String
+			enemy.sprite_path = def.get("sprite", "") as String
 			enemy.get_node("CharacterAI").disposition = enemy.get_node("CharacterAI").Disposition.HOSTILE
 			main.add_child(enemy)
 			enemy.get_node("CharacterMovement").place(_random_walkable_cell(grid_map), zone_id)

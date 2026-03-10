@@ -27,10 +27,10 @@ chem-rogue-lite/
 ├── project.godot
 ├── tile_registry.gd              # Autoload: tile data, overlay management
 ├── data/
-│   ├── items.json                # All item definitions
+│   ├── items.json                # All item definitions (including structure items like military_chest)
 │   ├── enemies.json              # Enemy templates
 │   ├── tiles.json                # Tile properties
-│   └── world_items.json          # World item spawn data
+│   └── structures.json           # Structure definitions (trees, chests, etc.)
 ├── scripts/
 │   ├── turn_order.gd             # Turn flow controller
 │   ├── world_state.gd            # Zone persistence, enemy serialization
@@ -76,11 +76,11 @@ MainScene (Node3D)
 ├── GridMap                     # MAP_WIDTH=80, MAP_HEIGHT=40
 │   ├── MapGenerator
 │   ├── EnemyConfigurator
-│   ├── ItemConfigurator
+│   ├── ItemConfigurator        # Restores dropped world items on zone re-entry
 │   ├── MapParameters           # Per-zone time tracking
 │   ├── OccupancyMap            # Spatial index: grid_pos → solid/passable occupants
 │   ├── StructureConfigurator   # Spawns/restores structure entities from structures.json
-│   └── [world items spawn here at runtime]
+│   └── [dropped world items (MeshInstance3D) spawn here at runtime]
 ├── Character (player)          # character.tscn — see §5
 ├── GameLogic (Node)
 │   └── TurnOrder
@@ -134,7 +134,7 @@ enum CharacterType { SURGEON, ENEMY, STRUCTURE }
 enum CharacterRole { PLAYER, NPC }
 
 # character_interaction.gd
-enum InteractionSubState { NONE, MOVE_CURSOR, INTERACTION_MENU, LOOT, COLLECT_LIQUID, INSPECTION, USE_ITEM }
+enum InteractionSubState { NONE, MOVE_CURSOR, INTERACTION_MENU, LOOT, COLLECT_LIQUID, INSPECTION, USE_ITEM, DROPPING_ITEM }
 ```
 
 ---
@@ -292,7 +292,9 @@ Vision logic and overlay rendering live in `CharacterVision`, not in `CharacterA
 - `item_uids: Array[int]` — unique ID per item instance
 - `item_durability: Dictionary` — uid → current durability
 - `container_contents: Dictionary` — uid → `{liquid: String, amount_liters: float}`
+- `chest_contents: Dictionary` — uid → `Array[String]` of item IDs for carried structure items (e.g. a picked-up chest)
 - Carry limit: `100.0 + muscle_mod × 5.0` kg
+- `_item_weight(index)` — returns base item weight plus contents weight for chest items
 
 ### CharacterEquipment
 - 18 slots: head, face, neck, chest, shirt, shoulder, bracers, gloves, belt, legs, feet, outerwear, back, r_hand, l_hand, ring_1, ring_2, trinket_1, trinket_2
@@ -335,22 +337,26 @@ regen_mod  = avg(adrenal, cardio, parasympathetic) mods
 
 ## 12. Structure System
 
-Structures (trees, and in future: walls, doors, boulders, etc.) are `character.tscn` instances with `CharacterType.STRUCTURE`. They are not tiles — the GridMap cell underneath is always Floor. Structures own their traversal properties directly.
+Structures (trees, chests, and in future: walls, doors, boulders, etc.) are `character.tscn` instances with `CharacterType.STRUCTURE`. They are not tiles — the GridMap cell underneath is always Floor. Structures own their traversal properties directly.
 
 ### `data/structures.json`
 ```json
 {
-  "id": "tree",
-  "name": "Oak Tree",
-  "hp": 100,
-  "muscle": 14,
-  "description": "A sturdy oak tree.",
-  "sprite": "res://assets/images/tiles/spr_tree1.png",
-  "sound_dampening": 1,
-  "blocks_vision": true,
-  "drops": ["logs"]
+  "id": "military_chest",
+  "name": "Military Chest",
+  "hp": 50,
+  "muscle": 20,
+  "description": "A military-issue storage chest.",
+  "sprite": "res://assets/images/world_items/chests/spr_chest1.png",
+  "sound_dampening": 0,
+  "blocks_vision": false,
+  "drops": [],
+  "contents": ["combat_knife", "field_bandage"],
+  "actions": ["Open", "Take Chest"]
 }
 ```
+
+The `actions` array is data-driven — any string listed here appears in the interaction menu for that structure. Adding a new action only requires a new `elif` handler in `_on_tile_action_selected`. No code changes needed to expose it in the menu.
 
 ### Structure fields on `character.gd`
 | Field | Type | Purpose |
@@ -358,14 +364,17 @@ Structures (trees, and in future: walls, doors, boulders, etc.) are `character.t
 | `structure_id` | `String` | Matches the `id` in `structures.json` |
 | `display_name` | `String` | Human-readable name shown in interaction menus |
 | `description` | `String` | Shown in inspect modal |
+| `sprite_path` | `String` | Path to sprite texture; stored for inspect modal display |
 | `sound_dampening` | `int` | Added to sound wave attenuation when the wave passes through this cell |
 | `blocks_vision` | `bool` | Whether LOS rays are stopped at this cell (true for all alive characters by default) |
 | `drops` | `Array` | Item IDs added to the attacker's inventory on destruction |
+| `structure_actions` | `Array` | Action strings shown in the interaction menu (from `actions` in structures.json) |
 
 ### `StructureConfigurator` (`scenes/map/structure_configurator.gd`)
 - Reads `structures.json` on `_ready()`
-- `spawn_one(id, pos, hp_override)` — instantiates `character.tscn`, sets all structure fields, calls `CharacterSprite.set_texture()`, calls `movement.place()`
-- `scatter_trees(home_rects)` — called by `MapGenerator`; picks random floor cells outside houses, spawns trees
+- `spawn_one(id, pos, hp_override, inventory_override)` — instantiates `character.tscn`, sets all structure fields, calls `CharacterSprite.set_texture()`, calls `movement.place()`. Populates `CharacterInventory` from `contents` (fresh spawn) or `inventory_override` (zone restore). Returns the spawned node.
+- `scatter_trees(home_rects)` — called by `MapGenerator`; picks random floor cells outside houses
+- `scatter_chests(home_interiors)` — called by `MapGenerator`; 50% chance per home interior to spawn a `military_chest`
 - Structures are added to the `"structures"` group for zone serialization
 
 ### Traversal
@@ -380,7 +389,7 @@ Structures (trees, and in future: walls, doors, boulders, etc.) are `character.t
 - On death: drops are added to attacker inventory, `CharacterLifecycle.die()` calls `queue_free()` (no corpse, no splatter)
 
 ### Zone persistence
-`WorldState.save_zone_structures()` records `{ id, grid_pos, hp }` per structure. On re-entry, `MapGenerator` calls `StructureConfigurator.spawn_one()` per record with the saved HP, so damaged-but-alive structures persist correctly.
+`WorldState.save_zone_structures()` records `{ id, grid_pos, hp, inventory }` per structure. The `inventory` field is the current item list of the structure's `CharacterInventory`. On re-entry, `MapGenerator` calls `StructureConfigurator.spawn_one()` with `inventory_override`, so looted chests stay looted.
 
 ---
 
@@ -388,8 +397,12 @@ Structures (trees, and in future: walls, doors, boulders, etc.) are `character.t
 
 When the player exits a zone:
 1. All enemy states are serialized to `off_screen_enemies` (position, AI state, patrol info, stats, HP, inventory with durability/liquids, blood splatter flag)
-2. Tile layout, items, and structure states stored in `zones[zone_id]`
-3. On re-entry: `EnemyConfigurator` restores enemies; `MapGenerator` restores tiles and calls `StructureConfigurator` for structures
+2. Tile layout, dropped world items, and structure states stored in `zones[zone_id]`
+3. On re-entry: `EnemyConfigurator` restores enemies; `MapGenerator` restores tiles and calls `StructureConfigurator` for structures; `ItemConfigurator` restores dropped world items
+
+**Structure persistence** includes inventory (`{ id, grid_pos, hp, inventory }`), so chest contents survive zone transitions.
+
+**World item persistence** (`{ id, local_pos }`) covers items dropped by the player via the drop system. Identified by `item_id` property on the `world_item.gd` script.
 
 Off-screen enemies have patrol movement simulated (1 step/turn) via `tick_off_screen_enemies()`.
 
@@ -467,11 +480,26 @@ Categories: `melee`, `ranged`, `armor`, `clothes`, `medicine`, `container`, `cam
   "sprite": "res://assets/images/tiles/spr_tree1.png",
   "sound_dampening": 1,
   "blocks_vision": true,
-  "drops": ["logs"]
+  "drops": ["logs"],
+  "actions": ["Chop"]
 }
 ```
 
+`actions` is the exhaustive list of interaction menu options for that structure. `"Inspect"`, `"Lock On"`, and `"Unlock Target"` are always appended automatically — do not include them here.
+
 See §12 for full structure system documentation.
+
+### World Items (`scenes/items/world_item.tscn`)
+
+World items are `MeshInstance3D` nodes with `world_item.gd` attached, placed as children of the GridMap at runtime. They represent items dropped by the player.
+
+- Identified by the `item_id: String` property (set on spawn; not `node.name`, which Godot may deduplicate)
+- Sprite set via `material_override` (per-instance `StandardMaterial3D`) — never via the shared mesh material
+- Detected in `_open_interaction_menu` by `child.get("item_id") != null`
+- Picking up: `inventory.add_item(world_item.item_id)` then `queue_free()`
+- Zone persistence: `ItemConfigurator.place()` restores them on re-entry from `WorldState`; `SceneLoader` serializes them on zone exit via `child.get("item_id") != null` filter
+
+**Dropping items** (`DROPPING_ITEM` sub-state): selecting "Drop" from the inventory opens the interact cursor. WASD moves it; E confirms the drop. If the item has `chest_contents` (i.e. it is a carried structure), dropping spawns a full structure via `StructureConfigurator.spawn_one()` with the saved contents — not a world item.
 
 ---
 
@@ -480,11 +508,13 @@ See §12 for full structure system documentation.
 | UI Node | Script | Purpose |
 |---------|--------|---------|
 | `CharacterSheet` | `character_sheet.gd` | Tabbed view: STATS / INVENTORY / EQUIPMENT |
-| `LootModal` | `loot_modal.gd` | Lists items from all incapacitated enemies on player's tile |
+| `LootModal` | `loot_modal.gd` | Lists items from incapacitated enemies, open chests, or carried chest contents |
 | `FillModal` | `fill_modal.gd` | Generic action picker; liquid filling; item inspection |
 | `TopBar` | — | Live vitals display; updated by `CharacterVitals._refresh_ui()` |
 
-**LootModal notes**: Tab or I while looting suspends the modal (`_loot_interrupted` flag); it restores when the character sheet closes. Taking the corpse item hides the CharacterSprite (the body is "picked up"); blood splatter stays.
+**LootModal notes**: Tab or I while looting suspends the modal (`_loot_interrupted` flag); it restores when the character sheet closes. Taking the corpse item hides the CharacterSprite (the body is "picked up"); blood splatter stays. The modal accepts any node with `items: Array[String]` and `remove_item(id)` — including `ChestInventoryProxy` for viewing carried chest contents.
+
+**ChestInventoryProxy** (`scenes/items/chest_inventory_proxy.gd`): lightweight node that wraps a `chest_contents` entry in `CharacterInventory` with the loot modal's expected interface. `remove_item` syncs removals back to `chest_contents` on the real inventory. Created on demand by `open_chest_contents()` in `CharacterInteraction`, freed when the loot modal closes.
 
 ---
 
@@ -492,12 +522,12 @@ See §12 for full structure system documentation.
 
 | Key | Action |
 |-----|--------|
-| Arrow keys / WASD | Move |
+| Arrow keys / WASD | Move / move interaction cursor |
 | Space | Wait (pass turn) |
 | Tab / I | Open Character Sheet / Inventory |
 | C | Toggle Look mode |
-| E | Interact with tile |
-| Q / Escape | Cancel / close modal |
+| E | Interact with tile / confirm cursor action / confirm drop |
+| Q / Escape | Cancel / close modal / cancel drop |
 | Mouse wheel | Camera zoom |
 
 ---

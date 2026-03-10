@@ -97,7 +97,7 @@ func _update_tile_label() -> void:
 			break
 
 	if _tracked_character != null:
-		_tile_label2.text = _tracked_character.name
+		_tile_label2.text = _tracked_character.display_name if _tracked_character.display_name != "" else _tracked_character.name
 		_tile_label2.visible = true
 	else:
 		_tile_label2.visible = false
