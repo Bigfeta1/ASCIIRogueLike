@@ -5,6 +5,10 @@ enum FacingState { LEFT, RIGHT }
 @export var texture_surgeon: Texture2D
 @export var texture_enemy_soldier: Texture2D
 
+func _process(_delta: float) -> void:
+	sorting_offset = get_parent().position.z
+
+
 func _ready() -> void:
 	var character := get_parent()
 	var mat := (material_override as StandardMaterial3D).duplicate()
