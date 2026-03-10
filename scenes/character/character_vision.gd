@@ -11,6 +11,7 @@ var _movement: Node
 var _levels: Node
 var _ai: Node
 var _grid_map: GridMap
+var _occupancy_map: Node
 var _vision_cells: Array[Vector3i] = []
 
 
@@ -22,8 +23,9 @@ func _ready() -> void:
 	_levels = character.get_node("CharacterLevels")
 	_ai = character.get_node("CharacterAI")
 
-func setup(grid_map: GridMap) -> void:
+func setup(grid_map: GridMap, occupancy_map: Node) -> void:
 	_grid_map = grid_map
+	_occupancy_map = occupancy_map
 
 
 func can_see(target_pos: Vector2i) -> bool:
@@ -45,11 +47,8 @@ func can_see(target_pos: Vector2i) -> bool:
 		var tile_id := TileRegistry.get_original_tile(cell3, _grid_map.get_cell_item(cell3))
 		if TileRegistry.blocks_vision(tile_id):
 			return false
-		# TODO: replace with occupancy service query once one exists.
-		# Currently uses has_method("take_damage") as a proxy for "solid entity."
-		for node in _grid_map.get_parent().get_children():
-			if node.has_method("take_damage") and node.grid_pos == cell:
-				return false
+		if _occupancy_map.is_solid(cell):
+			return false
 	return true
 
 

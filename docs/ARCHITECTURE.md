@@ -78,6 +78,7 @@ MainScene (Node3D)
 │   ├── EnemyConfigurator
 │   ├── ItemConfigurator
 │   ├── MapParameters           # Per-zone time tracking
+│   ├── OccupancyMap            # Spatial index: grid_pos → solid/passable occupants
 │   └── [trees and world items spawn here at runtime]
 ├── Character (player)          # character.tscn — see §5
 ├── GameLogic (Node)
@@ -607,6 +608,21 @@ No other node may call `grid_map.set_cell_item()`. If you need to change a tile,
 
 ---
 
+### Grid cell occupancy
+
+**Owner: `OccupancyMap`** (`scenes/map/occupancy_map.gd`) — child of GridMap
+
+`OccupancyMap` is the single source of truth for what physical entities occupy each grid cell. It has two tiers:
+
+- **Solid** (`_solid: Dictionary`): one node per cell. Alive characters and trees. Blocks movement and vision. Written by `CharacterMovement` (`register_solid`, `move_solid`) and `tree.gd` (`register_solid`/`unregister_solid`). `CharacterLifecycle` moves a character from solid to passable on death/KO.
+- **Passable** (`_passable: Dictionary`): array per cell. KO/dead enemies. Does not block movement or vision. Multiple nodes may share a cell (e.g. player standing on a corpse tile).
+
+`OccupancyMap.clear()` is called by `SceneLoader` on zone exit, alongside `TileRegistry.clear_state()`.
+
+No system may track occupancy independently. `CharacterVision.can_see()` and `CharacterMovement._check_move()` query `OccupancyMap` exclusively — no scene-tree scanning.
+
+---
+
 ### Off-screen enemy state
 
 **Owner: `WorldState`** (`scripts/world_state.gd`)
@@ -629,14 +645,10 @@ Sibling lookups (`get_parent().get_node("CharacterX")`) in component `_ready()` 
 
 ### Provisional occupancy and pathfinding
 
-Two systems are explicitly placeholder:
+`OccupancyMap` (`scenes/map/occupancy_map.gd`) is a child of GridMap that tracks solid and passable occupants per cell. It replaced the scene-tree scan hacks in `CharacterVision.can_see()` and `CharacterMovement._check_move()`.
 
-- **Vision occlusion** in `CharacterVision.can_see()` uses `has_method("take_damage")` as a proxy for "solid entity." This will misfire as more interactable objects are added.
-- **Pathfinding** (`AStarGrid2D`) is built once in `_ready()` and never updated. Destroyed trees, opened doors, or any tile change will not be reflected.
-
-Both are acceptable for the current scope. They are the two places where future systemic complexity will press hardest.
-
-**Mitigation path**: introduce an occupancy service (a spatial dictionary of `grid_pos → node`) that `CharacterVision` and `AStarGrid2D` query. The service updates on move/destroy events, decoupling both systems from scene-tree scanning.
+- **Vision occlusion** — ~~resolved~~. `can_see()` queries `OccupancyMap.is_solid()`. Dead/KO bodies are passable and do not block LOS.
+- **Pathfinding** (`AStarGrid2D`) is still built once in `_ready()` and never updated. Destroyed trees, opened doors, or any tile change will not be reflected. This is still a known placeholder.
 
 ---
 

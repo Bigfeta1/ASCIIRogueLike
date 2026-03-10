@@ -86,9 +86,10 @@ func _on_zone_exit(direction: Vector2i) -> void:
 	for tree in trees_to_free:
 		tree.queue_free()
 
-	# Clear TileRegistry overlay state before wiping the grid
+	# Clear TileRegistry overlay state and occupancy before wiping the grid
 	# (queue_free is deferred so _exit_tree hasn't run yet — clear manually)
 	TileRegistry.clear_state()
+	_grid_map.get_node("OccupancyMap").clear()
 	_grid_map.clear()
 
 	# Compute new zone and player entry position on the opposite edge

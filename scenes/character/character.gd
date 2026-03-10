@@ -40,10 +40,12 @@ func _ready() -> void:
 	# Inject scene-level refs into components that need them.
 	# Components resolve siblings themselves in their own _ready(); only scene-external
 	# refs are injected here so no component hardcodes scene paths.
+	var occupancy_map: Node = grid_map.get_node("OccupancyMap")
 	combat.setup(grid_map, canvas_layer, camera)
-	movement.setup(grid_map, scene.get_node("GameLogic/TurnOrder") if character_role == CharacterRole.PLAYER else null)
+	movement.setup(grid_map, scene.get_node("GameLogic/TurnOrder") if character_role == CharacterRole.PLAYER else null, occupancy_map)
+	lifecycle.setup(occupancy_map)
 	sound.setup(grid_map)
-	vision.setup(grid_map)
+	vision.setup(grid_map, occupancy_map)
 	interact_cursor.setup(grid_map)
 	look_cursor.setup(grid_map, camera, canvas_layer.get_node("LookModeInfo"))
 

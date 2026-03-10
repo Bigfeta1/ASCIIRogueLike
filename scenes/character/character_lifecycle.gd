@@ -12,6 +12,11 @@ signal knocked_out(character: Node)
 signal revived(character: Node)
 signal entered_combat(character: Node)
 
+var _occupancy_map: Node
+
+func setup(occupancy_map: Node) -> void:
+	_occupancy_map = occupancy_map
+
 
 # Called by the attacker's CharacterCombat when target HP reaches 0.
 func die(target: Node) -> void:
@@ -20,6 +25,9 @@ func die(target: Node) -> void:
 		return
 	ai.life_state = ai.LifeState.DEAD
 	_disable_active_components(target, ai)
+	var movement := target.get_node("CharacterMovement")
+	_occupancy_map.unregister_solid(movement.grid_pos, target)
+	_occupancy_map.register_passable(movement.grid_pos, target)
 	if target.corpse_item_id != "":
 		target.get_node("CharacterInventory").add_item(target.corpse_item_id)
 	target.get_node("CharacterSprite").set_defeated(target.defeated_sprite)
@@ -33,6 +41,9 @@ func knock_out(target: Node) -> void:
 		return
 	ai.life_state = ai.LifeState.KNOCKED_OUT
 	_disable_active_components(target, ai)
+	var movement := target.get_node("CharacterMovement")
+	_occupancy_map.unregister_solid(movement.grid_pos, target)
+	_occupancy_map.register_passable(movement.grid_pos, target)
 	knocked_out.emit(target)
 
 
@@ -58,6 +69,9 @@ func restore_incapacitated(target: Node, saved_life_state: int) -> void:
 		return
 	ai.life_state = saved_life_state
 	_disable_active_components(target, ai)
+	var movement := target.get_node("CharacterMovement")
+	_occupancy_map.unregister_solid(movement.grid_pos, target)
+	_occupancy_map.register_passable(movement.grid_pos, target)
 
 
 func _disable_active_components(target: Node, ai: Node) -> void:

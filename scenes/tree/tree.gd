@@ -5,10 +5,12 @@ var hp: int = 100
 var block_mod: int = 5
 
 var _grid_map: GridMap
+var _occupancy_map: Node
 
 func _ready() -> void:
 	add_to_group("trees")
 	_grid_map = get_parent().get_node("GridMap")
+	_occupancy_map = _grid_map.get_node("OccupancyMap")
 
 func place(pos: Vector2i) -> void:
 	grid_pos = pos
@@ -16,9 +18,11 @@ func place(pos: Vector2i) -> void:
 	var world := _grid_map.to_global(local)
 	position.x = world.x
 	position.z = world.z
+	_occupancy_map.register_solid(pos, self)
 
 func take_damage(amount: int, _attacker: Node) -> void:
 	hp = maxi(0, hp - amount)
 	if hp <= 0:
+		_occupancy_map.unregister_solid(grid_pos, self)
 		_grid_map.set_cell_item(Vector3i(grid_pos.x, 0, grid_pos.y), TileRegistry.get_tile_id("Floor"))
 		queue_free()
