@@ -44,11 +44,11 @@ func _ready() -> void:
 	movement.setup(grid_map, scene.get_node("GameLogic/TurnOrder") if character_role == CharacterRole.PLAYER else null)
 	sound.setup(grid_map)
 	vision.setup(grid_map)
-	vitals.setup(canvas_layer, camera, canvas_layer.get_node("TopBar"))
 	interact_cursor.setup(grid_map)
 	look_cursor.setup(grid_map, camera, canvas_layer.get_node("LookModeInfo"))
 
 	if character_role == CharacterRole.PLAYER:
+		vitals.setup(canvas_layer, camera, canvas_layer.get_node("TopBar"))
 		var character_sheet: Control = canvas_layer.get_node("CharacterSheet")
 		levels.setup(character_sheet, canvas_layer.get_node("TopBar"))
 		inventory.setup(character_sheet)

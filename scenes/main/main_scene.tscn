@@ -9,9 +9,6 @@
 [ext_resource type="Script" uid="uid://c7ksktlija60b" path="res://scenes/main/loot_modal.gd" id="9_lootmodal"]
 [ext_resource type="Script" uid="uid://dibgq023y76tl" path="res://scenes/main/fill_modal.gd" id="10_fillmodal"]
 
-[sub_resource type="LabelSettings" id="LabelSettings_271kv"]
-font_size = 13
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0f027"]
 bg_color = Color(0, 0, 0, 1)
 border_width_top = 27
@@ -20,6 +17,9 @@ border_blend = true
 
 [sub_resource type="LabelSettings" id="LabelSettings_a4cr6"]
 font_size = 8
+
+[sub_resource type="LabelSettings" id="LabelSettings_271kv"]
+font_size = 13
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l7pil"]
 corner_radius_top_left = 5
@@ -51,45 +51,6 @@ size = 230.0
 script = ExtResource("6_3mcv8")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
-
-[node name="LookModeInfo" type="Control" parent="CanvasLayer"]
-layout_mode = 3
-anchors_preset = 0
-offset_left = 1008.0
-offset_top = 472.0
-offset_right = 1048.0
-offset_bottom = 512.0
-
-[node name="Label" type="Label" parent="CanvasLayer/LookModeInfo"]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
-text = "TEST"
-
-[node name="Label2" type="Label" parent="CanvasLayer/LookModeInfo"]
-layout_mode = 0
-offset_top = 26.0
-offset_right = 40.0
-offset_bottom = 49.0
-text = "TEST"
-
-[node name="DispositionLabel" type="Label" parent="CanvasLayer/LookModeInfo"]
-layout_mode = 0
-offset_left = 19.0
-offset_top = 47.0
-offset_right = 59.0
-offset_bottom = 70.0
-text = "TEST"
-label_settings = SubResource("LabelSettings_271kv")
-
-[node name="StatusLabel" type="Label" parent="CanvasLayer/LookModeInfo"]
-layout_mode = 0
-offset_left = 19.0
-offset_top = 59.0
-offset_right = 59.0
-offset_bottom = 82.0
-text = "TEST"
-label_settings = SubResource("LabelSettings_271kv")
 
 [node name="TopBar" type="Control" parent="CanvasLayer"]
 layout_mode = 3
@@ -205,6 +166,45 @@ offset_right = 69.0
 offset_bottom = 23.0
 text = "x"
 label_settings = SubResource("LabelSettings_a4cr6")
+
+[node name="LookModeInfo" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 1008.0
+offset_top = 472.0
+offset_right = 1048.0
+offset_bottom = 512.0
+
+[node name="Label" type="Label" parent="CanvasLayer/LookModeInfo"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "TEST"
+
+[node name="Label2" type="Label" parent="CanvasLayer/LookModeInfo"]
+layout_mode = 0
+offset_top = 26.0
+offset_right = 40.0
+offset_bottom = 49.0
+text = "TEST"
+
+[node name="DispositionLabel" type="Label" parent="CanvasLayer/LookModeInfo"]
+layout_mode = 0
+offset_left = 19.0
+offset_top = 47.0
+offset_right = 59.0
+offset_bottom = 70.0
+text = "TEST"
+label_settings = SubResource("LabelSettings_271kv")
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer/LookModeInfo"]
+layout_mode = 0
+offset_left = 19.0
+offset_top = 59.0
+offset_right = 59.0
+offset_bottom = 82.0
+text = "TEST"
+label_settings = SubResource("LabelSettings_271kv")
 
 [node name="CharacterSheet" type="Control" parent="CanvasLayer"]
 layout_mode = 3
