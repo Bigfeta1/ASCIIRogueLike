@@ -71,8 +71,8 @@ func _do_move() -> void:
 	elif _character.action_state == _character.ActionState.LOOK:
 		_look_cursor.move(delta)
 	elif _character.action_state == _character.ActionState.INTERACTION:
-		if _character.interaction_sub_state == _character.InteractionSubState.MOVE_CURSOR:
-			if _character._pending_action != "":
+		if _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.MOVE_CURSOR:
+			if _character.interaction.pending_action != "":
 				_check_move(delta)
 			else:
 				_interact_cursor.move(delta)
@@ -93,7 +93,7 @@ func _check_move(delta: Vector2i) -> void:
 		if node == _character:
 			continue
 		if node.has_method("take_damage") and node.grid_pos == target:
-			if _character._pending_target == node and _character.action_state == _character.ActionState.MOVEMENT:
+			if _character.interaction.pending_target == node and _character.action_state == _character.ActionState.MOVEMENT:
 				_face(delta)
 				var combat := _character.get_node_or_null("CharacterCombat")
 				if combat != null:
@@ -105,12 +105,11 @@ func _check_move(delta: Vector2i) -> void:
 		if other_movement == null or other_movement.grid_pos != target:
 			continue
 		var other_ai := node.get_node_or_null("CharacterAI")
-		if other_ai != null and (other_ai.behavior_state == other_ai.BehaviorState.KNOCKED_OUT or other_ai.behavior_state == other_ai.BehaviorState.DEAD):
+		if other_ai != null and other_ai.life_state != other_ai.LifeState.ALIVE:
 			continue
 		var different_faction: bool = node.faction != _character.faction
 		if other_ai != null and other_ai.disposition == other_ai.Disposition.HOSTILE and different_faction:
-			if other_ai.behavior_state != other_ai.BehaviorState.COMBAT:
-				other_ai.behavior_state = other_ai.BehaviorState.COMBAT
+			node.get_node("CharacterLifecycle").enter_combat(node)
 			_face(delta)
 			var combat := _character.get_node_or_null("CharacterCombat")
 			if combat != null:

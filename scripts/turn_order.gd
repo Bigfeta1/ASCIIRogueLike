@@ -18,6 +18,7 @@ var _player: Node
 
 func register_enemy(enemy: Node) -> void:
 	_enemies.append(enemy)
+	enemy.get_node("CharacterAI").setup(_player)
 
 func unregister_enemy(enemy: Node) -> void:
 	_enemies.erase(enemy)
@@ -39,7 +40,7 @@ func _on_player_waited() -> void:
 	await get_tree().create_timer(0.1).timeout
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
-		if ai.behavior_state == ai.BehaviorState.KNOCKED_OUT or ai.behavior_state == ai.BehaviorState.DEAD:
+		if ai.life_state != ai.LifeState.ALIVE:
 			continue
 		ai.take_turn_step()
 		enemy.get_node("CharacterVitals").tick_regen()
@@ -61,7 +62,7 @@ func _on_player_moved() -> void:
 	await get_tree().create_timer(0.1).timeout
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
-		if ai.behavior_state == ai.BehaviorState.KNOCKED_OUT or ai.behavior_state == ai.BehaviorState.DEAD:
+		if ai.life_state != ai.LifeState.ALIVE:
 			continue
 		ai.take_turn_step()
 		enemy.get_node("CharacterVitals").tick_regen()

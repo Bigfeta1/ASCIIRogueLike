@@ -123,6 +123,10 @@ func _refresh_character_status() -> void:
 			_disposition_label.text = "Hostile"
 			_disposition_label.modulate = Color.RED
 	_disposition_label.visible = true
+	const LIFE_LABELS := {
+		1: "Knocked Out",
+		2: "Dead",
+	}
 	const BEHAVIOR_LABELS := {
 		0: "Relaxed",
 		1: "Suspicious",
@@ -133,5 +137,8 @@ func _refresh_character_status() -> void:
 		6: "Alert",
 		7: "Returning",
 	}
-	_status_label.text = BEHAVIOR_LABELS.get(ai.behavior_state, "")
+	if ai.life_state != ai.LifeState.ALIVE:
+		_status_label.text = LIFE_LABELS.get(ai.life_state, "")
+	else:
+		_status_label.text = BEHAVIOR_LABELS.get(ai.behavior_state, "")
 	_status_label.visible = true

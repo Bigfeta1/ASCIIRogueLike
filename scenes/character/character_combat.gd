@@ -171,7 +171,7 @@ func _apply_damage(target: Node) -> void:
 		print("[DEATH] incapacitating %s" % target.name)
 		if _character.character_role == _character.CharacterRole.PLAYER:
 			_character.get_node("CharacterLevels").add_xp(10)
-		_incapacitate(target, target.get_node("CharacterAI").BehaviorState.DEAD)
+		target.get_node("CharacterLifecycle").die(target)
 
 
 func _apply_damage_to_tree(tree: Node) -> void:
@@ -235,20 +235,3 @@ func _spawn_crit_label(target: Node, amount: int) -> void:
 
 func _spawn_miss_label(target: Node) -> void:
 	_spawn_label(target, "Miss!", Color.GRAY)
-
-
-func _incapacitate(target: Node, state: int) -> void:
-	var ai := target.get_node_or_null("CharacterAI")
-	print("[INCAP] ai=%s state=%d" % [str(ai), state])
-	if ai == null:
-		return
-	ai.behavior_state = state
-	print("[INCAP] behavior_state set to %d on %s" % [ai.behavior_state, target.name])
-	ai._clear_vision_tiles()
-	ai.set_process(false)
-	target.get_node("CharacterMovement").set_process(false)
-	target.get_node("CharacterCombat").set_process(false)
-	if target.corpse_item_id != "":
-		target.get_node("CharacterInventory").add_item(target.corpse_item_id)
-	print("[INCAP] calling set_defeated on %s with sprite='%s'" % [target.name, target.defeated_sprite])
-	target.get_node("CharacterSprite").set_defeated(target.defeated_sprite)

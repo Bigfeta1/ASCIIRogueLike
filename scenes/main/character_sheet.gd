@@ -208,7 +208,7 @@ func _confirm_action() -> void:
 		"Use":
 			var data := ItemRegistry.get_item(_active_item_id)
 			if data.get("category", "") == "container":
-				_inventory.get_parent().activate_map_interaction(_active_item_id)
+				_inventory.get_parent().interaction.activate_map_interaction(_active_item_id)
 				return
 			var vitals := _inventory.get_parent().get_node("CharacterVitals")
 			if vitals.hp < vitals.hp_max:
@@ -219,7 +219,7 @@ func _confirm_action() -> void:
 			var contents: Dictionary = _inventory.get_liquid(idx)
 			var current: float = contents.get("amount_liters", 0.0)
 			var liquid: String = contents.get("liquid", "")
-			_inventory.get_parent().open_drink_modal(_active_item_id, liquid, current)
+			_inventory.get_parent().interaction.open_drink_modal(_active_item_id, liquid, current)
 			return
 		"Inspect":
 			var data := ItemRegistry.get_item(_active_item_id)
@@ -234,7 +234,7 @@ func _confirm_action() -> void:
 					dur_current = _get_equipment().get_equipped_durability(_active_slot)
 			var hit_bonus: int = data.get("hit_bonus", -1) as int
 			var damage_die: int = data.get("damage_die", -1) as int
-			_inventory.get_parent().open_inspect_modal(
+			_inventory.get_parent().interaction.open_inspect_modal(
 				data.get("name", _active_item_id),
 				data.get("description", ""),
 				data.get("sprite", ""),

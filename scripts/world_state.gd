@@ -5,7 +5,9 @@ const ZONE_WIDTH: int = 80
 const ZONE_HEIGHT: int = 40
 
 # BehaviorState.PATROL = 3 (matches CharacterAI enum order: RELAXED=0, SUSPICIOUS=1, SLEEPING=2, PATROL=3)
+# LifeState.ALIVE = 0 (matches CharacterAI enum order: ALIVE=0, KNOCKED_OUT=1, DEAD=2)
 const _BEHAVIOR_PATROL: int = 3
+const _LIFE_ALIVE: int = 0
 
 # Patrol sequence mirrored from CharacterAI
 const _PATROL_SEQ: Array = [
@@ -21,7 +23,7 @@ var zones: Dictionary = {}
 # Zones where the full load sequence (tiles + items + enemies) has completed
 var visited_zones: Dictionary = {}
 
-# Each record: { world_pos, behavior_state, patrol_origin_world, patrol_index,
+# Each record: { world_pos, life_state, behavior_state, patrol_origin_world, patrol_index,
 #                faction, character_type, hp, hp_max, disposition,
 #                muscle, cardio, adrenal, sympathetic, parasympathetic, affect, name }
 var off_screen_enemies: Array = []
@@ -110,11 +112,7 @@ func serialize_enemy(enemy_node: Node, zone_id: Vector2i) -> Dictionary:
 	var levels := enemy_node.get_node("CharacterLevels")
 	var ai := enemy_node.get_node("CharacterAI")
 	var inv := enemy_node.get_node("CharacterInventory")
-	var has_blood_splatter := false
-	for child in enemy_node.get_children():
-		if child is MeshInstance3D and child.get_script() == null:
-			has_blood_splatter = true
-			break
+	var has_blood_splatter := enemy_node.get_node_or_null("BloodSplatter") != null
 	# Serialize inventory: items by index with durability and container contents
 	var inv_records: Array = []
 	for i in inv.items.size():
@@ -127,6 +125,7 @@ func serialize_enemy(enemy_node: Node, zone_id: Vector2i) -> Dictionary:
 		inv_records.append(record)
 	return {
 		"world_pos": local_to_world(zone_id, movement.grid_pos),
+		"life_state": ai.life_state,
 		"behavior_state": ai.behavior_state,
 		"patrol_origin_world": local_to_world(zone_id, ai._patrol_origin),
 		"patrol_index": ai._patrol_index,
@@ -164,6 +163,8 @@ func remove_enemies_in_zone(zone_id: Vector2i) -> Array:
 
 func tick_off_screen_enemies() -> void:
 	for record in off_screen_enemies:
+		if record.get("life_state", _LIFE_ALIVE) != _LIFE_ALIVE:
+			continue
 		if record["behavior_state"] == _BEHAVIOR_PATROL:
 			var idx: int = record["patrol_index"]
 			record["world_pos"] = record["world_pos"] + _PATROL_SEQ[idx]

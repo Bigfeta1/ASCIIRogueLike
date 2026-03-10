@@ -42,24 +42,17 @@ func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 		ai._patrol_index = record["patrol_index"]
 		ai._patrol_origin = WorldState.world_to_local(record["patrol_origin_world"])
 
-		var saved_state: int = record["behavior_state"]
-		var knocked_out_val: int = ai.BehaviorState.KNOCKED_OUT
-		var dead_val: int = ai.BehaviorState.DEAD
-		if saved_state == knocked_out_val or saved_state == dead_val:
-			ai.behavior_state = saved_state
-			ai._clear_vision_tiles()
-			ai.set_process(false)
-			enemy.get_node("CharacterMovement").set_process(false)
-			enemy.get_node("CharacterCombat").set_process(false)
+		ai.behavior_state = record["behavior_state"]
+		var saved_life_state: int = record.get("life_state", ai.LifeState.ALIVE)
+		var lifecycle := enemy.get_node("CharacterLifecycle")
+		lifecycle.restore_incapacitated(enemy, saved_life_state)
+		if saved_life_state != ai.LifeState.ALIVE:
 			enemy.get_node("CharacterSprite").set_defeated(enemy.defeated_sprite)
 			if not record.get("has_blood_splatter", false):
 				# set_defeated always spawns a splatter; remove it if the original didn't have one
-				for child in enemy.get_children():
-					if child is MeshInstance3D and child.get_script() == null:
-						child.queue_free()
-						break
-		else:
-			ai.behavior_state = saved_state
+				var splatter := enemy.get_node_or_null("BloodSplatter")
+				if splatter != null:
+					splatter.queue_free()
 
 		# Restore inventory directly, bypassing weight checks
 		var inv := enemy.get_node("CharacterInventory")
