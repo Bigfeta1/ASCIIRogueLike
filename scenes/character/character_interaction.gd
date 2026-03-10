@@ -341,7 +341,6 @@ func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_
 			var struct_data := { "name": solid.display_name, "description": solid.description }
 			_cursor_entities.append({ "name": solid.display_name, "type": "structure", "node": solid, "actions": structure_actions, "data": struct_data })
 		else:
-			var other_ai := solid.get_node_or_null("CharacterAI")
 			if look_only:
 				var char_actions: Array[String] = ["Inspect"]
 				if pending_target == solid:
@@ -349,8 +348,20 @@ func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_
 				else:
 					char_actions.append("Lock On")
 				_cursor_entities.append({ "name": solid.name, "type": "character", "node": solid, "actions": char_actions, "data": {} })
-			elif other_ai != null and other_ai.life_state != other_ai.LifeState.ALIVE:
-				_cursor_entities.append({ "name": solid.name, "type": "character", "node": solid, "actions": ["Loot", "Inspect"], "data": {} })
+
+	for node in occupancy_map.get_passable(cursor_pos):
+		var other_ai: Node = node.get_node_or_null("CharacterAI")
+		if other_ai == null or other_ai.life_state == other_ai.LifeState.ALIVE:
+			continue
+		if look_only:
+			var char_actions: Array[String] = ["Inspect"]
+			if pending_target == node:
+				char_actions.append("Unlock Target")
+			else:
+				char_actions.append("Lock On")
+			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": char_actions, "data": {} })
+		else:
+			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": ["Loot", "Inspect"], "data": {} })
 
 	var tile_actions: Array[String] = ["Inspect"]
 	if not look_only:
@@ -439,13 +450,9 @@ func _on_tile_action_selected(action: String) -> void:
 	elif action == "Loot":
 		var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
 		var target_inventories: Array[Node] = []
-		for node in _character.get_parent().get_children():
-			if node == _character:
-				continue
-			var other_movement := node.get_node_or_null("CharacterMovement")
-			if other_movement == null or other_movement.grid_pos != cursor_pos:
-				continue
-			var other_ai := node.get_node_or_null("CharacterAI")
+		var occupancy_map: Node = _grid_map.get_node("OccupancyMap")
+		for node in occupancy_map.get_passable(cursor_pos):
+			var other_ai: Node = node.get_node_or_null("CharacterAI")
 			if other_ai != null and other_ai.life_state != other_ai.LifeState.ALIVE:
 				target_inventories.append(node.get_node("CharacterInventory"))
 		interaction_sub_state = InteractionSubState.LOOT

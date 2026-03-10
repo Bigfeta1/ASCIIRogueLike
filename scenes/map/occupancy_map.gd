@@ -55,6 +55,10 @@ func get_solid(pos: Vector2i) -> Node:
 	return _solid.get(pos, null)
 
 
+func get_passable(pos: Vector2i) -> Array:
+	return _passable.get(pos, [])
+
+
 func clear() -> void:
 	_solid.clear()
 	_passable.clear()
