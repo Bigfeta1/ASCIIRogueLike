@@ -21,12 +21,18 @@ var _label_bp: Label
 var _label_hr: Label
 var _label_rr: Label
 var _label_temp: Label
+var _levels: Node
+var _canvas_layer: CanvasLayer
+var _camera: Camera3D
 
 func _ready() -> void:
 	var character := get_parent()
-	if character.character_role != character.CharacterRole.PLAYER:
-		return
-	var hbox := character.get_parent().get_node("CanvasLayer/TopBar/HBoxContainer")
+	_levels = character.get_node("CharacterLevels")
+
+func setup(canvas_layer: CanvasLayer, camera: Camera3D, top_bar: Control) -> void:
+	_canvas_layer = canvas_layer
+	_camera = camera
+	var hbox := top_bar.get_node("HBoxContainer")
 	_label_hp = hbox.get_node("HPLabel")
 	_label_bp = hbox.get_node("BPLabel")
 	_label_hr = hbox.get_node("HRLabel")
@@ -40,15 +46,15 @@ func heal(amount: int) -> void:
 	var character := get_parent()
 	if character.character_role == character.CharacterRole.PLAYER:
 		var label: Label = DamageLabelScript.new()
-		character.get_parent().get_node("CanvasLayer").add_child(label)
-		label.setup("+%dHP" % amount, Color.GREEN, character.position, character.get_parent().get_node("Camera3D"))
+		_canvas_layer.add_child(label)
+		label.setup("+%dHP" % amount, Color.GREEN, character.position, _camera)
 
 func tick_regen() -> void:
 	if hp >= hp_max:
 		_turns_since_regen = 0
 		return
 	var character := get_parent()
-	var mod: int = character.get_node("CharacterLevels").regen_mod()
+	var mod: int = _levels.regen_mod()
 	var turns_needed: int = 7 - mod
 	_turns_since_regen += 1
 	if _turns_since_regen < turns_needed:
@@ -59,8 +65,8 @@ func tick_regen() -> void:
 	_refresh_ui()
 	if character.character_role == character.CharacterRole.PLAYER:
 		var label: Label = DamageLabelScript.new()
-		character.get_parent().get_node("CanvasLayer").add_child(label)
-		label.setup("+%dHP" % heal, Color.GREEN, character.position, character.get_parent().get_node("Camera3D"))
+		_canvas_layer.add_child(label)
+		label.setup("+%dHP" % heal, Color.GREEN, character.position, _camera)
 
 func _refresh_ui() -> void:
 	if _label_hp == null:

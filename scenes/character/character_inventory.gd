@@ -30,29 +30,31 @@ var _label_current_weight: Label
 var _label_max_weight: Label
 var item_list: VBoxContainer
 
+var _levels: Node
+var _equipment: Node
+
 func _ready() -> void:
 	var character := get_parent()
-	if character.character_role != character.CharacterRole.PLAYER:
-		return
-	var sheet := character.get_parent().get_node("CanvasLayer/CharacterSheet")
-	var weight_labels := sheet.get_node("InventoryPanel/WeightLabels")
+	_levels = character.get_node("CharacterLevels")
+	_equipment = character.get_node_or_null("CharacterEquipment")
+
+func setup(character_sheet: Control) -> void:
+	var weight_labels := character_sheet.get_node("InventoryPanel/WeightLabels")
 	_label_current_weight = weight_labels.get_node("CurrentWeightLabel")
 	_label_max_weight = weight_labels.get_node("CurrentWeightLabel2")
-	item_list = sheet.get_node("InventoryPanel/InventoryList/ScrollContainer/ItemList")
+	item_list = character_sheet.get_node("InventoryPanel/InventoryList/ScrollContainer/ItemList")
 	_refresh_ui()
 
 func carry_capacity() -> float:
-	var levels := get_parent().get_node("CharacterLevels")
-	return 100.0 + levels.stat_mod(levels.muscle) * 5.0
+	return 100.0 + _levels.stat_mod(_levels.muscle) * 5.0
 
 func current_weight() -> float:
 	var total := 0.0
 	for id in items:
 		total += ItemRegistry.get_item(id).get("weight", 0.0) as float
-	var equipment := get_parent().get_node_or_null("CharacterEquipment")
-	if equipment != null:
-		for slot in equipment.equipped:
-			var id: String = equipment.equipped[slot]
+	if _equipment != null:
+		for slot in _equipment.equipped:
+			var id: String = _equipment.equipped[slot]
 			if id != "":
 				total += ItemRegistry.get_item(id).get("weight", 0.0) as float
 	return total

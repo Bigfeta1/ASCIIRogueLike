@@ -18,7 +18,7 @@ var _player: Node
 
 func register_enemy(enemy: Node) -> void:
 	_enemies.append(enemy)
-	enemy.get_node("CharacterAI").setup(_player)
+	enemy.get_node("CharacterAI").set_player(_player)
 
 func unregister_enemy(enemy: Node) -> void:
 	_enemies.erase(enemy)

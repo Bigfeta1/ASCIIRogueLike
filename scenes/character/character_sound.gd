@@ -6,22 +6,26 @@ const RADIUS = 5
 
 var _grid_map: GridMap
 var _character: Node
+var _movement: Node
 
 var _waves: Array = []
 var _timer: Timer
 
 func _ready() -> void:
 	_character = get_parent()
-	_grid_map = _character.get_parent().get_node("GridMap")
 	_timer = Timer.new()
+
+func setup(grid_map: GridMap) -> void:
+	_grid_map = grid_map
+	_movement = _character.get_node("CharacterMovement")
 	_timer.one_shot = false
 	_timer.wait_time = WAVE_INTERVAL
 	add_child(_timer)
 	_timer.timeout.connect(_on_wave_tick)
-	_character.get_node("CharacterMovement").moved.connect(_on_character_moved)
+	_movement.moved.connect(_on_character_moved)
 
 func _on_character_moved() -> void:
-	var origin: Vector2i = _character.get_node("CharacterMovement").grid_pos
+	var origin: Vector2i = _movement.grid_pos
 	var result := _build_rings(origin)
 	var wave := { "rings": result.rings, "intensities": result.intensities, "step": 0, "origin": origin }
 	_apply_ring(wave)

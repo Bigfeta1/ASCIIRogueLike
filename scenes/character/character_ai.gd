@@ -14,6 +14,8 @@ var _movement: Node
 var _levels: Node
 var _sprite: Node
 var _vision: Node
+var _combat: Node
+var _turn_order: Node
 var _player_node: Node  # injected by TurnOrder at registration
 
 var _astar: AStarGrid2D
@@ -41,23 +43,25 @@ func _ready() -> void:
 	_levels = character.get_node("CharacterLevels")
 	_sprite = character.get_node("CharacterSprite")
 	_vision = character.get_node("CharacterVision")
-	_grid_map = character.get_parent().get_node("GridMap")
-	var turn_order := character.get_parent().get_node("GameLogic/TurnOrder")
-	turn_order.register_enemy(character)
+	_combat = character.get_node("CharacterCombat")
+
+func setup(grid_map: GridMap, turn_order: Node) -> void:
+	_grid_map = grid_map
+	_turn_order = turn_order
+	_turn_order.register_enemy(get_parent())
 	_build_astar()
 
 
 func _exit_tree() -> void:
 	if _vision != null:
 		_vision.clear()
-	var turn_order := get_parent().get_parent().get_node_or_null("GameLogic/TurnOrder")
-	if turn_order != null:
-		turn_order.unregister_enemy(get_parent())
+	if _turn_order != null:
+		_turn_order.unregister_enemy(get_parent())
 
 
 # Called by TurnOrder immediately after register_enemy so AI can find the player
 # without crawling the scene tree itself.
-func setup(player_node: Node) -> void:
+func set_player(player_node: Node) -> void:
 	_player_node = player_node
 
 
@@ -180,9 +184,8 @@ func take_turn_step() -> void:
 			var to_player: Vector2i = player_pos - _movement.grid_pos
 			if abs(to_player.x) <= 1 and abs(to_player.y) <= 1 and to_player != Vector2i.ZERO:
 				_update_facing(to_player)
-				var combat := get_parent().get_node("CharacterCombat")
-				combat._apply_damage(_player_node)
-				combat.bump_attack(player_pos)
+				_combat._apply_damage(_player_node)
+				_combat.bump_attack(player_pos)
 		BehaviorState.INVESTIGATE:
 			if _movement.grid_pos == _investigate_target:
 				behavior_state = BehaviorState.RETURN

@@ -32,8 +32,31 @@ var corpse_item_id: String = ""
 
 
 func _ready() -> void:
+	var scene: Node = get_parent()
+	var grid_map: GridMap = scene.get_node("GridMap")
+	var canvas_layer: CanvasLayer = scene.get_node("CanvasLayer")
+	var camera: Camera3D = scene.get_node("Camera3D")
+
+	# Inject scene-level refs into components that need them.
+	# Components resolve siblings themselves in their own _ready(); only scene-external
+	# refs are injected here so no component hardcodes scene paths.
+	combat.setup(grid_map, canvas_layer, camera)
+	movement.setup(grid_map, scene.get_node("GameLogic/TurnOrder") if character_role == CharacterRole.PLAYER else null)
+	sound.setup(grid_map)
+	vision.setup(grid_map)
+	vitals.setup(canvas_layer, camera, canvas_layer.get_node("TopBar"))
+	interact_cursor.setup(grid_map)
+	look_cursor.setup(grid_map, camera, canvas_layer.get_node("LookModeInfo"))
+
 	if character_role == CharacterRole.PLAYER:
+		var character_sheet: Control = canvas_layer.get_node("CharacterSheet")
+		levels.setup(character_sheet, canvas_layer.get_node("TopBar"))
+		inventory.setup(character_sheet)
+		interaction.setup(grid_map, character_sheet, canvas_layer.get_node("LootModal"), canvas_layer.get_node("InteractModal"))
 		inventory.add_item("combat_knife")
 		inventory.add_item("field_bandage")
 		inventory.add_item("field_bandage")
 		inventory.add_item("field_bandage")
+	else:
+		var turn_order: Node = scene.get_node("GameLogic/TurnOrder")
+		ai.setup(grid_map, turn_order)

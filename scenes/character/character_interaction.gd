@@ -45,10 +45,12 @@ func _ready() -> void:
 		return
 	_look_cursor = _character.get_node("LookCursor")
 	_interact_cursor = _character.get_node("InteractCursor")
-	_grid_map = _character.get_parent().get_node("GridMap")
-	_character_sheet = _character.get_parent().get_node("CanvasLayer/CharacterSheet")
-	_loot_modal = _character.get_parent().get_node("CanvasLayer/LootModal")
-	_fill_modal = _character.get_parent().get_node("CanvasLayer/InteractModal")
+
+func setup(grid_map: GridMap, character_sheet: Control, loot_modal: Control, fill_modal: Control) -> void:
+	_grid_map = grid_map
+	_character_sheet = character_sheet
+	_loot_modal = loot_modal
+	_fill_modal = fill_modal
 
 	_fill_modal.confirmed.connect(_on_fill_confirmed)
 	_fill_modal.action_selected.connect(_on_tile_action_selected)

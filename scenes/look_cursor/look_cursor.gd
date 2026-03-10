@@ -13,18 +13,20 @@ var _movement: Node
 var _tracked_character: Node = null
 
 func _ready() -> void:
-	_grid_map = get_parent().get_parent().get_node("GridMap")
-	_camera = get_parent().get_parent().get_node("Camera3D")
-	_tile_label = get_parent().get_parent().get_node("CanvasLayer/LookModeInfo/Label")
-	_tile_label2 = get_parent().get_parent().get_node("CanvasLayer/LookModeInfo/Label2")
-	_disposition_label = get_parent().get_parent().get_node("CanvasLayer/LookModeInfo/DispositionLabel")
-	_status_label = get_parent().get_parent().get_node("CanvasLayer/LookModeInfo/StatusLabel")
 	_movement = get_parent().get_node("CharacterMovement")
+	visible = false
+
+func setup(grid_map: GridMap, camera: Camera3D, look_mode_info: Control) -> void:
+	_grid_map = grid_map
+	_camera = camera
+	_tile_label = look_mode_info.get_node("Label")
+	_tile_label2 = look_mode_info.get_node("Label2")
+	_disposition_label = look_mode_info.get_node("DispositionLabel")
+	_status_label = look_mode_info.get_node("StatusLabel")
 	_tile_label.visible = false
 	_tile_label2.visible = false
 	_disposition_label.visible = false
 	_status_label.visible = false
-	visible = false
 
 func _process(_delta: float) -> void:
 	if not visible:

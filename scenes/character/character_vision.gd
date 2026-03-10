@@ -9,6 +9,7 @@ const LOS_TILE = 4
 
 var _movement: Node
 var _levels: Node
+var _ai: Node
 var _grid_map: GridMap
 var _vision_cells: Array[Vector3i] = []
 
@@ -19,7 +20,10 @@ func _ready() -> void:
 		return
 	_movement = character.get_node("CharacterMovement")
 	_levels = character.get_node("CharacterLevels")
-	_grid_map = character.get_parent().get_node("GridMap")
+	_ai = character.get_node("CharacterAI")
+
+func setup(grid_map: GridMap) -> void:
+	_grid_map = grid_map
 
 
 func can_see(target_pos: Vector2i) -> bool:
@@ -30,8 +34,7 @@ func can_see(target_pos: Vector2i) -> bool:
 	if origin.distance_to(target_pos) > vision_range:
 		return false
 	var half_angle: float = deg_to_rad(_levels.sympathetic * 7.0 / 2.0)
-	var ai := get_parent().get_node("CharacterAI")
-	var facing_vec: Vector2 = ai.facing_vector()
+	var facing_vec: Vector2 = _ai.facing_vector()
 	var to_target: Vector2 = Vector2(target_pos - origin).normalized()
 	if absf(facing_vec.angle_to(to_target)) > half_angle:
 		return false
@@ -59,8 +62,7 @@ func clear() -> void:
 func update(disposition: int) -> void:
 	clear()
 	# Only hostile characters project a visible LOS overlay.
-	var ai := get_parent().get_node("CharacterAI")
-	if disposition != ai.Disposition.HOSTILE:
+	if disposition != _ai.Disposition.HOSTILE:
 		return
 	var origin: Vector2i = _movement.grid_pos
 	var vision_range: int = _levels.sympathetic

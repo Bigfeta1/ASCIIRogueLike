@@ -433,14 +433,22 @@ var inventory = character.inventory
 var ai = character.ai
 ```
 
-From **child component scripts** during `_ready()`, `@onready` refs on the parent are not yet set — use `get_node()` directly:
+From **child component scripts** during `_ready()`, `@onready` refs on the parent are not yet set — use `get_node()` directly for sibling lookups:
 ```gdscript
 func _ready() -> void:
     var character = get_parent()
-    var inventory = character.get_node("CharacterInventory")
+    var levels = character.get_node("CharacterLevels")  # sibling, safe
 ```
 
-After `_ready()`, child components may safely use `get_parent().inventory` etc.
+Scene-external refs (GridMap, Camera, UI nodes) are **never** looked up by components directly. They are injected via `setup()` called from `character.gd._ready()`:
+```gdscript
+func setup(grid_map: GridMap, canvas_layer: CanvasLayer, camera: Camera3D) -> void:
+    _grid_map = grid_map
+    _canvas_layer = canvas_layer
+    _camera = camera
+```
+
+After `_ready()`, child components may safely use `get_parent().<ref>` for any `@onready` var on the character.
 
 ### GridMap cell → world position
 ```gdscript
@@ -607,4 +615,35 @@ No other node may call `grid_map.set_cell_item()`. If you need to change a tile,
 
 ---
 
-*Last updated: March 2026*
+---
+
+## 20. Known Limitations and Future Pressure Points
+
+### Scene-name coupling in component lookup — ~~resolved~~
+
+All scene-external refs (GridMap, Camera3D, CanvasLayer, UI modals, TurnOrder) are now injected via `setup()` calls from `character.gd._ready()`. No component hardcodes a scene path to a node outside the character subtree.
+
+Sibling lookups (`get_parent().get_node("CharacterX")`) in component `_ready()` methods are still present but limited to the initialization phase, where they are guaranteed safe. These are the only remaining scene-name dependencies.
+
+---
+
+### Provisional occupancy and pathfinding
+
+Two systems are explicitly placeholder:
+
+- **Vision occlusion** in `CharacterVision.can_see()` uses `has_method("take_damage")` as a proxy for "solid entity." This will misfire as more interactable objects are added.
+- **Pathfinding** (`AStarGrid2D`) is built once in `_ready()` and never updated. Destroyed trees, opened doors, or any tile change will not be reflected.
+
+Both are acceptable for the current scope. They are the two places where future systemic complexity will press hardest.
+
+**Mitigation path**: introduce an occupancy service (a spatial dictionary of `grid_pos → node`) that `CharacterVision` and `AStarGrid2D` query. The service updates on move/destroy events, decoupling both systems from scene-tree scanning.
+
+---
+
+### CharacterInteraction as a future god object
+
+`CharacterInteraction` is a good extraction now, but player-side UI coordination is the category most likely to re-accumulate complexity. It currently owns: input state, cursor flow, modal restoration, pending actions, target locking, interaction menu construction, and item-use execution. Each of those is individually small; together they can become a second god object.
+
+Watch for the signal that it is happening: functions that check `interaction_sub_state` at the top before doing anything else, or modal open/close sequences that require tracking multiple booleans simultaneously.
+
+**Mitigation path**: if `CharacterInteraction` grows past ~400 lines of real logic, consider splitting cursor/targeting (what the player is pointing at and why) from modal flow (what UI is open and how it restores). Those two concerns are already loosely separable.

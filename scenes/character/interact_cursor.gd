@@ -5,9 +5,11 @@ var _movement: Node
 var _cursor_grid_pos: Vector2i = Vector2i.ZERO
 
 func _ready() -> void:
-	_grid_map = get_parent().get_parent().get_node("GridMap")
 	_movement = get_parent().get_node("CharacterMovement")
 	visible = false
+
+func setup(grid_map: GridMap) -> void:
+	_grid_map = grid_map
 
 func activate() -> void:
 	_cursor_grid_pos = _movement.grid_pos

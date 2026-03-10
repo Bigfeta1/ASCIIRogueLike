@@ -14,6 +14,8 @@ var bump_state: BumpState = BumpState.IDLE
 
 var _character: Node
 var _grid_map: GridMap
+var _canvas_layer: CanvasLayer
+var _camera: Camera3D
 var _origin_world: Vector3
 var _target_world: Vector3
 var _elapsed: float = 0.0
@@ -21,8 +23,12 @@ var _elapsed: float = 0.0
 
 func _ready() -> void:
 	_character = get_parent()
-	_grid_map = _character.get_parent().get_node("GridMap")
 	set_process(false)
+
+func setup(grid_map: GridMap, canvas_layer: CanvasLayer, camera: Camera3D) -> void:
+	_grid_map = grid_map
+	_canvas_layer = canvas_layer
+	_camera = camera
 
 
 func bump_attack(target_grid_pos: Vector2i) -> void:
@@ -221,8 +227,8 @@ func _apply_damage_to_tree(tree: Node) -> void:
 
 func _spawn_label(target: Node, text: String, color: Color) -> void:
 	var label: Label = DamageLabelScript.new()
-	_character.get_parent().get_node("CanvasLayer").add_child(label)
-	label.setup(text, color, target.position, _character.get_parent().get_node("Camera3D"))
+	_canvas_layer.add_child(label)
+	label.setup(text, color, target.position, _camera)
 
 
 func _spawn_damage_label(target: Node, amount: int) -> void:

@@ -23,12 +23,13 @@ var _turn_order: Node
 func _ready() -> void:
 	_character = get_parent()
 	_sprite = _character.get_node("CharacterSprite")
-	_grid_map = _character.get_parent().get_node("GridMap")
 	_look_cursor = _character.get_node("LookCursor")
 	_interact_cursor = _character.get_node("InteractCursor")
-	if _character.character_role == _character.CharacterRole.PLAYER:
-		_turn_order = _character.get_parent().get_node("GameLogic/TurnOrder")
 	facing_state = _sprite.FacingState.RIGHT
+
+func setup(grid_map: GridMap, turn_order: Node) -> void:
+	_grid_map = grid_map
+	_turn_order = turn_order
 	_snap()
 
 func _unhandled_input(event: InputEvent) -> void:
