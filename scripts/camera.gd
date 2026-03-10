@@ -3,7 +3,7 @@ extends Camera3D
 const ZOOM_LEVELS = [230.0, 110.0, 60.0]
 const FOV_LEVELS = [168.0, 160.0, 120.0, 100.0]
 const PERSPECTIVE_Z = 22.19
-var zoom_index := 0
+var zoom_index := 1
 
 var _character: Node3D
 var _origin_transform: Transform3D

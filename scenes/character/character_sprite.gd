@@ -40,6 +40,8 @@ func set_defeated(sprite_path: String) -> void:
 	print("[SPRITE] loaded tex=%s" % str(tex))
 	mat.albedo_texture = tex
 	print("[SPRITE] texture set. current albedo_texture=%s" % str(mat.albedo_texture))
+	position = Vector3.ZERO
+	rotation = Vector3.ZERO
 	var splatter := MeshInstance3D.new()
 	splatter.name = "BloodSplatter"
 	var plane := PlaneMesh.new()
