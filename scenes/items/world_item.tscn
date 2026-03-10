@@ -1,6 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://omdqxrpa5opj"]
+[gd_scene load_steps=5 format=3 uid="uid://omdqxrpa5opj"]
 
 [ext_resource type="Texture2D" uid="uid://bodxn36y54gok" path="res://assets/images/world_items/chests/spr_chest1.png" id="1_hu43i"]
+[ext_resource type="Script" path="res://scenes/items/world_item.gd" id="2_worlditem"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0jrka"]
 transparency = 1
@@ -12,3 +13,4 @@ size = Vector2(7, 7)
 
 [node name="WorldItem" type="MeshInstance3D"]
 mesh = SubResource("PlaneMesh_w4lj1")
+script = ExtResource("2_worlditem")

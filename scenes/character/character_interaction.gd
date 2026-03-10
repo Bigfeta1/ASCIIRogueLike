@@ -7,7 +7,7 @@ extends Node
 # action_state lives on character.gd as shared readable state (camera, movement, AI gate on it).
 # interaction_sub_state and its enum live here — only this node and CharacterMovement read it.
 
-enum InteractionSubState { NONE, MOVE_CURSOR, INTERACTION_MENU, LOOT, COLLECT_LIQUID, INSPECTION, USE_ITEM }
+enum InteractionSubState { NONE, MOVE_CURSOR, INTERACTION_MENU, LOOT, COLLECT_LIQUID, INSPECTION, USE_ITEM, DROPPING_ITEM }
 enum ModalContext { NONE, TILE_ACTIONS, TILE_FILL, INSPECT_TILE }
 
 var interaction_sub_state: InteractionSubState = InteractionSubState.NONE
@@ -29,6 +29,7 @@ var _look_interrupted_pos: Vector2i = Vector2i.ZERO
 var _modal_context: ModalContext = ModalContext.NONE
 var _collect_item_id: String = ""
 var _use_item_id: String = ""
+var _drop_item_id: String = ""
 var _collect_liquid: String = ""
 var _tile_action_name: String = ""
 var _tile_actions: Array = []
@@ -145,6 +146,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_open_interaction_menu(look_pos, true)
 				get_viewport().set_input_as_handled()
 				return
+			if _character.action_state == _character.ActionState.INTERACTION and interaction_sub_state == InteractionSubState.DROPPING_ITEM:
+				_execute_drop()
+				get_viewport().set_input_as_handled()
+				return
 			if _character.action_state == _character.ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
 				if pending_action != "":
 					_execute_pending_action()
@@ -174,6 +179,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _character.action_state == _character.ActionState.LOOK:
 				_character.action_state = _character.ActionState.MOVEMENT
 				_look_cursor.deactivate()
+			elif _character.action_state == _character.ActionState.INTERACTION and interaction_sub_state == InteractionSubState.DROPPING_ITEM:
+				_drop_item_id = ""
+				_character.action_state = _character.ActionState.MOVEMENT
+				interaction_sub_state = InteractionSubState.NONE
+				_interact_cursor.deactivate()
 			elif _character.action_state == _character.ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
 				_character.action_state = _character.ActionState.MOVEMENT
 				interaction_sub_state = InteractionSubState.NONE
@@ -363,6 +373,22 @@ func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_
 		else:
 			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": ["Loot", "Inspect"], "data": {} })
 
+	var cell_world: Vector3 = _grid_map.to_global(_grid_map.map_to_local(Vector3i(cursor_pos.x, 0, cursor_pos.y)))
+	for child in _grid_map.get_children():
+		if child.get("item_id") == null:
+			continue
+		var dx: float = absf(child.global_position.x - cell_world.x)
+		var dz: float = absf(child.global_position.z - cell_world.z)
+		if dx > 0.1 or dz > 0.1:
+			continue
+		var wi_data := ItemRegistry.get_item(child.item_id)
+		var wi_name: String = wi_data.get("name", child.item_id)
+		var wi_actions: Array[String] = []
+		if not look_only:
+			wi_actions.append("Pick Up")
+		wi_actions.append("Inspect")
+		_cursor_entities.append({ "name": wi_name, "type": "world_item", "node": child, "actions": wi_actions, "data": wi_data })
+
 	var tile_actions: Array[String] = ["Inspect"]
 	if not look_only:
 		for action in tile_data.get("actions", []):
@@ -483,6 +509,16 @@ func _on_tile_action_selected(action: String) -> void:
 			_fill_modal.open_actions(_tile_action_name, _tile_actions)
 			return
 		_fill_modal.open_container_picker(_collect_liquid, labels, indices)
+	elif action == "Pick Up":
+		var world_item_node: Node = _selected_entity.get("node", null)
+		if world_item_node != null:
+			_character.inventory.add_item(world_item_node.item_id)
+			world_item_node.queue_free()
+		_fill_modal.visible = false
+		_character.action_state = _character.ActionState.MOVEMENT
+		interaction_sub_state = InteractionSubState.NONE
+		_interact_cursor.deactivate()
+		_character.movement.moved.emit()
 	elif action == "Inspect":
 		var entity_data: Dictionary = _selected_entity.get("data", {})
 		_modal_context = ModalContext.INSPECT_TILE
@@ -534,6 +570,36 @@ func activate_map_interaction(item_id: String) -> void:
 
 func deactivate_map_interaction() -> void:
 	_collect_item_id = ""
+	_character.action_state = _character.ActionState.MOVEMENT
+	interaction_sub_state = InteractionSubState.NONE
+	_interact_cursor.deactivate()
+
+
+func activate_drop_item(item_id: String) -> void:
+	_drop_item_id = item_id
+	_character_sheet.visible = false
+	_character.action_state = _character.ActionState.INTERACTION
+	interaction_sub_state = InteractionSubState.DROPPING_ITEM
+	_interact_cursor.activate()
+
+
+func _execute_drop() -> void:
+	if _drop_item_id == "":
+		return
+	var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
+	var item_data := ItemRegistry.get_item(_drop_item_id)
+	var world_item_scene := load("res://scenes/items/world_item.tscn")
+	var world_item: MeshInstance3D = world_item_scene.instantiate()
+	world_item.item_id = _drop_item_id
+	if item_data.has("sprite"):
+		var mat := StandardMaterial3D.new()
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_texture = load(item_data["sprite"])
+		world_item.material_override = mat
+	_grid_map.add_child(world_item)
+	world_item.global_position = _grid_map.to_global(_grid_map.map_to_local(Vector3i(cursor_pos.x, 0, cursor_pos.y)))
+	_character.inventory.remove_item(_drop_item_id)
+	_drop_item_id = ""
 	_character.action_state = _character.ActionState.MOVEMENT
 	interaction_sub_state = InteractionSubState.NONE
 	_interact_cursor.deactivate()

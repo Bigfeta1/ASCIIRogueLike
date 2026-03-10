@@ -57,6 +57,16 @@
 		"slot": null
 	},
 	{
+		"id": "military_chest",
+		"name": "Military Chest",
+		"weight": 20.0,
+		"category": "misc",
+		"interaction": null,
+		"sprite": "res://assets/images/world_items/chests/spr_chest1.png",
+		"description": "A military-issue storage chest.",
+		"slot": null
+	},
+	{
 		"id": "corpse_soldier",
 		"name": "Soldier Corpse",
 		"weight": 80.0,

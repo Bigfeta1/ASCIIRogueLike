@@ -74,7 +74,7 @@ func _on_zone_exit(direction: Vector2i) -> void:
 	# Serialize items and remove them
 	var items_to_free: Array = []
 	for child in _grid_map.get_children():
-		if child is MeshInstance3D:
+		if child.get("item_id") != null:
 			items_to_free.append(child)
 	WorldState.save_zone_items(current_zone, items_to_free, _grid_map)
 	for item in items_to_free:

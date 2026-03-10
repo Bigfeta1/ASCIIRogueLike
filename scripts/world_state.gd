@@ -77,7 +77,7 @@ func save_zone_items(zone_id: Vector2i, item_nodes: Array, grid_map: GridMap) ->
 	var records: Array = []
 	for item in item_nodes:
 		var cell := grid_map.local_to_map(grid_map.to_local(item.global_position))
-		records.append({"id": item.name, "local_pos": Vector2i(cell.x, cell.z)})
+		records.append({"id": item.item_id, "local_pos": Vector2i(cell.x, cell.z)})
 	if not zones.has(zone_id):
 		zones[zone_id] = {"tiles": {}, "items": []}
 	zones[zone_id]["items"] = records

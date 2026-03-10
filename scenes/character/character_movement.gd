@@ -79,6 +79,8 @@ func _do_move() -> void:
 				_check_move(delta)
 			else:
 				_interact_cursor.move(delta)
+		elif _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.DROPPING_ITEM:
+			_interact_cursor.move(delta)
 
 
 func _check_move(delta: Vector2i) -> void:

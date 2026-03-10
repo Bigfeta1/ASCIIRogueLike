@@ -244,6 +244,9 @@ func _confirm_action() -> void:
 				damage_die
 			)
 			return
+		"Drop":
+			_inventory.get_parent().interaction.activate_drop_item(_active_item_id)
+			return
 		"Equip":
 			_get_equipment().equip(_active_item_id)
 		"Unequip":

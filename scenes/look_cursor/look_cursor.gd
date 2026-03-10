@@ -83,8 +83,10 @@ func move(delta: Vector2i) -> void:
 	_update_tile_label()
 
 func _update_tile_label() -> void:
-	var tile_id := _grid_map.get_cell_item(Vector3i(_cursor_grid_pos.x, 0, _cursor_grid_pos.y))
-	var tile := TileRegistry.get_tile(tile_id)
+	var cell := Vector3i(_cursor_grid_pos.x, 0, _cursor_grid_pos.y)
+	var tile_id := _grid_map.get_cell_item(cell)
+	var true_tile := TileRegistry.get_original_tile(cell, tile_id)
+	var tile := TileRegistry.get_tile(true_tile)
 	_tile_label.text = tile.get("name", "")
 
 	_tracked_character = null
