@@ -30,6 +30,7 @@ func spawn_one(id: String, pos: Vector2i, hp_override: int = -1, inventory_overr
 	entity.structure_id = id
 	entity.display_name = def.get("name", id)
 	entity.description = def.get("description", "")
+	entity.sprite_path = def.get("sprite", "")
 	entity.sound_dampening = def.get("sound_dampening", 0)
 	entity.blocks_vision = def.get("blocks_vision", false)
 	entity.drops = def.get("drops", [])

@@ -21,6 +21,7 @@ var blocks_vision: bool = true
 var structure_id: String = ""
 var display_name: String = ""
 var description: String = ""
+var sprite_path: String = ""
 var drops: Array = []
 var structure_actions: Array = []
 

@@ -352,7 +352,7 @@ func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_
 				structure_actions.append("Unlock Target")
 			else:
 				structure_actions.append("Lock On")
-			var struct_data := { "name": solid.display_name, "description": solid.description }
+			var struct_data := { "name": solid.display_name, "description": solid.description, "sprite": solid.sprite_path }
 			_cursor_entities.append({ "name": solid.display_name, "type": "structure", "node": solid, "actions": structure_actions, "data": struct_data })
 		else:
 			if look_only:
