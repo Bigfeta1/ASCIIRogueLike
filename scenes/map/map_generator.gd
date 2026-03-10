@@ -24,7 +24,7 @@ func generate(zone_id: Vector2i = Vector2i.ZERO) -> void:
 		_rebuild_lake_data()
 		_apply_lake_shader()
 		for record in WorldState.load_zone_structures(zone_id):
-			_structure_configurator.spawn_one(record["id"], record["grid_pos"], record["hp"])
+			_structure_configurator.spawn_one(record["id"], record["grid_pos"], record["hp"], record.get("inventory", []))
 		return
 	grid_map.clear()
 	_lake_origins.clear()
@@ -37,6 +37,7 @@ func generate(zone_id: Vector2i = Vector2i.ZERO) -> void:
 	for i in range(7):
 		create_home()
 	_structure_configurator.scatter_trees(_home_rects)
+	_structure_configurator.scatter_chests(home_interiors)
 	_apply_lake_shader()
 	WorldState.save_zone_tiles(zone_id, grid_map)
 	WorldState.save_zone_structures(zone_id, get_tree().get_nodes_in_group("structures"))

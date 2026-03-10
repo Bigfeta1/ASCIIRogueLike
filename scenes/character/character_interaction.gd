@@ -63,7 +63,10 @@ func setup(grid_map: GridMap, character_sheet: Control, loot_modal: Control, fil
 		_character.action_state = _character.ActionState.MOVEMENT
 		interaction_sub_state = InteractionSubState.NONE
 		_loot_modal.visible = false
-		_interact_cursor.deactivate())
+		_interact_cursor.deactivate()
+		for child in get_children():
+			if child.get_script() != null and child.get_script().resource_path.ends_with("chest_inventory_proxy.gd"):
+				child.queue_free())
 
 	_loot_modal.inspect_requested.connect(func(item_id: String) -> void:
 		_loot_inspect = true
@@ -342,7 +345,8 @@ func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_
 		if solid.character_type == solid.CharacterType.STRUCTURE:
 			var structure_actions: Array[String] = []
 			if not look_only:
-				structure_actions.append("Chop")
+				for a in solid.structure_actions:
+					structure_actions.append(a as String)
 			structure_actions.append("Inspect")
 			if pending_target == solid:
 				structure_actions.append("Unlock Target")
@@ -473,6 +477,34 @@ func _on_tile_action_selected(action: String) -> void:
 				combat.bump_attack(structure_node.get_node("CharacterMovement").grid_pos)
 				combat._apply_damage(structure_node)
 		_character.movement.moved.emit()
+	elif action == "Take Chest":
+		var structure_node: Node = _selected_entity.get("node", null)
+		if structure_node != null:
+			var chest_inv: Node = structure_node.get_node("CharacterInventory")
+			var contents_weight: float = 0.0
+			for content_id in chest_inv.items:
+				contents_weight += ItemRegistry.get_item(content_id).get("weight", 0.0) as float
+			if _character.inventory.can_add(structure_node.structure_id, contents_weight) and _character.inventory.add_item(structure_node.structure_id):
+				var inv: Node = _character.inventory
+				var uid: int = inv.item_uids[inv.items.rfind(structure_node.structure_id)]
+				inv.chest_contents[uid] = chest_inv.items.duplicate()
+				var occupancy_map: Node = _grid_map.get_node("OccupancyMap")
+				occupancy_map.unregister_solid(structure_node.movement.grid_pos, structure_node)
+				structure_node.remove_from_group("structures")
+				structure_node.queue_free()
+		_fill_modal.visible = false
+		_character.action_state = _character.ActionState.MOVEMENT
+		interaction_sub_state = InteractionSubState.NONE
+		_interact_cursor.deactivate()
+		_character.movement.moved.emit()
+	elif action == "Open":
+		var structure_node: Node = _selected_entity.get("node", null)
+		if structure_node != null:
+			var target_inventories: Array[Node] = [structure_node.get_node("CharacterInventory")]
+			interaction_sub_state = InteractionSubState.LOOT
+			_fill_modal.visible = false
+			_loot_modal.open(target_inventories, _character.inventory)
+			_loot_modal.visible = true
 	elif action == "Loot":
 		var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
 		var target_inventories: Array[Node] = []
@@ -575,6 +607,22 @@ func deactivate_map_interaction() -> void:
 	_interact_cursor.deactivate()
 
 
+func open_chest_contents(item_id: String, uid: int) -> void:
+	var contents: Array = _character.inventory.chest_contents.get(uid, [])
+	var proxy_script := load("res://scenes/items/chest_inventory_proxy.gd")
+	var proxy: Node = Node.new()
+	proxy.set_script(proxy_script)
+	proxy.init(_character.inventory, uid, contents)
+	add_child(proxy)
+	var target_inventories: Array[Node] = [proxy]
+	_loot_interrupted = true
+	_character_sheet.visible = false
+	_character.action_state = _character.ActionState.INTERACTION
+	interaction_sub_state = InteractionSubState.LOOT
+	_loot_modal.open(target_inventories, _character.inventory)
+	_loot_modal.visible = true
+
+
 func activate_drop_item(item_id: String) -> void:
 	_drop_item_id = item_id
 	_character_sheet.visible = false
@@ -587,18 +635,28 @@ func _execute_drop() -> void:
 	if _drop_item_id == "":
 		return
 	var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
-	var item_data := ItemRegistry.get_item(_drop_item_id)
-	var world_item_scene := load("res://scenes/items/world_item.tscn")
-	var world_item: MeshInstance3D = world_item_scene.instantiate()
-	world_item.item_id = _drop_item_id
-	if item_data.has("sprite"):
-		var mat := StandardMaterial3D.new()
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.albedo_texture = load(item_data["sprite"])
-		world_item.material_override = mat
-	_grid_map.add_child(world_item)
-	world_item.global_position = _grid_map.to_global(_grid_map.map_to_local(Vector3i(cursor_pos.x, 0, cursor_pos.y)))
-	_character.inventory.remove_item(_drop_item_id)
+	var inv: Node = _character.inventory
+	var item_idx: int = inv.items.rfind(_drop_item_id)
+	var uid: int = inv.item_uids[item_idx]
+	var saved_contents: Array = inv.chest_contents.get(uid, [])
+	var structure_configurator: Node = _grid_map.get_node_or_null("StructureConfigurator")
+	var is_structure: bool = inv.chest_contents.has(uid)
+	if is_structure and structure_configurator != null:
+		inv.remove_item(_drop_item_id)
+		structure_configurator.spawn_one(_drop_item_id, cursor_pos, -1, saved_contents)
+	else:
+		var item_data := ItemRegistry.get_item(_drop_item_id)
+		var world_item_scene := load("res://scenes/items/world_item.tscn")
+		var world_item: MeshInstance3D = world_item_scene.instantiate()
+		world_item.item_id = _drop_item_id
+		if item_data.has("sprite"):
+			var mat := StandardMaterial3D.new()
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.albedo_texture = load(item_data["sprite"])
+			world_item.material_override = mat
+		_grid_map.add_child(world_item)
+		world_item.global_position = _grid_map.to_global(_grid_map.map_to_local(Vector3i(cursor_pos.x, 0, cursor_pos.y)))
+		inv.remove_item(_drop_item_id)
 	_drop_item_id = ""
 	_character.action_state = _character.ActionState.MOVEMENT
 	interaction_sub_state = InteractionSubState.NONE

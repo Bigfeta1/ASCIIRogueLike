@@ -94,10 +94,12 @@ func save_zone_structures(zone_id: Vector2i, structure_nodes: Array) -> void:
 	var records: Array = []
 	for s in structure_nodes:
 		var vitals: Node = s.get_node_or_null("CharacterVitals")
+		var inv: Node = s.get_node_or_null("CharacterInventory")
 		records.append({
 			"id": s.structure_id,
 			"grid_pos": s.movement.grid_pos,
-			"hp": vitals.hp if vitals != null else 0
+			"hp": vitals.hp if vitals != null else 0,
+			"inventory": inv.items.duplicate() if inv != null else []
 		})
 	if not zones.has(zone_id):
 		zones[zone_id] = {"tiles": {}, "items": [], "structures": []}

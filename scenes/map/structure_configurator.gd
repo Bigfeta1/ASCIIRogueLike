@@ -19,7 +19,7 @@ func _ready() -> void:
 		_defs[record["id"]] = record
 
 
-func spawn_one(id: String, pos: Vector2i, hp_override: int = -1) -> Node:
+func spawn_one(id: String, pos: Vector2i, hp_override: int = -1, inventory_override: Array = []) -> Node:
 	var def: Dictionary = _defs.get(id, {})
 	if def.is_empty():
 		return null
@@ -33,6 +33,7 @@ func spawn_one(id: String, pos: Vector2i, hp_override: int = -1) -> Node:
 	entity.sound_dampening = def.get("sound_dampening", 0)
 	entity.blocks_vision = def.get("blocks_vision", false)
 	entity.drops = def.get("drops", [])
+	entity.structure_actions = def.get("actions", [])
 	main.add_child(entity)
 	entity.name = def.get("name", id)
 	entity.add_to_group("structures")
@@ -44,7 +45,18 @@ func spawn_one(id: String, pos: Vector2i, hp_override: int = -1) -> Node:
 	var levels := entity.get_node("CharacterLevels")
 	levels.muscle = def.get("muscle", 10)
 	entity.get_node("CharacterMovement").place(pos)
+	var inventory := entity.get_node("CharacterInventory")
+	var contents: Array = inventory_override if not inventory_override.is_empty() else def.get("contents", [])
+	for item_id in contents:
+		inventory.add_item(item_id)
 	return entity
+
+
+func scatter_chests(home_interiors: Array) -> void:
+	for interior in home_interiors:
+		if randf() < 0.5:
+			var cell: Vector2i = interior.pick_random()
+			spawn_one("military_chest", cell)
 
 
 func scatter_trees(home_rects: Array) -> void:

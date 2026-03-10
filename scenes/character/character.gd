@@ -22,6 +22,7 @@ var structure_id: String = ""
 var display_name: String = ""
 var description: String = ""
 var drops: Array = []
+var structure_actions: Array = []
 
 # Component references — the single place to resolve siblings.
 # All other nodes access components through these rather than get_node() by name.

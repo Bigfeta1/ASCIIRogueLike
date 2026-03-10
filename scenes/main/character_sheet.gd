@@ -111,6 +111,11 @@ func _build_actions_for(item_id: String) -> Array[String]:
 			var idx: int = _inventory.items.find(item_id)
 			if idx != -1 and not _inventory.get_liquid(idx).is_empty():
 				actions.append("Drink")
+	var idx: int = _inventory.items.find(item_id)
+	if idx != -1:
+		var uid: int = _inventory.item_uids[idx]
+		if _inventory.chest_contents.has(uid):
+			actions.append("View Contents")
 	actions.append("Inspect")
 	actions.append("Drop")
 	return actions
@@ -243,6 +248,11 @@ func _confirm_action() -> void:
 				hit_bonus,
 				damage_die
 			)
+			return
+		"View Contents":
+			var idx: int = _inventory.items.find(_active_item_id)
+			var uid: int = _inventory.item_uids[idx]
+			_inventory.get_parent().interaction.open_chest_contents(_active_item_id, uid)
 			return
 		"Drop":
 			_inventory.get_parent().interaction.activate_drop_item(_active_item_id)

@@ -174,7 +174,8 @@ func _confirm_action() -> void:
 	match action:
 		"Take":
 			if _player_inventory.add_item(id):
-				var is_corpse: bool = id == inv.get_parent().corpse_item_id
+				var parent: Node = inv.get_parent()
+				var is_corpse: bool = parent != null and parent.get("corpse_item_id") != null and id == parent.corpse_item_id
 				inv.remove_item(id)
 				if is_corpse:
 					_remove_corpse_from_world(inv)

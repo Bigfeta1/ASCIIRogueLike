@@ -1,5 +1,18 @@
 [
 	{
+		"id": "military_chest",
+		"name": "Military Chest",
+		"hp": 50,
+		"muscle": 20,
+		"description": "A military-issue storage chest. Might contain useful supplies.",
+		"sprite": "res://assets/images/world_items/chests/spr_chest1.png",
+		"sound_dampening": 0,
+		"blocks_vision": false,
+		"drops": [],
+		"contents": ["combat_knife", "field_bandage", "field_bandage"],
+		"actions": ["Open", "Take Chest"]
+	},
+	{
 		"id": "tree",
 		"name": "Oak Tree",
 		"hp": 100,
@@ -8,6 +21,7 @@
 		"sprite": "res://assets/images/tiles/spr_tree1.png",
 		"sound_dampening": 1,
 		"blocks_vision": true,
-		"drops": ["logs"]
+		"drops": ["logs"],
+		"actions": ["Chop"]
 	}
 ]

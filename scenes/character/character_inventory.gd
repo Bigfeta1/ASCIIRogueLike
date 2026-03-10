@@ -20,6 +20,8 @@ var item_uids: Array[int] = []
 var container_contents: Dictionary = {}
 # Maps uid -> current durability for items with durability_max
 var item_durability: Dictionary = {}
+# Maps uid -> Array[String] of item ids for structure items (e.g. chests)
+var chest_contents: Dictionary = {}
 var _next_uid: int = 0
 var collapsed: Dictionary = {}
 
@@ -50,8 +52,8 @@ func carry_capacity() -> float:
 
 func current_weight() -> float:
 	var total := 0.0
-	for id in items:
-		total += ItemRegistry.get_item(id).get("weight", 0.0) as float
+	for i in items.size():
+		total += _item_weight(i)
 	if _equipment != null:
 		for slot in _equipment.equipped:
 			var id: String = _equipment.equipped[slot]
@@ -59,9 +61,19 @@ func current_weight() -> float:
 				total += ItemRegistry.get_item(id).get("weight", 0.0) as float
 	return total
 
-func can_add(id: String) -> bool:
+
+func _item_weight(index: int) -> float:
+	var id: String = items[index]
+	var base: float = ItemRegistry.get_item(id).get("weight", 0.0) as float
+	var uid: int = item_uids[index]
+	if chest_contents.has(uid):
+		for content_id in chest_contents[uid]:
+			base += ItemRegistry.get_item(content_id).get("weight", 0.0) as float
+	return base
+
+func can_add(id: String, extra_weight: float = 0.0) -> bool:
 	var weight: float = ItemRegistry.get_item(id).get("weight", 0.0)
-	return current_weight() + weight <= carry_capacity()
+	return current_weight() + weight + extra_weight <= carry_capacity()
 
 func add_item(id: String) -> bool:
 	if not can_add(id):
@@ -85,6 +97,7 @@ func remove_item(id: String) -> bool:
 	item_uids.remove_at(idx)
 	container_contents.erase(uid)
 	item_durability.erase(uid)
+	chest_contents.erase(uid)
 	_refresh_ui()
 	return true
 
@@ -161,7 +174,7 @@ func _refresh_ui() -> void:
 		for id in by_category[cat]:
 			var data := ItemRegistry.get_item(id)
 			var qty: int = counts[id]
-			var unit_weight: float = data.get("weight", 0.0) as float
+			var unit_weight: float = _item_weight(items.find(id))
 			var prefix := "%dx  " % qty if qty > 1 else ""
 			var fill_suffix := ""
 			if data.get("category", "") == "container":
