@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://btoovjkj3xjl5"]
+[gd_scene load_steps=8 format=3 uid="uid://btoovjkj3xjl5"]
 
 [ext_resource type="MeshLibrary" uid="uid://b1v6rer8kbtx7" path="res://scenes/TileMeshLibrary.tres" id="1_f3dok"]
 [ext_resource type="Script" uid="uid://rkab7pdwh255" path="res://scenes/map/map_generator.gd" id="2_yjn61"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://c5tmf0gft6pk0" path="res://scenes/map/map_parameters.gd" id="4_q6l7m"]
 [ext_resource type="Script" uid="uid://bgu3n8ls2do7n" path="res://scenes/map/enemy_configurator.gd" id="5_x7igk"]
 [ext_resource type="Script" uid="uid://dt1liv12pgbe4" path="res://scenes/map/occupancy_map.gd" id="6_occmap"]
+[ext_resource type="Script" path="res://scenes/map/structure_configurator.gd" id="7_structconf"]
 
 [node name="GridMap" type="GridMap"]
 mesh_library = ExtResource("1_f3dok")
@@ -20,6 +21,9 @@ script = ExtResource("2_yjn61")
 
 [node name="OccupancyMap" type="Node" parent="."]
 script = ExtResource("6_occmap")
+
+[node name="StructureConfigurator" type="Node" parent="."]
+script = ExtResource("7_structconf")
 
 [node name="ItemConfigurator" type="Node" parent="."]
 script = ExtResource("3_7ixis")

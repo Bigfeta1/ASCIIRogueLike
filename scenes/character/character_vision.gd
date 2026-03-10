@@ -47,7 +47,8 @@ func can_see(target_pos: Vector2i) -> bool:
 		var tile_id := TileRegistry.get_original_tile(cell3, _grid_map.get_cell_item(cell3))
 		if TileRegistry.blocks_vision(tile_id):
 			return false
-		if _occupancy_map.is_solid(cell):
+		var solid: Node = _occupancy_map.get_solid(cell)
+		if solid != null and solid.blocks_vision:
 			return false
 	return true
 

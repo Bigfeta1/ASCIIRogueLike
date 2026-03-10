@@ -1,7 +1,7 @@
 extends Node3D
 
 enum ActionState { MOVEMENT, LOOK, MENU, INTERACTION }
-enum CharacterType { SURGEON, ENEMY }
+enum CharacterType { SURGEON, ENEMY, STRUCTURE }
 enum CharacterRole { PLAYER, NPC }
 
 @export var character_type: CharacterType = CharacterType.SURGEON
@@ -11,6 +11,17 @@ var faction: String = ""
 var action_state: ActionState = ActionState.MOVEMENT
 var defeated_sprite: String = ""
 var corpse_item_id: String = ""
+
+# Traversal properties — characters always block vision and have no sound dampening.
+# Structures set these from structures.json via StructureConfigurator.
+var sound_dampening: int = 0
+var blocks_vision: bool = true
+
+# Structure-only fields — set by StructureConfigurator from structures.json
+var structure_id: String = ""
+var display_name: String = ""
+var description: String = ""
+var drops: Array = []
 
 # Component references — the single place to resolve siblings.
 # All other nodes access components through these rather than get_node() by name.
@@ -41,11 +52,15 @@ func _ready() -> void:
 	# Components resolve siblings themselves in their own _ready(); only scene-external
 	# refs are injected here so no component hardcodes scene paths.
 	var occupancy_map: Node = grid_map.get_node("OccupancyMap")
-	combat.setup(grid_map, canvas_layer, camera)
 	movement.setup(grid_map, scene.get_node("GameLogic/TurnOrder") if character_role == CharacterRole.PLAYER else null, occupancy_map)
 	lifecycle.setup(occupancy_map)
-	sound.setup(grid_map)
+	combat.setup(grid_map, canvas_layer, camera)
 	vision.setup(grid_map, occupancy_map)
+
+	if character_type == CharacterType.STRUCTURE:
+		return
+
+	sound.setup(grid_map)
 	interact_cursor.setup(grid_map)
 	look_cursor.setup(grid_map, camera, canvas_layer.get_node("LookModeInfo"))
 

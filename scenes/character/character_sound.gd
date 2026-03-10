@@ -7,6 +7,7 @@ const RADIUS = 5
 var _grid_map: GridMap
 var _character: Node
 var _movement: Node
+var _occupancy_map: Node
 
 var _waves: Array = []
 var _timer: Timer
@@ -17,6 +18,7 @@ func _ready() -> void:
 
 func setup(grid_map: GridMap) -> void:
 	_grid_map = grid_map
+	_occupancy_map = grid_map.get_node("OccupancyMap")
 	_movement = _character.get_node("CharacterMovement")
 	_timer.one_shot = false
 	_timer.wait_time = WAVE_INTERVAL
@@ -60,6 +62,10 @@ func _build_rings(origin: Vector2i) -> Dictionary:
 
 			var true_tile := TileRegistry.get_original_tile(neighbour, _grid_map.get_cell_item(neighbour))
 			var extra_dampening := TileRegistry.get_sound_dampening(true_tile)
+			var neighbour_pos := Vector2i(neighbour.x, neighbour.z)
+			var solid: Node = _occupancy_map.get_solid(neighbour_pos)
+			if solid != null:
+				extra_dampening += solid.sound_dampening
 			var n_remaining := cur_remaining - 1 - extra_dampening
 
 			if remaining.get(neighbour, -INF) >= n_remaining:
@@ -87,17 +93,14 @@ func _apply_ring(wave: Dictionary) -> void:
 
 func _alert_npc_at(cell: Vector3i, intensity: int, origin: Vector2i) -> void:
 	var cell_pos := Vector2i(cell.x, cell.z)
-	for node in _character.get_parent().get_children():
-		if node == _character:
-			continue
-		var movement := node.get_node_or_null("CharacterMovement")
-		if movement == null or movement.grid_pos != cell_pos:
-			continue
-		var ai := node.get_node_or_null("CharacterAI")
-		if ai == null:
-			continue
-		if ai.disposition == ai.Disposition.HOSTILE and ai.life_state == ai.LifeState.ALIVE and ai.behavior_state != ai.BehaviorState.COMBAT:
-			ai.hear_sound(intensity, origin)
+	var occupant: Node = _occupancy_map.get_solid(cell_pos)
+	if occupant == null or occupant == _character:
+		return
+	var ai: Node = occupant.get_node_or_null("CharacterAI")
+	if ai == null:
+		return
+	if ai.disposition == ai.Disposition.HOSTILE and ai.life_state == ai.LifeState.ALIVE and ai.behavior_state != ai.BehaviorState.COMBAT:
+		ai.hear_sound(intensity, origin)
 
 func _restore_ring(wave: Dictionary, r: int) -> void:
 	for cell in wave.rings[r]:

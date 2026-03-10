@@ -1,0 +1,73 @@
+extends Node
+
+const CHARACTER_SCENE = preload("res://scenes/character/character.tscn")
+const STRUCTURES_DATA_PATH = "res://data/structures.json"
+
+const MAP_WIDTH: int = 80
+const MAP_HEIGHT: int = 40
+
+var _defs: Dictionary = {}  # id -> definition dict
+var _grid_map: GridMap
+
+
+func _ready() -> void:
+	_grid_map = get_parent()
+	var file := FileAccess.open(STRUCTURES_DATA_PATH, FileAccess.READ)
+	var records: Array = JSON.parse_string(file.get_as_text())
+	file.close()
+	for record in records:
+		_defs[record["id"]] = record
+
+
+func spawn_one(id: String, pos: Vector2i, hp_override: int = -1) -> Node:
+	var def: Dictionary = _defs.get(id, {})
+	if def.is_empty():
+		return null
+	var main := _grid_map.get_parent()
+	var entity: Node = CHARACTER_SCENE.instantiate()
+	entity.character_type = entity.CharacterType.STRUCTURE
+	entity.character_role = entity.CharacterRole.NPC
+	entity.structure_id = id
+	entity.display_name = def.get("name", id)
+	entity.description = def.get("description", "")
+	entity.sound_dampening = def.get("sound_dampening", 0)
+	entity.blocks_vision = def.get("blocks_vision", false)
+	entity.drops = def.get("drops", [])
+	main.add_child(entity)
+	entity.name = def.get("name", id)
+	entity.add_to_group("structures")
+	entity.get_node("CharacterSprite").set_texture(def.get("sprite", ""))
+	var vitals := entity.get_node("CharacterVitals")
+	var hp: int = hp_override if hp_override >= 0 else def.get("hp", 10)
+	vitals.hp = hp
+	vitals.hp_max = def.get("hp", 10)
+	var levels := entity.get_node("CharacterLevels")
+	levels.muscle = def.get("muscle", 10)
+	entity.get_node("CharacterMovement").place(pos)
+	return entity
+
+
+func scatter_trees(home_rects: Array) -> void:
+	var x_left := -(MAP_WIDTH / 2)
+	var x_right := MAP_WIDTH / 2
+	var z_top := -(MAP_HEIGHT / 2)
+	var z_bottom := MAP_HEIGHT / 2
+	var floor_cells: Array[Vector3i] = []
+	var tile_floor: int = TileRegistry.get_tile_id("Floor")
+	for x in range(x_left, x_right):
+		for z in range(z_top, z_bottom):
+			var cell := Vector3i(x, 0, z)
+			if _grid_map.get_cell_item(cell) != tile_floor:
+				continue
+			var in_house := false
+			for rect in home_rects:
+				if rect.has_point(Vector2i(x, z)):
+					in_house = true
+					break
+			if not in_house:
+				floor_cells.append(cell)
+	floor_cells.shuffle()
+	var tree_count := randi_range(15, 60)
+	for i in range(mini(tree_count, floor_cells.size())):
+		var cell := floor_cells[i]
+		spawn_one("tree", Vector2i(cell.x, cell.z))

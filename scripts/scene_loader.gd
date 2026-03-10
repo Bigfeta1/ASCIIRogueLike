@@ -65,7 +65,7 @@ func _on_zone_exit(direction: Vector2i) -> void:
 	var player := _main.get_node("Character")
 	var enemies_to_free: Array = []
 	for child in _main.get_children():
-		if child != player and child.get_node_or_null("CharacterAI") != null:
+		if child != player and child.get_node_or_null("CharacterAI") != null and child.character_type != child.CharacterType.STRUCTURE:
 			enemies_to_free.append(child)
 	for enemy in enemies_to_free:
 		WorldState.add_off_screen_enemy(WorldState.serialize_enemy(enemy, current_zone))
@@ -80,11 +80,11 @@ func _on_zone_exit(direction: Vector2i) -> void:
 	for item in items_to_free:
 		item.queue_free()
 
-	# Save and clear trees
-	var trees_to_free: Array = get_tree().get_nodes_in_group("trees")
-	WorldState.save_zone_trees(current_zone, trees_to_free)
-	for tree in trees_to_free:
-		tree.queue_free()
+	# Save and clear structures
+	var structures_to_free: Array = get_tree().get_nodes_in_group("structures")
+	WorldState.save_zone_structures(current_zone, structures_to_free)
+	for s in structures_to_free:
+		s.queue_free()
 
 	# Clear TileRegistry overlay state and occupancy before wiping the grid
 	# (queue_free is deferred so _exit_tree hasn't run yet — clear manually)

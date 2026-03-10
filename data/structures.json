@@ -1,0 +1,13 @@
+[
+	{
+		"id": "tree",
+		"name": "Oak Tree",
+		"hp": 100,
+		"muscle": 14,
+		"description": "A sturdy oak tree. Looks like it could be chopped for logs.",
+		"sprite": "res://assets/images/tiles/spr_tree1.png",
+		"sound_dampening": 1,
+		"blocks_vision": true,
+		"drops": ["logs"]
+	}
+]

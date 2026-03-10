@@ -79,7 +79,8 @@ MainScene (Node3D)
 │   ├── ItemConfigurator
 │   ├── MapParameters           # Per-zone time tracking
 │   ├── OccupancyMap            # Spatial index: grid_pos → solid/passable occupants
-│   └── [trees and world items spawn here at runtime]
+│   ├── StructureConfigurator   # Spawns/restores structure entities from structures.json
+│   └── [world items spawn here at runtime]
 ├── Character (player)          # character.tscn — see §5
 ├── GameLogic (Node)
 │   └── TurnOrder
@@ -90,16 +91,25 @@ MainScene (Node3D)
 
 ## 5. Character Architecture
 
-Every character (player and NPC) is a `Node3D` using `character.gd` as the base, with child nodes for each subsystem.
+Every character (player, NPC, and structure) is a `Node3D` using `character.gd` as the base, with child nodes for each subsystem.
 
 `character.gd` is a **component manifest**: it holds identity fields (`faction`, `action_state`, `defeated_sprite`, `corpse_item_id`) and `@onready` refs to every sibling component. External nodes access components through these refs rather than calling `get_node()` by name themselves. There are no delegate methods — callers go directly to the component (e.g. `character.interaction.open_inspect_modal(...)`).
+
+### CharacterType routing in `_ready()`
+
+`character.gd._ready()` routes setup based on `character_type`:
+
+- **`SURGEON` / `ENEMY`**: full setup — movement, lifecycle, combat, vision, sound, cursors. PLAYER additionally sets up vitals UI, inventory, interaction, and levels. NPC additionally calls `ai.setup()` to register with TurnOrder.
+- **`STRUCTURE`**: minimal setup — movement, lifecycle, combat, vision only. Returns early. No AI, sound, interaction, inventory, equipment, or cursors. Structures are never registered with TurnOrder and take no autonomous turns.
+
+This means structures can be transitioned to `CharacterRole.PLAYER` in the future (e.g. a "control a tree" powerup) by extending the STRUCTURE branch without touching the rest of the system.
 
 ### Child Components
 
 | Node | Script | Responsibility |
 |------|--------|---------------|
 | `CharacterMovement` | `character_movement.gd` | Grid position, input handling, zone exit |
-| `CharacterSprite` | `character_sprite.gd` | Visual mesh; `set_defeated()` swaps texture, spawns blood splatter |
+| `CharacterSprite` | `character_sprite.gd` | Visual mesh; `set_defeated()` swaps texture, spawns blood splatter; `set_texture()` for structures |
 | `CharacterVitals` | `character_vitals.gd` | HP, blood pressure, heart rate, respiration, temperature |
 | `CharacterLevels` | `character_levels.gd` | 6 stats + modifiers, XP, leveling |
 | `CharacterInventory` | `character_inventory.gd` | Item list, weight, durability, container liquid contents |
@@ -120,7 +130,7 @@ Every character (player and NPC) is a `Node3D` using `character.gd` as the base,
 ```gdscript
 # character.gd
 enum ActionState { MOVEMENT, LOOK, MENU, INTERACTION }
-enum CharacterType { SURGEON, ENEMY }
+enum CharacterType { SURGEON, ENEMY, STRUCTURE }
 enum CharacterRole { PLAYER, NPC }
 
 # character_interaction.gd
@@ -323,18 +333,69 @@ regen_mod  = avg(adrenal, cardio, parasympathetic) mods
 
 ---
 
-## 12. Zone Persistence (`world_state.gd`)
+## 12. Structure System
+
+Structures (trees, and in future: walls, doors, boulders, etc.) are `character.tscn` instances with `CharacterType.STRUCTURE`. They are not tiles — the GridMap cell underneath is always Floor. Structures own their traversal properties directly.
+
+### `data/structures.json`
+```json
+{
+  "id": "tree",
+  "name": "Oak Tree",
+  "hp": 100,
+  "muscle": 14,
+  "description": "A sturdy oak tree.",
+  "sprite": "res://assets/images/tiles/spr_tree1.png",
+  "sound_dampening": 1,
+  "blocks_vision": true,
+  "drops": ["logs"]
+}
+```
+
+### Structure fields on `character.gd`
+| Field | Type | Purpose |
+|-------|------|---------|
+| `structure_id` | `String` | Matches the `id` in `structures.json` |
+| `display_name` | `String` | Human-readable name shown in interaction menus |
+| `description` | `String` | Shown in inspect modal |
+| `sound_dampening` | `int` | Added to sound wave attenuation when the wave passes through this cell |
+| `blocks_vision` | `bool` | Whether LOS rays are stopped at this cell (true for all alive characters by default) |
+| `drops` | `Array` | Item IDs added to the attacker's inventory on destruction |
+
+### `StructureConfigurator` (`scenes/map/structure_configurator.gd`)
+- Reads `structures.json` on `_ready()`
+- `spawn_one(id, pos, hp_override)` — instantiates `character.tscn`, sets all structure fields, calls `CharacterSprite.set_texture()`, calls `movement.place()`
+- `scatter_trees(home_rects)` — called by `MapGenerator`; picks random floor cells outside houses, spawns trees
+- Structures are added to the `"structures"` group for zone serialization
+
+### Traversal
+- **Movement blocking**: solid registration in `OccupancyMap` — `CharacterMovement._check_move()` sees the structure as a solid occupant and blocks or routes to attack
+- **Vision blocking**: `CharacterVision.can_see()` checks `solid.blocks_vision` per cell
+- **Sound dampening**: `CharacterSound._build_rings()` adds `solid.sound_dampening` to attenuation per neighbour cell
+
+### Combat against structures
+- Requires `pending_target` lock (player must select "Chop" or "Lock On" first)
+- `CharacterCombat._apply_damage()` detects `CharacterType.STRUCTURE` and routes to `_apply_damage_to_structure()`
+- No evasion, no equipment — fixed DC 10 hit roll; block uses structure's `muscle` stat
+- On death: drops are added to attacker inventory, `CharacterLifecycle.die()` calls `queue_free()` (no corpse, no splatter)
+
+### Zone persistence
+`WorldState.save_zone_structures()` records `{ id, grid_pos, hp }` per structure. On re-entry, `MapGenerator` calls `StructureConfigurator.spawn_one()` per record with the saved HP, so damaged-but-alive structures persist correctly.
+
+---
+
+## 13. Zone Persistence (`world_state.gd`)
 
 When the player exits a zone:
 1. All enemy states are serialized to `off_screen_enemies` (position, AI state, patrol info, stats, HP, inventory with durability/liquids, blood splatter flag)
-2. Tile layout, items, and tree positions stored in `zones[zone_id]`
-3. On re-entry: `EnemyConfigurator` restores enemies from saved data; `MapGenerator` restores tiles and trees
+2. Tile layout, items, and structure states stored in `zones[zone_id]`
+3. On re-entry: `EnemyConfigurator` restores enemies; `MapGenerator` restores tiles and calls `StructureConfigurator` for structures
 
 Off-screen enemies have patrol movement simulated (1 step/turn) via `tick_off_screen_enemies()`.
 
 ---
 
-## 13. Tile System (`tile_registry.gd`)
+## 14. Tile System (`tile_registry.gd`)
 
 Each tile has:
 ```json
@@ -358,7 +419,7 @@ Use `TileRegistry.get_original_tile(cell, current_tile_id)` to get the real tile
 
 ---
 
-## 14. Data Files
+## 15. Data Files
 
 ### `data/items.json`
 ```json
@@ -395,9 +456,26 @@ Categories: `melee`, `ranged`, `armor`, `clothes`, `medicine`, `container`, `cam
 }
 ```
 
+### `data/structures.json`
+```json
+{
+  "id": "tree",
+  "name": "Oak Tree",
+  "hp": 100,
+  "muscle": 14,
+  "description": "A sturdy oak tree.",
+  "sprite": "res://assets/images/tiles/spr_tree1.png",
+  "sound_dampening": 1,
+  "blocks_vision": true,
+  "drops": ["logs"]
+}
+```
+
+See §12 for full structure system documentation.
+
 ---
 
-## 15. UI Systems
+## 16. UI Systems
 
 | UI Node | Script | Purpose |
 |---------|--------|---------|
@@ -410,7 +488,7 @@ Categories: `melee`, `ranged`, `armor`, `clothes`, `medicine`, `container`, `cam
 
 ---
 
-## 16. Input Map
+## 17. Input Map
 
 | Key | Action |
 |-----|--------|
@@ -424,7 +502,7 @@ Categories: `melee`, `ranged`, `armor`, `clothes`, `medicine`, `container`, `cam
 
 ---
 
-## 17. Common Patterns
+## 18. Common Patterns
 
 ### Accessing a sibling component
 
@@ -486,7 +564,7 @@ func _ready() -> void:
 
 ---
 
-## 18. Blood Splatter
+## 19. Blood Splatter
 
 Blood splatter is a `MeshInstance3D` named `"BloodSplatter"` added as a child of the Character node on death (by `character_sprite.gd`). It has no script. To find it:
 
@@ -498,7 +576,7 @@ The camera is top-down; sprites are horizontal `PlaneMesh` instances. Do **not**
 
 ---
 
-## 19. Ownership Rules
+## 20. Ownership Rules
 
 These are hard rules about which node is the single authority for each piece of state. 
 Do not read or mutate these from outside the owning node unless the rule explicitly permits it.
@@ -633,7 +711,7 @@ No system may track occupancy independently. `CharacterVision.can_see()` and `Ch
 
 ---
 
-## 20. Known Limitations and Future Pressure Points
+## 21. Known Limitations and Future Pressure Points
 
 ### Scene-name coupling in component lookup — ~~resolved~~
 
@@ -647,8 +725,8 @@ Sibling lookups (`get_parent().get_node("CharacterX")`) in component `_ready()` 
 
 `OccupancyMap` (`scenes/map/occupancy_map.gd`) is a child of GridMap that tracks solid and passable occupants per cell. It replaced the scene-tree scan hacks in `CharacterVision.can_see()` and `CharacterMovement._check_move()`.
 
-- **Vision occlusion** — ~~resolved~~. `can_see()` queries `OccupancyMap.is_solid()`. Dead/KO bodies are passable and do not block LOS.
-- **Pathfinding** (`AStarGrid2D`) is still built once in `_ready()` and never updated. Destroyed trees, opened doors, or any tile change will not be reflected. This is still a known placeholder.
+- **Vision occlusion** — ~~resolved~~. `can_see()` checks `solid.blocks_vision` per cell via OccupancyMap. Dead/KO bodies are passable and do not block LOS. Structures set `blocks_vision` from their data definition.
+- **Pathfinding** (`AStarGrid2D`) is still built once in `_ready()` and never updated. It marks unwalkable tiles as solid but does not account for structure entities (trees, future walls). Enemies can pathfind through cells occupied by structures. This is a known placeholder — the fix is to also mark OccupancyMap solid cells as obstacles when building the grid.
 
 ---
 

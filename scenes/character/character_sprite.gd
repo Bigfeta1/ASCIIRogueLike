@@ -16,6 +16,15 @@ func _ready() -> void:
 		character.CharacterType.ENEMY:
 			if texture_enemy_soldier:
 				mat.albedo_texture = texture_enemy_soldier
+		character.CharacterType.STRUCTURE:
+			pass  # texture set later via set_texture() from StructureConfigurator
+
+
+func set_texture(path: String) -> void:
+	var mat := material_override as StandardMaterial3D
+	if mat == null or path == "":
+		return
+	mat.albedo_texture = load(path)
 
 func set_defeated(sprite_path: String) -> void:
 	print("[SPRITE] set_defeated path='%s'" % sprite_path)

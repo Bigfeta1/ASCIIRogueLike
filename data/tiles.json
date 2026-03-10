@@ -36,10 +36,4 @@
 		"sound_dampening": 0,
 		"blocks_vision": false },
 
-	"5": {
-		"name": "Tree",
-		"description": "A gnarled tree.",
-		"walkable": false,
-		"sound_dampening": 1,
-		"blocks_vision": true },
 }

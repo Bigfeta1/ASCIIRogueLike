@@ -27,6 +27,10 @@ func die(target: Node) -> void:
 	_disable_active_components(target, ai)
 	var movement := target.get_node("CharacterMovement")
 	_occupancy_map.unregister_solid(movement.grid_pos, target)
+	if target.character_type == target.CharacterType.STRUCTURE:
+		died.emit(target)
+		target.queue_free()
+		return
 	_occupancy_map.register_passable(movement.grid_pos, target)
 	if target.corpse_item_id != "":
 		target.get_node("CharacterInventory").add_item(target.corpse_item_id)

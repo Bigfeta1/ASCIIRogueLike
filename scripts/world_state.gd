@@ -88,20 +88,25 @@ func load_zone_items(zone_id: Vector2i) -> Array:
 	return zones[zone_id].get("items", [])
 
 
-# --- Zone tree persistence ---
+# --- Zone structure persistence ---
 
-func save_zone_trees(zone_id: Vector2i, tree_nodes: Array) -> void:
+func save_zone_structures(zone_id: Vector2i, structure_nodes: Array) -> void:
 	var records: Array = []
-	for tree in tree_nodes:
-		records.append(tree.grid_pos)
+	for s in structure_nodes:
+		var vitals: Node = s.get_node_or_null("CharacterVitals")
+		records.append({
+			"id": s.structure_id,
+			"grid_pos": s.movement.grid_pos,
+			"hp": vitals.hp if vitals != null else 0
+		})
 	if not zones.has(zone_id):
-		zones[zone_id] = {"tiles": {}, "items": [], "trees": []}
-	zones[zone_id]["trees"] = records
+		zones[zone_id] = {"tiles": {}, "items": [], "structures": []}
+	zones[zone_id]["structures"] = records
 
-func load_zone_trees(zone_id: Vector2i) -> Array:
+func load_zone_structures(zone_id: Vector2i) -> Array:
 	if not zones.has(zone_id):
 		return []
-	return zones[zone_id].get("trees", [])
+	return zones[zone_id].get("structures", [])
 
 
 # --- Enemy persistence ---

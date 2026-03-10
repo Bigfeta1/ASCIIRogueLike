@@ -279,7 +279,8 @@ func _update_target_cursor() -> void:
 	if pending_target == null or not is_instance_valid(pending_target):
 		_unlock()
 		return
-	var world := _grid_map.to_global(_grid_map.map_to_local(Vector3i(pending_target.grid_pos.x, 0, pending_target.grid_pos.y)))
+	var target_pos: Vector2i = pending_target.get_node("CharacterMovement").grid_pos
+	var world := _grid_map.to_global(_grid_map.map_to_local(Vector3i(target_pos.x, 0, target_pos.y)))
 	_target_cursor.global_position = Vector3(world.x, 0.0, world.z)
 
 
@@ -292,8 +293,8 @@ func _execute_pending_action() -> void:
 				return
 			var combat: Node = _character.combat
 			if combat != null:
-				combat.bump_attack(pending_target.grid_pos)
-				combat._apply_damage_to_tree(pending_target)
+				combat.bump_attack(pending_target.get_node("CharacterMovement").grid_pos)
+				combat._apply_damage(pending_target)
 			_unlock()
 			pending_action = ""
 			pending_target = null
@@ -325,34 +326,31 @@ func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_
 	_cursor_entities.clear()
 	_selected_entity = {}
 
-	for node in _character.get_parent().get_children():
-		if node == _character:
-			continue
-		var other_movement := node.get_node_or_null("CharacterMovement")
-		if other_movement == null or other_movement.grid_pos != cursor_pos:
-			continue
-		var other_ai := node.get_node_or_null("CharacterAI")
-		if look_only:
-			var char_actions: Array[String] = ["Inspect"]
-			if pending_target == node:
-				char_actions.append("Unlock Target")
-			else:
-				char_actions.append("Lock On")
-			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": char_actions, "data": {} })
-		elif other_ai != null and other_ai.life_state != other_ai.LifeState.ALIVE:
-			_cursor_entities.append({ "name": node.name, "type": "character", "node": node, "actions": ["Loot", "Inspect"], "data": {} })
-
-	for node in _character.get_parent().get_children():
-		if node.has_method("take_damage") and node.grid_pos == cursor_pos:
-			var tree_actions: Array[String] = []
+	var occupancy_map: Node = _grid_map.get_node("OccupancyMap")
+	var solid: Node = occupancy_map.get_solid(cursor_pos)
+	if solid != null and solid != _character:
+		if solid.character_type == solid.CharacterType.STRUCTURE:
+			var structure_actions: Array[String] = []
 			if not look_only:
-				tree_actions.append("Chop")
-			tree_actions.append("Inspect")
-			if pending_target == node:
-				tree_actions.append("Unlock Target")
+				structure_actions.append("Chop")
+			structure_actions.append("Inspect")
+			if pending_target == solid:
+				structure_actions.append("Unlock Target")
 			else:
-				tree_actions.append("Lock On")
-			_cursor_entities.append({ "name": "Tree", "type": "tree", "node": node, "actions": tree_actions, "data": { "name": "Tree", "description": "A gnarled tree. Looks like it could be chopped for logs." } })
+				structure_actions.append("Lock On")
+			var struct_data := { "name": solid.display_name, "description": solid.description }
+			_cursor_entities.append({ "name": solid.display_name, "type": "structure", "node": solid, "actions": structure_actions, "data": struct_data })
+		else:
+			var other_ai := solid.get_node_or_null("CharacterAI")
+			if look_only:
+				var char_actions: Array[String] = ["Inspect"]
+				if pending_target == solid:
+					char_actions.append("Unlock Target")
+				else:
+					char_actions.append("Lock On")
+				_cursor_entities.append({ "name": solid.name, "type": "character", "node": solid, "actions": char_actions, "data": {} })
+			elif other_ai != null and other_ai.life_state != other_ai.LifeState.ALIVE:
+				_cursor_entities.append({ "name": solid.name, "type": "character", "node": solid, "actions": ["Loot", "Inspect"], "data": {} })
 
 	var tile_actions: Array[String] = ["Inspect"]
 	if not look_only:
@@ -425,18 +423,18 @@ func _on_tile_action_selected(action: String) -> void:
 		interaction_sub_state = InteractionSubState.NONE
 		_interact_cursor.deactivate()
 	elif action == "Chop":
-		var tree_node: Node = _selected_entity.get("node", null)
+		var structure_node: Node = _selected_entity.get("node", null)
 		pending_action = "chop"
 		_fill_modal.visible = false
 		_character.action_state = _character.ActionState.MOVEMENT
 		interaction_sub_state = InteractionSubState.NONE
 		_interact_cursor.deactivate()
-		_lock_on(tree_node)
-		if tree_node != null:
+		_lock_on(structure_node)
+		if structure_node != null:
 			var combat: Node = _character.combat
 			if combat != null:
-				combat.bump_attack(tree_node.grid_pos)
-				combat._apply_damage_to_tree(tree_node)
+				combat.bump_attack(structure_node.get_node("CharacterMovement").grid_pos)
+				combat._apply_damage(structure_node)
 		_character.movement.moved.emit()
 	elif action == "Loot":
 		var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()

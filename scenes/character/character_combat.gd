@@ -75,6 +75,9 @@ func _apply_damage(target: Node) -> void:
 	var vitals := target.get_node_or_null("CharacterVitals")
 	if vitals == null:
 		return
+	if target.character_type == target.CharacterType.STRUCTURE:
+		_apply_damage_to_structure(target, vitals)
+		return
 	var attacker_levels := _character.get_node("CharacterLevels")
 	var defender_levels := target.get_node("CharacterLevels")
 
@@ -180,15 +183,15 @@ func _apply_damage(target: Node) -> void:
 		target.get_node("CharacterLifecycle").die(target)
 
 
-func _apply_damage_to_tree(tree: Node) -> void:
+func _apply_damage_to_structure(target: Node, vitals: Node) -> void:
 	var attacker_levels := _character.get_node("CharacterLevels")
 	var attacker_equip := _character.get_node_or_null("CharacterEquipment")
 	var weapon: Dictionary = attacker_equip.weapon_info() if attacker_equip else {"damage_die": 3, "weight_class": "light", "hit_bonus": 0}
 
-	# Hit roll — tree has no evasion
+	# Hit roll — structures have no evasion, fixed DC 10
 	var hit_roll: int = randi_range(1, 20) + attacker_levels.hit_mod() + weapon.hit_bonus
 	if hit_roll < 10:
-		_spawn_label(tree, "Miss!", Color.GRAY)
+		_spawn_label(target, "Miss!", Color.GRAY)
 		return
 
 	# Damage roll
@@ -203,26 +206,33 @@ func _apply_damage_to_tree(tree: Node) -> void:
 	else:
 		damage = maxi(1, randi_range(1, weapon.damage_die) + muscle_mod)
 
-	# Block — tree only has block
-	var block_check: int = randi_range(1, 20) + tree.block_mod
-	if block_check >= 19:
-		var block_roll: int = randi_range(1, 6) + tree.block_mod
-		damage = maxi(1, damage - block_roll)
+	# Block — uses structure's muscle stat
+	var structure_levels := target.get_node_or_null("CharacterLevels")
+	if structure_levels != null:
+		var block_mod: int = structure_levels.block_mod()
+		var block_check: int = randi_range(1, 20) + block_mod
+		if block_check >= 19:
+			damage = maxi(1, damage - (randi_range(1, 6) + block_mod))
 
-	# Durability cost
+	# Weapon durability cost
 	if attacker_equip != null:
 		var cur_dur: int = attacker_equip.get_equipped_durability("r_hand")
 		if cur_dur != -1:
 			attacker_equip.set_equipped_durability("r_hand", cur_dur - 2)
 
 	if is_crit:
-		_spawn_crit_label(tree, damage)
+		_spawn_crit_label(target, damage)
 	else:
-		_spawn_damage_label(tree, damage)
-	var inventory := _character.get_node_or_null("CharacterInventory")
-	if inventory != null:
-		inventory.add_item("logs")
-	tree.take_damage(damage, _character)
+		_spawn_damage_label(target, damage)
+
+	vitals.hp = maxi(0, vitals.hp - damage)
+	if vitals.hp <= 0:
+		# Give drops to attacker before the structure is freed
+		var attacker_inv := _character.get_node_or_null("CharacterInventory")
+		if attacker_inv != null:
+			for drop in target.drops:
+				attacker_inv.add_item(drop)
+		target.get_node("CharacterLifecycle").die(target)
 
 
 func _spawn_label(target: Node, text: String, color: Color) -> void:

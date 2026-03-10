@@ -94,26 +94,26 @@ func _check_move(delta: Vector2i) -> void:
 		return
 	var occupant: Node = _occupancy_map.get_solid(target)
 	if occupant != null:
-		if not occupant.has_method("take_damage"):
-			# Alive character — check for combat or block
-			var other_ai := occupant.get_node_or_null("CharacterAI")
-			var different_faction: bool = occupant.faction != _character.faction
-			if other_ai != null and other_ai.disposition == other_ai.Disposition.HOSTILE and different_faction:
-				occupant.get_node("CharacterLifecycle").enter_combat(occupant)
+		if occupant.character_type == occupant.CharacterType.STRUCTURE:
+			# Structure — requires pending_target lock to attack
+			if _character.interaction.pending_target == occupant and _character.action_state == _character.ActionState.MOVEMENT:
 				_face(delta)
 				var combat := _character.get_node_or_null("CharacterCombat")
 				if combat != null:
-					combat._apply_damage(occupant)
 					combat.bump_attack(target)
+					combat._apply_damage(occupant)
 				moved.emit()
 			return
-		# Tree — check for targeted attack
-		if _character.interaction.pending_target == occupant and _character.action_state == _character.ActionState.MOVEMENT:
+		# Alive character — check for combat or block
+		var other_ai := occupant.get_node_or_null("CharacterAI")
+		var different_faction: bool = occupant.faction != _character.faction
+		if other_ai != null and other_ai.disposition == other_ai.Disposition.HOSTILE and different_faction:
+			occupant.get_node("CharacterLifecycle").enter_combat(occupant)
 			_face(delta)
 			var combat := _character.get_node_or_null("CharacterCombat")
 			if combat != null:
+				combat._apply_damage(occupant)
 				combat.bump_attack(target)
-				combat._apply_damage_to_tree(occupant)
 			moved.emit()
 		return
 	_occupancy_map.move_solid(grid_pos, target, _character)
