@@ -22,6 +22,7 @@ var structure_id: String = ""
 var display_name: String = ""
 var description: String = ""
 var sprite_path: String = ""
+var inspect_sprite_path: String = ""
 var drops: Array = []
 var structure_actions: Array = []
 
@@ -76,6 +77,8 @@ func _ready() -> void:
 		inventory.add_item("field_bandage")
 		inventory.add_item("field_bandage")
 		inventory.add_item("field_bandage")
+		inventory.add_item("tinder_box")
+		inventory.add_item("logs")
 	else:
 		var turn_order: Node = scene.get_node("GameLogic/TurnOrder")
 		ai.setup(grid_map, turn_order)

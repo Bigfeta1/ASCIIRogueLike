@@ -81,6 +81,8 @@ func _do_move() -> void:
 				_interact_cursor.move(delta)
 		elif _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.DROPPING_ITEM:
 			_interact_cursor.move(delta)
+		elif _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.PLACE_CAMPFIRE:
+			_interact_cursor.move(delta)
 
 
 func _check_move(delta: Vector2i) -> void:
@@ -152,6 +154,7 @@ func _snap() -> void:
 	var local := _grid_map.map_to_local(Vector3i(grid_pos.x, 0, grid_pos.y))
 	var world := _grid_map.to_global(local)
 	_character.position.x = world.x
+	_character.position.y = 0.01
 	_character.position.z = world.z
 
 func _world_to_grid(world: Vector3) -> Vector2i:

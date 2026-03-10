@@ -31,6 +31,7 @@ func spawn_one(id: String, pos: Vector2i, hp_override: int = -1, inventory_overr
 	entity.display_name = def.get("name", id)
 	entity.description = def.get("description", "")
 	entity.sprite_path = def.get("sprite", "")
+	entity.inspect_sprite_path = def.get("inspect_sprite", entity.sprite_path)
 	entity.sound_dampening = def.get("sound_dampening", 0)
 	entity.blocks_vision = def.get("blocks_vision", false)
 	entity.drops = def.get("drops", [])
@@ -50,7 +51,54 @@ func spawn_one(id: String, pos: Vector2i, hp_override: int = -1, inventory_overr
 	var contents: Array = inventory_override if not inventory_override.is_empty() else def.get("contents", [])
 	for item_id in contents:
 		inventory.add_item(item_id)
+	if id == "campfire":
+		_attach_fire_particles(entity)
 	return entity
+
+
+func _attach_fire_particles(entity: Node) -> void:
+	var particles := GPUParticles3D.new()
+	particles.name = "FireParticles"
+	particles.amount = 48
+	particles.lifetime = 1.2
+	particles.explosiveness = 0.0
+	particles.randomness = 0.5
+	particles.fixed_fps = 12
+	particles.position = Vector3(0.0, 0.05, 0.0)
+
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	mat.emission_sphere_radius = 0.3
+	mat.direction = Vector3(0, 0, -1)
+	mat.spread = 18.0
+	mat.initial_velocity_min = 1.2
+	mat.initial_velocity_max = 2.2
+	mat.gravity = Vector3(0, 0, 0)
+	mat.damping_min = 1.0
+	mat.damping_max = 2.0
+	mat.scale_min = 0.45
+	mat.scale_max = 0.75
+	var color_ramp := Gradient.new()
+	color_ramp.set_color(0, Color(1.0, 0.6, 0.05, 1.0))
+	color_ramp.set_color(1, Color(0.8, 0.1, 0.0, 0.0))
+	var color_tex := GradientTexture1D.new()
+	color_tex.gradient = color_ramp
+	mat.color_ramp = color_tex
+	particles.process_material = mat
+
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.55, 0.55)
+	particles.draw_pass_1 = quad
+
+	var draw_mat := StandardMaterial3D.new()
+	draw_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	draw_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	draw_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	draw_mat.vertex_color_use_as_albedo = true
+	draw_mat.albedo_color = Color.WHITE
+	quad.surface_set_material(0, draw_mat)
+
+	entity.add_child(particles)
 
 
 func scatter_chests(home_interiors: Array) -> void:

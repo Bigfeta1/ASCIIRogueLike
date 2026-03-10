@@ -13,6 +13,19 @@
 		"actions": ["Open", "Take Chest"]
 	},
 	{
+		"id": "campfire",
+		"name": "Campfire",
+		"hp": 10,
+		"muscle": 1,
+		"description": "A small campfire. Provides warmth and light.",
+		"sprite": "res://assets/images/world_items/camp/spr_campfire_without_fire.png",
+		"inspect_sprite": "res://assets/images/world_items/camp/spr_campfire_with_fire.png",
+		"sound_dampening": 0,
+		"blocks_vision": false,
+		"drops": [],
+		"actions": []
+	},
+	{
 		"id": "tree",
 		"name": "Oak Tree",
 		"hp": 100,

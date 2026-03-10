@@ -84,7 +84,7 @@ script = ExtResource("18_vision")
 script = ExtResource("3_0dpix")
 
 [node name="CharacterSprite" type="MeshInstance3D" parent="."]
-transform = Transform3D(0.9999998, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0.10765791, 0, 0.019936677)
+transform = Transform3D(0.9999998, 0, 0, 0, 0.99939066, -0.034899488, 0, 0.034899488, 0.99939066, 0.10765791, 0, 0.019936677)
 material_override = SubResource("StandardMaterial3D_q52vl")
 mesh = SubResource("PlaneMesh_l884r")
 script = ExtResource("10_sprite")

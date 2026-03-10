@@ -225,13 +225,14 @@ func _apply_damage_to_structure(target: Node, vitals: Node) -> void:
 	else:
 		_spawn_damage_label(target, damage)
 
+	# Give drops on every successful hit
+	var attacker_inv := _character.get_node_or_null("CharacterInventory")
+	if attacker_inv != null:
+		for drop in target.drops:
+			attacker_inv.add_item(drop)
+
 	vitals.hp = maxi(0, vitals.hp - damage)
 	if vitals.hp <= 0:
-		# Give drops to attacker before the structure is freed
-		var attacker_inv := _character.get_node_or_null("CharacterInventory")
-		if attacker_inv != null:
-			for drop in target.drops:
-				attacker_inv.add_item(drop)
 		target.get_node("CharacterLifecycle").die(target)
 
 

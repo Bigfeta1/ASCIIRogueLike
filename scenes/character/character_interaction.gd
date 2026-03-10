@@ -7,7 +7,7 @@ extends Node
 # action_state lives on character.gd as shared readable state (camera, movement, AI gate on it).
 # interaction_sub_state and its enum live here — only this node and CharacterMovement read it.
 
-enum InteractionSubState { NONE, MOVE_CURSOR, INTERACTION_MENU, LOOT, COLLECT_LIQUID, INSPECTION, USE_ITEM, DROPPING_ITEM }
+enum InteractionSubState { NONE, MOVE_CURSOR, INTERACTION_MENU, LOOT, COLLECT_LIQUID, INSPECTION, USE_ITEM, DROPPING_ITEM, PLACE_CAMPFIRE }
 enum ModalContext { NONE, TILE_ACTIONS, TILE_FILL, INSPECT_TILE }
 
 var interaction_sub_state: InteractionSubState = InteractionSubState.NONE
@@ -30,6 +30,7 @@ var _modal_context: ModalContext = ModalContext.NONE
 var _collect_item_id: String = ""
 var _use_item_id: String = ""
 var _drop_item_id: String = ""
+var _tinderbox_item_id: String = ""
 var _collect_liquid: String = ""
 var _tile_action_name: String = ""
 var _tile_actions: Array = []
@@ -153,6 +154,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_execute_drop()
 				get_viewport().set_input_as_handled()
 				return
+			if _character.action_state == _character.ActionState.INTERACTION and interaction_sub_state == InteractionSubState.PLACE_CAMPFIRE:
+				_execute_place_campfire()
+				get_viewport().set_input_as_handled()
+				return
 			if _character.action_state == _character.ActionState.INTERACTION and interaction_sub_state == InteractionSubState.MOVE_CURSOR:
 				if pending_action != "":
 					_execute_pending_action()
@@ -184,6 +189,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				_look_cursor.deactivate()
 			elif _character.action_state == _character.ActionState.INTERACTION and interaction_sub_state == InteractionSubState.DROPPING_ITEM:
 				_drop_item_id = ""
+				_character.action_state = _character.ActionState.MOVEMENT
+				interaction_sub_state = InteractionSubState.NONE
+				_interact_cursor.deactivate()
+			elif _character.action_state == _character.ActionState.INTERACTION and interaction_sub_state == InteractionSubState.PLACE_CAMPFIRE:
+				_tinderbox_item_id = ""
 				_character.action_state = _character.ActionState.MOVEMENT
 				interaction_sub_state = InteractionSubState.NONE
 				_interact_cursor.deactivate()
@@ -352,7 +362,7 @@ func _open_interaction_menu(cursor_pos: Vector2i = Vector2i(-9999, -9999), look_
 				structure_actions.append("Unlock Target")
 			else:
 				structure_actions.append("Lock On")
-			var struct_data := { "name": solid.display_name, "description": solid.description, "sprite": solid.sprite_path }
+			var struct_data := { "name": solid.display_name, "description": solid.description, "sprite": solid.inspect_sprite_path }
 			_cursor_entities.append({ "name": solid.display_name, "type": "structure", "node": solid, "actions": structure_actions, "data": struct_data })
 		else:
 			if look_only:
@@ -633,6 +643,40 @@ func open_chest_contents(item_id: String, uid: int) -> void:
 	interaction_sub_state = InteractionSubState.LOOT
 	_loot_modal.open(target_inventories, _character.inventory)
 	_loot_modal.visible = true
+
+
+func activate_place_campfire(item_id: String) -> void:
+	_tinderbox_item_id = item_id
+	_character_sheet.visible = false
+	_character.action_state = _character.ActionState.INTERACTION
+	interaction_sub_state = InteractionSubState.PLACE_CAMPFIRE
+	_interact_cursor.activate()
+
+
+func _execute_place_campfire() -> void:
+	if _tinderbox_item_id == "":
+		return
+	var cursor_pos: Vector2i = _interact_cursor.get_grid_pos()
+	var cell_world: Vector3 = _grid_map.to_global(_grid_map.map_to_local(Vector3i(cursor_pos.x, 0, cursor_pos.y)))
+	var logs_node: Node = null
+	for child in _grid_map.get_children():
+		if child.get("item_id") != "logs":
+			continue
+		if absf(child.global_position.x - cell_world.x) > 0.1 or absf(child.global_position.z - cell_world.z) > 0.1:
+			continue
+		logs_node = child
+		break
+	if logs_node == null:
+		return
+	logs_node.queue_free()
+	var structure_configurator: Node = _grid_map.get_node_or_null("StructureConfigurator")
+	if structure_configurator != null:
+		structure_configurator.spawn_one("campfire", cursor_pos, -1, [])
+	_tinderbox_item_id = ""
+	_character.action_state = _character.ActionState.MOVEMENT
+	interaction_sub_state = InteractionSubState.NONE
+	_interact_cursor.deactivate()
+	_character.movement.moved.emit()
 
 
 func activate_drop_item(item_id: String) -> void:

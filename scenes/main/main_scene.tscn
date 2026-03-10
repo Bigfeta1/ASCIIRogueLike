@@ -46,7 +46,7 @@ shadow_enabled = true
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 15.09041, 0.43926144)
 projection = 1
 current = true
-fov = 168.0
+fov = 167.4
 size = 230.0
 script = ExtResource("6_3mcv8")
 
@@ -884,7 +884,7 @@ autowrap_mode = 2
 script = ExtResource("1_271kv")
 
 [node name="GridMap" parent="." instance=ExtResource("2_24sno")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.0562134, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.056, 0, 0)
 
 [node name="Character" parent="." instance=ExtResource("7_a1617")]
 transform = Transform3D(3.876, 0, 0, 0, 3.876, 0, 0, 0, 3.876, -1.8585205, 8.44029, -2.5454617)

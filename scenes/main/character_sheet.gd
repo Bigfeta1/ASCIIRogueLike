@@ -215,6 +215,9 @@ func _confirm_action() -> void:
 			if data.get("category", "") == "container":
 				_inventory.get_parent().interaction.activate_map_interaction(_active_item_id)
 				return
+			if _active_item_id == "tinder_box":
+				_inventory.get_parent().interaction.activate_place_campfire(_active_item_id)
+				return
 			var vitals := _inventory.get_parent().get_node("CharacterVitals")
 			if vitals.hp < vitals.hp_max:
 				vitals.heal(5)
