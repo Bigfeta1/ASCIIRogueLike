@@ -55,6 +55,7 @@ func set_defeated(sprite_path: String) -> void:
 	splatter_mat.albedo_texture = load("res://assets/images/world_items/enemy_defeated/spr_blood_splatter.png")
 	splatter.material_override = splatter_mat
 	splatter.position = Vector3(0.0, 0.0, 0.0)
+	splatter.sorting_offset = -1.0
 	get_parent().add_child(splatter)
 
 

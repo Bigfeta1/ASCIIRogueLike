@@ -545,16 +545,16 @@ var ai = character.ai
 From **child component scripts** during `_ready()`, `@onready` refs on the parent are not yet set — use `get_node()` directly for sibling lookups:
 ```gdscript
 func _ready() -> void:
-    var character = get_parent()
-    var levels = character.get_node("CharacterLevels")  # sibling, safe
+	var character = get_parent()
+	var levels = character.get_node("CharacterLevels")  # sibling, safe
 ```
 
 Scene-external refs (GridMap, Camera, UI nodes) are **never** looked up by components directly. They are injected via `setup()` called from `character.gd._ready()`:
 ```gdscript
 func setup(grid_map: GridMap, canvas_layer: CanvasLayer, camera: Camera3D) -> void:
-    _grid_map = grid_map
-    _canvas_layer = canvas_layer
-    _camera = camera
+	_grid_map = grid_map
+	_canvas_layer = canvas_layer
+	_camera = camera
 ```
 
 After `_ready()`, child components may safely use `get_parent().<ref>` for any `@onready` var on the character.
@@ -570,7 +570,7 @@ var world  = grid_map.to_global(local)
 var tile_id = grid_map.get_cell_item(Vector3i(x, 0, y))
 var real_id = TileRegistry.get_original_tile(cell, tile_id)
 if TileRegistry.is_walkable(real_id):
-    ...
+	...
 ```
 
 ### Item lookup
@@ -583,13 +583,13 @@ var weight = data.get("weight", 0.0)
 ```gdscript
 var ai = enemy.get_node("CharacterAI")
 if ai.life_state != ai.LifeState.ALIVE:
-    # skip this enemy in turn order
+	# skip this enemy in turn order
 ```
 
 ### Signal connections (always in _ready or at instantiation, never deferred)
 ```gdscript
 func _ready() -> void:
-    get_node("CharacterMovement").moved.connect(_on_moved)
+	get_node("CharacterMovement").moved.connect(_on_moved)
 ```
 
 ---
