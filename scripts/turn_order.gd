@@ -37,11 +37,11 @@ func _ready() -> void:
 func _on_player_waited() -> void:
 	current_turn_state = TurnState.MAP_TURN
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
+	if _player.cardiovascular != null:
+		_player.cardiovascular.tick()
 	if _player.renal != null:
 		_player.renal.consume_action_cost()
 		_player.renal.tick()
-	if _player.cardiovascular != null:
-		_player.cardiovascular.tick()
 	if _player.hypothalamus != null:
 		_player.hypothalamus.tick()
 	await get_tree().create_timer(0.1).timeout
@@ -60,11 +60,11 @@ func _on_player_waited() -> void:
 func _on_player_moved() -> void:
 	current_turn_state = TurnState.MAP_TURN
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
+	if _player.cardiovascular != null:
+		_player.cardiovascular.tick()
 	if _player.renal != null:
 		_player.renal.consume_action_cost()
 		_player.renal.tick()
-	if _player.cardiovascular != null:
-		_player.cardiovascular.tick()
 	if _player.hypothalamus != null:
 		_player.hypothalamus.tick()
 	_player_actions.spend_action()

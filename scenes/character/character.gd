@@ -92,7 +92,7 @@ func _ready() -> void:
 	cardiovascular.name = "CharacterCardiovascular"
 	add_child(cardiovascular)
 	organs.cardiovascular = cardiovascular
-	cardiovascular.setup(organs, vitals)
+	cardiovascular.setup(organs, vitals, levels)
 
 	sound.setup(grid_map)
 	interact_cursor.setup(grid_map)

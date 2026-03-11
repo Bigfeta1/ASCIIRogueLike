@@ -331,10 +331,10 @@ Vision logic and overlay rendering live in `CharacterVision`, not in `CharacterA
 | Stat | Influences |
 |------|-----------|
 | `muscle` | Melee damage, block, parry, carry weight |
-| `cardio` | Hit accuracy, HP regen |
+| `cardio` | Hit accuracy, HP regen, **baseline stroke volume** (+12 mL per stat_mod point) |
 | `adrenal` | Damage, crit damage, regen |
 | `sympathetic` | Vision range, hit accuracy, parry, bonus turn speed |
-| `parasympathetic` | Parry, regen |
+| `parasympathetic` | Parry, regen, **post-exertion HR recovery rate** |
 | `affect` | Crit chance, dodge |
 
 Modifier formula: `floor((stat - 10) / 2)`

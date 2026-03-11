@@ -106,6 +106,8 @@ func _check_move(delta: Vector2i) -> void:
 				if combat != null:
 					combat.bump_attack(target)
 					combat._apply_damage(occupant)
+				if _character.cardiovascular != null:
+					_character.cardiovascular.set_demand(15.0)
 				moved.emit()
 			return
 		# Alive character — check for combat or block
@@ -118,10 +120,14 @@ func _check_move(delta: Vector2i) -> void:
 			if combat != null:
 				combat._apply_damage(occupant)
 				combat.bump_attack(target)
+			if _character.cardiovascular != null:
+				_character.cardiovascular.set_demand(15.0)
 			moved.emit()
 		return
 	_occupancy_map.move_solid(grid_pos, target, _character)
 	grid_pos = target
+	if _character.cardiovascular != null:
+		_character.cardiovascular.set_demand(7.425)
 	moved.emit()
 	_face(delta)
 	_snap()
