@@ -156,12 +156,12 @@ func _resolve_suspicion() -> void:
 	var threshold: int = max(1, int(vision_range - _spotted_distance))
 	print("[AI] _resolve_suspicion | enemy=%s | spotted_dist=%.1f | vision_range=%.1f | roll=%d | threshold=%d | result=%s" % [
 		get_parent().name, _spotted_distance, vision_range, roll, threshold,
-		"INVESTIGATE" if roll <= threshold else "PATROL"
+		"INVESTIGATE" if roll <= threshold else "RETURN"
 	])
 	if roll <= threshold:
 		behavior_state = BehaviorState.INVESTIGATE
 	else:
-		start_patrol()
+		behavior_state = BehaviorState.RETURN
 
 
 func _check_vision() -> void:

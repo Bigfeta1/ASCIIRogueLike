@@ -250,13 +250,32 @@ ALIVE → KNOCKED_OUT / DEAD
 **`BehaviorState`** — activity/awareness; only meaningful when `life_state == ALIVE`:
 ```
 RELAXED → SUSPICIOUS → INVESTIGATE → RETURN → RELAXED
-				↓
-			  ALERT → COMBAT
+						   ↓ (spot player mid-investigate: roll)
+						 ALERT → COMBAT (chases + attacks)
 PATROL (loops independently)
 SLEEPING
 ```
 
+**Transition rules:**
+- `PATROL` → `SUSPICIOUS`: player spotted in outer 50% of vision range (yellow `?` popup)
+- `PATROL` → `ALERT`: player spotted in inner 50% of vision range (red `!` popup)
+- `SUSPICIOUS` → `INVESTIGATE`: always, after 1 turn wait; roll determines likelihood based on spotted distance
+- `SUSPICIOUS` → `PATROL`: roll fails (enemy stands down)
+- `INVESTIGATE` → `ALERT`: player spotted mid-investigation; roll based on current distance — fail → ALERT (red `!`), pass → update investigate target to player's current position and continue
+- `INVESTIGATE` → `RETURN`: reached investigate target or no path found
+- `RETURN` → `PATROL`: reached patrol origin or no path found
+- `ALERT`: chases player via A*; attacks if adjacent. No exit — persistent until combat resolves.
+- Vision check runs after facing update in PATROL, INVESTIGATE, and RETURN branches so the correct facing direction is used.
+
 Incapacitation sets `life_state` to KNOCKED_OUT or DEAD. `behavior_state` retains its last value but is ignored while the enemy is not ALIVE.
+
+### Awareness Popups (`suspicion_label.gd`)
+
+Floating labels spawned above the enemy's head on state transitions:
+- `?` (yellow) — enemy becomes SUSPICIOUS
+- `!` (red) — enemy becomes ALERT
+
+Uses a fixed `custom_minimum_size.x` for frame-0 centering (avoids the `size.x == 0` issue on the first process frame). Font size and float offset scale with camera zoom to match damage labels.
 
 ### Vision (`character_vision.gd`)
 
@@ -275,7 +294,7 @@ Vision logic and overlay rendering live in `CharacterVision`, not in `CharacterA
 
 ### Sound
 - Player movement emits sound waves (intensity = 5 − distance − tile_dampening)
-- Reaches enemies in RELAXED/SUSPICIOUS/PATROL states
+- Reaches enemies in RELAXED/PATROL states only (SUSPICIOUS/INVESTIGATE/ALERT/COMBAT ignore sound)
 - Intensity ≥ 3 → escalates directly to INVESTIGATE; lower → goes to SUSPICIOUS first
 
 ### Pathfinding
