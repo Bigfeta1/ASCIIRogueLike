@@ -53,6 +53,10 @@ var pneumothorax_side: String = ""           # "left" or "right"
 var pleural_pressure: float = 0.0            # cmH2O — accumulated intrapleural pressure (tension mechanism)
 var venous_return_fraction: float = 1.0      # 0.0–1.0 — fraction of normal venous return; fed into cardiovascular
 
+var pulmonary_embolism: bool = false         # Clot obstructing pulmonary blood flow
+var pe_severity: float = 0.0                # 0.0–1.0 — fraction of pulmonary arterial tree obstructed
+var pe_rv_strain: float = 0.0               # 0.0–1.0 — progressive RV dilation/failure; accumulates each tick
+
 # ── Internal refs ─────────────────────────────────────────────────────────────
 var _organs: Node = null
 var _levels: Node = null
@@ -83,6 +87,7 @@ func tick() -> void:
 	if _organs == null:
 		return
 
+	_update_pe_rv_strain()
 	_update_tension_pressure()
 	_update_respiratory_rate()
 	_update_tidal_volume()
@@ -96,6 +101,26 @@ func tick() -> void:
 	if _vitals != null:
 		_vitals.rr = roundi(respiratory_rate)
 		_vitals._refresh_ui()
+
+
+func _update_pe_rv_strain() -> void:
+	if _organs.get("cardiovascular") == null:
+		return
+
+	if not pulmonary_embolism:
+		# RV recovers slowly after clot clears — strain drains at fixed rate
+		pe_rv_strain = maxf(0.0, pe_rv_strain - 0.03)
+	else:
+		# RV strain accumulates proportional to obstruction — fast for massive PE, slow for submassive
+		pe_rv_strain = minf(1.0, pe_rv_strain + pe_severity * 0.15)
+
+	# Target venous_return_fraction from PE: falls to 0.2 at full RV strain.
+	var pe_vrf_target: float = 1.0 - pe_rv_strain * 0.8
+
+	# Lerp toward target — deterioration faster than recovery (asymmetric)
+	var vrf: float = _organs.cardiovascular.venous_return_fraction
+	var alpha: float = 0.4 if pe_vrf_target < vrf else 0.15
+	_organs.cardiovascular.venous_return_fraction = lerpf(vrf, pe_vrf_target, alpha)
 
 
 func _update_tension_pressure() -> void:
@@ -145,6 +170,14 @@ func _update_respiratory_rate() -> void:
 		if spo2 < 90.0:
 			var hypoxic_rr: float = BASELINE_RR + (90.0 - spo2) / 40.0 * 28.0
 			base_rr = maxf(base_rr, hypoxic_rr)
+
+	# PE dead space drive: rising PaCO2 and falling PaO2 in dead space regions stimulate
+	# central chemoreceptors directly — tachypnea is the first clinical sign of PE.
+	# pe_rv_strain reflects cumulative RV stress; drive scales with obstruction + strain.
+	# At 0.6 severity + early strain: pushes RR to ~22–26. At full strain: ~35+.
+	if pulmonary_embolism:
+		var pe_rr_drive: float = BASELINE_RR + pe_severity * 20.0 + pe_rv_strain * 8.0
+		base_rr = maxf(base_rr, pe_rr_drive)
 
 	base_rr = clampf(base_rr, BASELINE_RR, MAX_RR)
 
@@ -214,6 +247,24 @@ func _update_gas_exchange() -> void:
 		paco2 = clampf(40.0 / vent_ratio, 20.0, 80.0)
 		pao2 = clampf(pio2 - (paco2 / RESPIRATORY_QUOTIENT), 40.0, 130.0)
 
+	# Pulmonary embolism: dead space physiology — obstructed regions are ventilated but not perfused.
+	# Blood is redistributed to remaining vessels → relative overperfusion → imperfect V/Q matching.
+	# Hyperventilation lowers PACO2 (respiratory alkalosis) but cannot fully rescue PaO2.
+	# RV strain reduces total pulmonary blood flow — the remaining perfused lung is overperfused
+	# but cannot compensate fully. Net effect: PAO2 falls despite normal or elevated RR.
+	if pulmonary_embolism:
+		# Effective perfusion fraction: only (1 - pe_severity) of lung is perfused
+		# Remaining lung is overperfused but V/Q ratio is still impaired
+		# PAO2 in perfused regions is modestly elevated from hyperventilation
+		# but overall mixed PAO2 falls because obstructed regions contribute no O2
+		var perfused_fraction: float = 1.0 - pe_severity
+		# Perfused lung PAO2 — slightly elevated from compensatory hyperventilation
+		var perfused_pao2: float = minf(pao2 * 1.1, 130.0)
+		# Obstructed regions contribute nothing (no blood flow, no gas exchange)
+		# but atelectasis in poorly-perfused areas creates a small shunt component
+		var atelectasis_shunt: float = pe_severity * 0.3
+		pao2 = perfused_pao2 * perfused_fraction * (1.0 - atelectasis_shunt) + 40.0 * atelectasis_shunt
+
 	# Pulmonary vein O2 accounts for physiologic shunt (~2% of CO bypasses alveoli)
 	pulm_vein_o2 = pao2 * 0.98
 
@@ -249,3 +300,14 @@ func resolve_pneumothorax() -> void:
 	pneumothorax = false
 	pneumothorax_side = ""
 	# pleural_pressure decays naturally in _update_tension_pressure each tick
+
+
+func trigger_pe(severity: float = 0.4) -> void:
+	pulmonary_embolism = true
+	pe_severity = clampf(severity, 0.0, 1.0)
+
+
+func resolve_pe() -> void:
+	# Thrombolysis / anticoagulation — clot cleared
+	pulmonary_embolism = false
+	pe_severity = 0.0

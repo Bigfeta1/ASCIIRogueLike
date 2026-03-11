@@ -191,6 +191,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				else:
 					_character.pulmonary.trigger_pneumothorax("right")
 				_refresh_renal_debug()
+		KEY_KP_2:
+			if _renal_debug_panel != null and _character.pulmonary != null:
+				if _character.pulmonary.pulmonary_embolism:
+					_character.pulmonary.resolve_pe()
+				else:
+					_character.pulmonary.trigger_pe(0.6)
+				_refresh_renal_debug()
 		KEY_F12:
 			if _renal_debug_panel != null:
 				_character.movement.moved.disconnect(_refresh_renal_debug)
@@ -830,6 +837,8 @@ func _refresh_renal_debug() -> void:
 		+ "Pneumothorax:   %s\n" % ("YES (%s)" % pulm.pneumothorax_side if pulm.pneumothorax else "No")
 		+ "Pleural Pres:   %.1f cmH2O\n" % pulm.pleural_pressure
 		+ "Venous Return:  %.0f %%\n" % (pulm.venous_return_fraction * 100.0)
+		+ "PE:             %s\n" % ("YES (%.0f%%)" % (pulm.pe_severity * 100.0) if pulm.pulmonary_embolism else "No")
+		+ "RV Strain:      %.0f %%\n" % (pulm.pe_rv_strain * 100.0)
 	)
 
 
