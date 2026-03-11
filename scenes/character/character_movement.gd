@@ -121,7 +121,7 @@ func _check_move(delta: Vector2i) -> void:
 				combat._apply_damage(occupant)
 				combat.bump_attack(target)
 			if _character.cardiovascular != null:
-				_character.cardiovascular.set_demand(15.0)
+				_character.cardiovascular.set_demand(17.0)
 			moved.emit()
 		return
 	_occupancy_map.move_solid(grid_pos, target, _character)

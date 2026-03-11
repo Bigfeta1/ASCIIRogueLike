@@ -27,6 +27,11 @@ var pulse_pressure: float = 40.0          # mmHg
 # Metabolic demand — set by actions, decays toward resting each tick.
 # Snaps up instantly if new demand is higher; decays down otherwise.
 var demanded_co: float = 7.5              # L/min — matches BASELINE_CO
+var spo2: float = 99.0                    # % — written by pulmonary each tick
+
+# Pre-decay snapshot — readable by pulmonary after cardio.tick() to get the demand
+# value that drove this turn's HR, before vagal reactivation reduces it.
+var demanded_co_pre_decay: float = 7.5
 
 var _organs: Node = null
 var _vitals: Node = null
@@ -70,16 +75,13 @@ func tick() -> void:
 	# Dominant driver wins — whichever requires the higher HR.
 	heart_rate = clampf(maxf(baroreflex_hr, demand_hr), BASELINE_HR, 180.0)
 
-	# Decay demanded_co toward resting after HR is solved for this turn.
-	# Modulated by parasympathetic stat — vagal reactivation drives post-exercise recovery.
-	var para_mod: int = 0
-	if _levels != null:
-		para_mod = _levels.stat_mod(_levels.parasympathetic)
-	var decay_rate: float = 0.5 + para_mod * 0.1
-	demanded_co = maxf(BASELINE_CO, demanded_co - decay_rate)
-
-	# Cardiac output (L/min)
-	cardiac_output = (heart_rate * stroke_volume) / 1000.0
+	# Cardiac output (L/min) — reduced by hypoxia (SpO2 < 90% impairs delivery).
+	# Below 90% SpO2, effective CO scales down linearly to 50% at SpO2=50%.
+	var spo2_modifier: float = 1.0
+	if spo2 < 90.0:
+		spo2_modifier = 0.5 + (spo2 - 50.0) / 40.0 * 0.5
+		spo2_modifier = clampf(spo2_modifier, 0.5, 1.0)
+	cardiac_output = (heart_rate * stroke_volume) / 1000.0 * spo2_modifier
 
 	# SVR rises with dehydration (sympathetic vasoconstriction).
 	systemic_vascular_resistance = BASELINE_SVR / plasma_ratio
@@ -98,6 +100,17 @@ func tick() -> void:
 	var co_fraction: float = co_excess / (MAX_CO - BASELINE_CO)
 	var co_fluid_cost: float = _organs.renal.DEFAULT_ACTION_COST_ML * 3.0 * co_fraction
 	_organs.renal.pending_plasma_cost += co_fluid_cost
+
+	# Snapshot pre-decay demand (readable by pulmonary this same turn).
+	demanded_co_pre_decay = demanded_co
+
+	# Decay demanded_co toward resting — after all this-turn calculations are done.
+	# Modulated by parasympathetic stat — vagal reactivation drives post-exercise recovery.
+	var para_mod: int = 0
+	if _levels != null:
+		para_mod = _levels.stat_mod(_levels.parasympathetic)
+	var decay_rate: float = 0.5 + para_mod * 0.1
+	demanded_co = maxf(BASELINE_CO, demanded_co - decay_rate)
 
 	# Write into vitals for HUD display.
 	if _vitals != null:

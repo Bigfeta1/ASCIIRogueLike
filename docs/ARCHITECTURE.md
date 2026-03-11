@@ -360,20 +360,24 @@ Organ nodes are dynamically instantiated in `character.gd._ready()` for all non-
 
 ### CharacterOrganRegistry (`character_organ_registry.gd`)
 
-Holds refs: `renal`, `hypothalamus`, `cardiovascular`. Populated immediately after instantiation in `character.gd._ready()`.
+Holds refs: `renal`, `hypothalamus`, `cardiovascular`, `pulmonary`. Populated immediately after instantiation in `character.gd._ready()`.
 
 ### Turn Order Integration
 
 Each player action triggers the organ tick pipeline in `TurnOrder` in this order:
 
 ```
-1. cardiovascular.tick()   — computes CO fluid cost, adds to renal.pending_plasma_cost
-2. renal.consume_action_cost()  — deducts pending cost from plasma, cascades to compartments
-3. renal.tick()            — recalculates concentrations, osmolality, GFR, creatinine
-4. hypothalamus.tick()     — reads plasma_osmolality, emits thirst signals
+1. cardiovascular.tick()   — computes CO, BP, HR; adds exertion fluid cost to renal.pending_plasma_cost
+2. pulmonary.tick()        — reads demanded_co → RR/TV/gas exchange → writes SpO2 back to cardiovascular
+3. renal.consume_action_cost()  — deducts pending cost from plasma, cascades to compartments
+4. renal.tick()            — recalculates concentrations, osmolality, GFR, creatinine
+5. hypothalamus.tick()     — reads plasma_osmolality, emits thirst signals
 ```
 
-Cardiovascular must tick before renal consumes so the exertion fluid cost is included in that turn's deduction.
+Order rationale:
+- Cardiovascular ticks first so `demanded_co` and `spo2` are available to pulmonary.
+- Pulmonary ticks second so SpO2 is written before renal reads MAP-adjusted CO.
+- Renal consumes after both so the full exertion fluid cost (base + CO surcharge) is deducted together.
 
 ---
 
@@ -494,6 +498,51 @@ Cardiovascular feeds two values into the renal system each tick:
 2. `mean_arterial_pressure` → drives RPF map_ratio (shock crushes renal perfusion)
 
 This creates a bidirectional cascade: dehydration drops plasma → drops SV and MAP → raises HR and SVR → sympathetic tone suppresses renal flow → GFR falls → creatinine rises → osmolality climbs → thirst intensifies. Combat accelerates the loop by simultaneously spiking demanded_co and MAP.
+
+---
+
+### Pulmonary System (`character_pulmonary.gd`)
+
+Models lung volumes, respiratory mechanics, alveolar gas exchange (O2/CO2), and oxygenation status. Ported and simplified from the per-frame lung simulation in the GameMaker medical project into a turn-based organ tick.
+
+**Lung volumes** (derived from body mass at 7 mL/kg tidal volume factor):
+```
+TLC   = tidal_volume / 0.12
+RV    = TLC × 0.20
+ERV   = TLC × 0.20
+IRV   = TLC × 0.50
+FRC   = RV + ERV
+TV    = body_mass × 7.0 mL/kg
+VC    = IRV + TV + ERV
+```
+
+**Respiratory rate** scales with metabolic demand:
+```
+rr_range = (MAX_RR − BASELINE_RR) × (1.0 − cardio_mod × 0.1)
+RR = BASELINE_RR + rr_range × co_fraction    (co_fraction = (demanded_co − BASELINE_CO) / (MAX_CO − BASELINE_CO))
+```
+Higher cardio stat → more efficient ventilation → lower RR for same demand. Pneumothorax adds compensatory tachypnea (×1.5 RR, capped at 40 bpm).
+
+**Gas exchange** (simplified alveolar gas equation):
+```
+PIO2  = (760 − 47) × 0.21 = 149.7 mmHg
+PACO2 = 40 / vent_ratio    (rises with hypoventilation, falls with hyperventilation)
+PAO2  = PIO2 − (PACO2 / 0.8)
+```
+Pneumothorax forces PAO2=50, PACO2=55 (hypoxia + hypercapnia).
+
+**SpO2** derived from PAO2 via simplified oxyhemoglobin dissociation curve:
+| PAO2 | SpO2 |
+|------|------|
+| ≥ 100 mmHg | 99% |
+| 60 mmHg | 90% (critical threshold) |
+| 27 mmHg | 50% (P50) |
+
+**Cardiovascular feedback:** SpO2 written to `cardiovascular.spo2` each tick. Below 90%, effective CO is reduced linearly (50% CO at SpO2=50%). This means pneumothorax → hypoxia → impaired O2 delivery → effective CO falls despite high HR.
+
+**Disease API:**
+- `trigger_pneumothorax(side)` — collapses one lung; TV halved, PAO2=50, tachypnea
+- `resolve_pneumothorax()` — needle decompression / chest tube; full volumes restore
 
 ---
 

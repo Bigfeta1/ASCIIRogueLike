@@ -4,6 +4,7 @@ const RenalScript := preload("res://scenes/character/character_renal.gd")
 const OrganRegistryScript := preload("res://scenes/character/character_organ_registry.gd")
 const HypothalamusScript := preload("res://scenes/character/character_hypothalamus.gd")
 const CardiovascularScript := preload("res://scenes/character/character_cardiovascular.gd")
+const PulmonaryScript := preload("res://scenes/character/character_pulmonary.gd")
 
 enum ActionState { MOVEMENT, LOOK, MENU, INTERACTION }
 enum CharacterType { SURGEON, ENEMY, STRUCTURE }
@@ -53,6 +54,7 @@ var renal: Node = null
 var organs: Node = null
 var hypothalamus: Node = null
 var cardiovascular: Node = null
+var pulmonary: Node = null
 
 
 func _ready() -> void:
@@ -94,6 +96,12 @@ func _ready() -> void:
 	add_child(cardiovascular)
 	organs.cardiovascular = cardiovascular
 	cardiovascular.setup(organs, vitals, levels)
+
+	pulmonary = PulmonaryScript.new()
+	pulmonary.name = "CharacterPulmonary"
+	add_child(pulmonary)
+	organs.pulmonary = pulmonary
+	pulmonary.setup(organs, levels, vitals)
 
 	sound.setup(grid_map)
 	interact_cursor.setup(grid_map)

@@ -43,6 +43,7 @@ var pending_target: Node = null
 var _renal_debug_panel: Control = null
 var _hypothalamus_debug_panel: Control = null
 var _cardiovascular_debug_panel: Control = null
+var _pulmonary_debug_panel: Control = null
 
 
 func _ready() -> void:
@@ -193,6 +194,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_hypothalamus_debug_panel = null
 				_cardiovascular_debug_panel.queue_free()
 				_cardiovascular_debug_panel = null
+				_pulmonary_debug_panel.queue_free()
+				_pulmonary_debug_panel = null
 			else:
 				_show_renal_debug()
 		KEY_Q, KEY_ESCAPE:
@@ -734,6 +737,14 @@ func _show_renal_debug() -> void:
 	canvas_layer.add_child(cardio_panel)
 	_cardiovascular_debug_panel = cardio_panel
 
+	var pulm_panel := PanelContainer.new()
+	pulm_panel.position = Vector2(910, 60)
+	var pulm_label := Label.new()
+	pulm_label.add_theme_font_size_override("font_size", 14)
+	pulm_panel.add_child(pulm_label)
+	canvas_layer.add_child(pulm_panel)
+	_pulmonary_debug_panel = pulm_panel
+
 	_refresh_renal_debug()
 	_character.movement.moved.connect(_refresh_renal_debug)
 	_character.movement.waited.connect(_refresh_renal_debug)
@@ -787,10 +798,29 @@ func _refresh_renal_debug() -> void:
 		+ "Stroke Volume:  %.1f mL\n" % cardio.stroke_volume
 		+ "Heart Rate:     %.0f bpm\n" % cardio.heart_rate
 		+ "Cardiac Output: %.2f L/min\n" % cardio.cardiac_output
+		+ "Demanded CO:    %.2f L/min\n" % cardio.demanded_co_pre_decay
+		+ "SpO2:           %.1f %%\n" % cardio.spo2
 		+ "SVR:            %.0f dyn·s·cm⁻⁵\n" % cardio.systemic_vascular_resistance
 		+ "MAP:            %.1f mmHg\n" % cardio.mean_arterial_pressure
 		+ "BP:             %.0f/%.0f mmHg\n" % [cardio.bp_systolic, cardio.bp_diastolic]
 		+ "Pulse Pressure: %.1f mmHg\n" % cardio.pulse_pressure
+	)
+
+	if _pulmonary_debug_panel == null:
+		return
+	var pulm: Node = _character.pulmonary
+	var pulm_label: Label = _pulmonary_debug_panel.get_child(0)
+	pulm_label.text = (
+		"[PULMONARY DEBUG]\n"
+		+ "Resp Rate:      %.0f bpm\n" % pulm.respiratory_rate
+		+ "Tidal Volume:   %.0f mL\n" % pulm.tidal_volume
+		+ "Minute Vent:    %.0f mL/min\n" % pulm.minute_ventilation
+		+ "Alveolar Vent:  %.0f mL/min\n" % pulm.alveolar_ventilation
+		+ "PaO2:           %.1f mmHg\n" % pulm.pao2
+		+ "PaCO2:          %.1f mmHg\n" % pulm.paco2
+		+ "Pulm Vein O2:   %.1f mmHg\n" % pulm.pulm_vein_o2
+		+ "SpO2:           %.1f %%\n" % pulm.pao2_spo2
+		+ "Pneumothorax:   %s\n" % ("YES (%s)" % pulm.pneumothorax_side if pulm.pneumothorax else "No")
 	)
 
 

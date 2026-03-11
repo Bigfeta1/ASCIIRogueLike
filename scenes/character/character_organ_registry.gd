@@ -7,4 +7,4 @@ extends Node
 var renal: Node = null
 var hypothalamus: Node = null
 var cardiovascular: Node = null
-# Future organs: metabolic, hepatic, pulmonary, etc.
+var pulmonary: Node = null

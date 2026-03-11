@@ -39,6 +39,8 @@ func _on_player_waited() -> void:
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
 	if _player.cardiovascular != null:
 		_player.cardiovascular.tick()
+	if _player.pulmonary != null:
+		_player.pulmonary.tick()
 	if _player.renal != null:
 		_player.renal.consume_action_cost()
 		_player.renal.tick()
@@ -62,6 +64,8 @@ func _on_player_moved() -> void:
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
 	if _player.cardiovascular != null:
 		_player.cardiovascular.tick()
+	if _player.pulmonary != null:
+		_player.pulmonary.tick()
 	if _player.renal != null:
 		_player.renal.consume_action_cost()
 		_player.renal.tick()
