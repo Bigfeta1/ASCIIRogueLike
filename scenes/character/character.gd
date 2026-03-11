@@ -125,6 +125,7 @@ func _ready() -> void:
 		inventory.add_item("field_bandage")
 		inventory.add_item("field_bandage")
 		inventory.add_item("field_bandage")
+		inventory.add_item("aspiration_needle")
 		inventory.add_item("tinder_box")
 		inventory.add_item("logs")
 	else:

@@ -218,6 +218,12 @@ func _confirm_action() -> void:
 			if _active_item_id == "tinder_box":
 				_inventory.get_parent().interaction.activate_place_campfire(_active_item_id)
 				return
+			if _active_item_id == "aspiration_needle":
+				var character := _inventory.get_parent()
+				if character.pulmonary != null and character.pulmonary.pneumothorax:
+					character.pulmonary.resolve_pneumothorax()
+					_inventory.remove_item(_active_item_id)
+				return
 			var vitals := _inventory.get_parent().get_node("CharacterVitals")
 			if vitals.hp < vitals.hp_max:
 				vitals.heal(5)

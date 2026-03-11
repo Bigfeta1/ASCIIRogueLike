@@ -67,6 +67,16 @@
 		"slot": null
 	},
 	{
+		"id": "aspiration_needle",
+		"name": "Aspiration Needle",
+		"weight": 0.05,
+		"category": "medicine",
+		"interaction": "use",
+		"sprite": "res://assets/images/inventory_items/medical/spr_aspiration_needle.png",
+		"description": "A large-bore needle for emergency needle decompression. Vents trapped air from the pleural space, stopping tension pneumothorax progression. Single use.",
+		"slot": null
+	},
+	{
 		"id": "corpse_soldier",
 		"name": "Soldier Corpse",
 		"weight": 80.0,

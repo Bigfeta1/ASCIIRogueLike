@@ -372,6 +372,7 @@ Each player action triggers the organ tick pipeline in `TurnOrder` in this order
 3. renal.consume_action_cost()  — deducts pending cost from plasma, cascades to compartments
 4. renal.tick()            — recalculates concentrations, osmolality, GFR, creatinine
 5. hypothalamus.tick()     — reads plasma_osmolality, emits thirst signals
+6. cortex.tick()           — checks SBP/MAP; triggers syncope, ischemic HP loss, or PEA/death
 ```
 
 Order rationale:
@@ -484,6 +485,7 @@ MAP = CO × SVR / 80
 PP  = 40 × (SV / BASELINE_SV)
 DBP = MAP − PP/3
 SBP = DBP + PP
+# PEA threshold: bp_systolic floored at 50 mmHg → heart_rate set to 0 (no mechanical output)
 ```
 Baseline values: HR=75, SV=100 mL, CO=7.5 L/min, SVR=1000, MAP=93 mmHg, BP≈120/80.
 
@@ -581,6 +583,29 @@ Expected cascade progression per tick:
 5. MAP briefly preserved or mildly elevated, then falls as SV collapse overwhelms SVR compensation
 6. At VENA_CAVA_COLLAPSE_THRESHOLD: RR=40, HR maximum, BP crashing — obstructive shock
 7. Resolving (needle decompression): pressure drains, venous return recovers, RR/HR lerp back down
+
+---
+
+### Cerebral Cortex (`character_cortex.gd`)
+
+Monitors MAP and SBP each tick. Owns two distinct failure modes: syncope (acute hemodynamic collapse) and ischemic neuronal death (sustained hypoperfusion).
+
+**Syncope (`SYNCOPE_SBP_THRESHOLD` = 80 mmHg):**
+- SBP < 80 → `CharacterLifecycle.knock_out()` immediately — player loses movement input, turn advances with space bar still functional
+- SBP recovers ≥ 80 → `CharacterLifecycle.recover_syncope()` restores ALIVE state and re-enables movement
+
+**Ischemic death (`ISCHEMIA_MAP_THRESHOLD` = 60 mmHg, `ISCHEMIA_TICK_THRESHOLD` = 20 ticks):**
+- MAP < 60 for 20 consecutive ticks (5 minutes at 15s/tick) → `ischemia_active = true`, HP -1 per tick
+- HP reaches 0 → PEA transition: `heart_rate`, `cardiac_output`, `stroke_volume`, `mean_arterial_pressure`, `bp_systolic`, `bp_diastolic` all set to 0; vitals HUD updated; `CharacterLifecycle.die()` called → player `queue_free()`
+- MAP recovery resets `hypoperfusion_ticks` and clears `ischemia_active`
+
+**PEA display threshold:**
+In `character_cardiovascular.gd`, when `bp_systolic` is floored at 50 mmHg (no effective mechanical output), `heart_rate` is set to 0.0 immediately. This represents pulseless electrical activity — the display shows HR=0 and BP=50/N before neuronal death completes.
+
+**`CharacterLifecycle` additions:**
+- `recover_syncope(target)` — reverses `knock_out`: restores ALIVE state, re-registers solid in OccupancyMap, re-enables AI/Movement/Combat processing, emits `revived`
+- Player death path in `die()`: if `character_role == PLAYER`, emits `died` and calls `queue_free()` immediately (no corpse, no splatter)
+- `_disable_active_components` now also calls `movement.set_process_unhandled_input(false)` to block directional input while incapacitated; space bar (wait) remains functional via a `life_state` gate in `CharacterMovement._unhandled_input`
 
 ---
 
