@@ -154,6 +154,21 @@ offset_bottom = 23.0
 text = "x"
 label_settings = SubResource("LabelSettings_a4cr6")
 
+[node name="Food" type="HBoxContainer" parent="CanvasLayer/TopBar"]
+layout_mode = 0
+offset_left = 982.0
+offset_right = 1168.0
+offset_bottom = 40.0
+theme_override_constants/separation = 74
+
+[node name="HungerLabel" type="Label" parent="CanvasLayer/TopBar/Food"]
+layout_mode = 2
+text = "Hunger:"
+
+[node name="ThirstLabel" type="Label" parent="CanvasLayer/TopBar/Food"]
+layout_mode = 2
+text = "Thirst:"
+
 [node name="LookModeInfo" type="Control" parent="CanvasLayer"]
 layout_mode = 3
 anchors_preset = 0

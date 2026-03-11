@@ -1,5 +1,10 @@
 extends Node3D
 
+const RenalScript := preload("res://scenes/character/character_renal.gd")
+const OrganRegistryScript := preload("res://scenes/character/character_organ_registry.gd")
+const HypothalamusScript := preload("res://scenes/character/character_hypothalamus.gd")
+const CardiovascularScript := preload("res://scenes/character/character_cardiovascular.gd")
+
 enum ActionState { MOVEMENT, LOOK, MENU, INTERACTION }
 enum CharacterType { SURGEON, ENEMY, STRUCTURE }
 enum CharacterRole { PLAYER, NPC }
@@ -44,6 +49,11 @@ var structure_actions: Array = []
 @onready var look_cursor: Node = get_node("LookCursor")
 @onready var interact_cursor: Node = get_node("InteractCursor")
 
+var renal: Node = null
+var organs: Node = null
+var hypothalamus: Node = null
+var cardiovascular: Node = null
+
 
 func _ready() -> void:
 	var scene: Node = get_parent()
@@ -62,6 +72,27 @@ func _ready() -> void:
 
 	if character_type == CharacterType.STRUCTURE:
 		return
+
+	organs = OrganRegistryScript.new()
+	organs.name = "CharacterOrganRegistry"
+	add_child(organs)
+
+	renal = RenalScript.new()
+	renal.name = "CharacterRenal"
+	add_child(renal)
+	organs.renal = renal
+
+	hypothalamus = HypothalamusScript.new()
+	hypothalamus.name = "CharacterHypothalamus"
+	add_child(hypothalamus)
+	organs.hypothalamus = hypothalamus
+	hypothalamus.setup(organs)
+
+	cardiovascular = CardiovascularScript.new()
+	cardiovascular.name = "CharacterCardiovascular"
+	add_child(cardiovascular)
+	organs.cardiovascular = cardiovascular
+	cardiovascular.setup(organs, vitals)
 
 	sound.setup(grid_map)
 	interact_cursor.setup(grid_map)

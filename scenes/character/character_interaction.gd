@@ -40,6 +40,10 @@ var _selected_entity: Dictionary = {}
 var pending_action: String = ""
 var pending_target: Node = null
 
+var _renal_debug_panel: Control = null
+var _hypothalamus_debug_panel: Control = null
+var _cardiovascular_debug_panel: Control = null
+
 
 func _ready() -> void:
 	_character = get_parent()
@@ -179,6 +183,18 @@ func _unhandled_input(event: InputEvent) -> void:
 				_look_cursor.activate()
 			else:
 				_look_cursor.deactivate()
+		KEY_F12:
+			if _renal_debug_panel != null:
+				_character.movement.moved.disconnect(_refresh_renal_debug)
+				_character.movement.waited.disconnect(_refresh_renal_debug)
+				_renal_debug_panel.queue_free()
+				_renal_debug_panel = null
+				_hypothalamus_debug_panel.queue_free()
+				_hypothalamus_debug_panel = null
+				_cardiovascular_debug_panel.queue_free()
+				_cardiovascular_debug_panel = null
+			else:
+				_show_renal_debug()
 		KEY_Q, KEY_ESCAPE:
 			if pending_target != null:
 				pending_action = ""
@@ -685,6 +701,95 @@ func activate_drop_item(item_id: String) -> void:
 	_character.action_state = _character.ActionState.INTERACTION
 	interaction_sub_state = InteractionSubState.DROPPING_ITEM
 	_interact_cursor.activate()
+
+
+func _show_renal_debug() -> void:
+	if _character.renal == null:
+		return
+	var canvas_layer: CanvasLayer = _character.get_parent().get_node("CanvasLayer")
+
+	var renal_panel := PanelContainer.new()
+	renal_panel.position = Vector2(10, 60)
+	var renal_label := Label.new()
+	renal_label.add_theme_font_size_override("font_size", 14)
+	renal_panel.add_child(renal_label)
+	canvas_layer.add_child(renal_panel)
+	_renal_debug_panel = renal_panel
+
+	var hypo_panel := PanelContainer.new()
+	hypo_panel.position = Vector2(310, 60)
+	var hypo_label := Label.new()
+	hypo_label.add_theme_font_size_override("font_size", 14)
+	hypo_panel.add_child(hypo_label)
+	canvas_layer.add_child(hypo_panel)
+	_hypothalamus_debug_panel = hypo_panel
+
+	var cardio_panel := PanelContainer.new()
+	cardio_panel.position = Vector2(610, 60)
+	var cardio_label := Label.new()
+	cardio_label.add_theme_font_size_override("font_size", 14)
+	cardio_panel.add_child(cardio_label)
+	canvas_layer.add_child(cardio_panel)
+	_cardiovascular_debug_panel = cardio_panel
+
+	_refresh_renal_debug()
+	_character.movement.moved.connect(_refresh_renal_debug)
+	_character.movement.waited.connect(_refresh_renal_debug)
+
+
+func _refresh_renal_debug() -> void:
+	if _renal_debug_panel == null:
+		return
+	var renal: Node = _character.renal
+	renal.tick()
+	var renal_label: Label = _renal_debug_panel.get_child(0)
+	renal_label.text = (
+		"[RENAL DEBUG]\n"
+		+ "Body Mass:        %.1f kg\n" % renal.body_mass
+		+ "Total Body Water: %.0f mL\n" % renal.total_body_water
+		+ "Intracellular:    %.0f mL\n" % renal.intracellular_fluid
+		+ "Extracellular:    %.0f mL\n" % renal.extracellular_fluid
+		+ "  Interstitial:   %.0f mL\n" % renal.interstitial_fluid
+		+ "  Plasma:         %.0f mL\n" % renal.plasma_fluid
+		+ "Renal Blood Flow: %.0f mL/min\n" % renal.renal_blood_flow
+		+ "Renal Plasma Flow:%.0f mL/min\n" % renal.renal_plasma_flow
+		+ "Net Filtration:   %.1f mmHg\n" % renal.net_filtration
+		+ "GFR:              %.1f mL/min\n" % renal.gfr
+		+ "FF:               %.3f\n" % renal.ff
+		+ "Plasma Creatinine:%.4f mg/mL\n" % renal.plasma_creatinine
+		+ "Urine Creatinine: %.1f mg/day\n" % renal.urine_creatinine
+	)
+
+	if _hypothalamus_debug_panel == null:
+		return
+	var hypo: Node = _character.hypothalamus
+	var hypo_label: Label = _hypothalamus_debug_panel.get_child(0)
+	hypo_label.text = (
+		"[HYPOTHALAMUS DEBUG]\n"
+		+ "Plasma Osmolality:    %.1f mOsm/kg\n" % renal.plasma_osmolality
+		+ "Plasma Na:            %.1f mEq/L\n" % renal.plasma_sodium
+		+ "Plasma Glucose:       %.1f mg/dL\n" % renal.plasma_glucose
+		+ "Plasma BUN:           %.1f mg/dL\n" % renal.plasma_bun
+		+ "Thirsty:              %s\n" % str(hypo.is_thirsty)
+		+ "Dehydrated:           %s\n" % str(hypo.is_dehydrated)
+		+ "Severely Dehydrated:  %s\n" % str(hypo.is_severely_dehydrated)
+		+ "Hungry:               %s\n" % str(hypo.is_hungry)
+	)
+
+	if _cardiovascular_debug_panel == null:
+		return
+	var cardio: Node = _character.cardiovascular
+	var cardio_label: Label = _cardiovascular_debug_panel.get_child(0)
+	cardio_label.text = (
+		"[CARDIOVASCULAR DEBUG]\n"
+		+ "Stroke Volume:  %.1f mL\n" % cardio.stroke_volume
+		+ "Heart Rate:     %.0f bpm\n" % cardio.heart_rate
+		+ "Cardiac Output: %.2f L/min\n" % cardio.cardiac_output
+		+ "SVR:            %.0f dyn·s·cm⁻⁵\n" % cardio.systemic_vascular_resistance
+		+ "MAP:            %.1f mmHg\n" % cardio.mean_arterial_pressure
+		+ "BP:             %.0f/%.0f mmHg\n" % [cardio.bp_systolic, cardio.bp_diastolic]
+		+ "Pulse Pressure: %.1f mmHg\n" % cardio.pulse_pressure
+	)
 
 
 func _execute_drop() -> void:
