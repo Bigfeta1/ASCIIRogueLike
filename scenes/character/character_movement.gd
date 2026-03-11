@@ -47,6 +47,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	var dir_keys := [KEY_D, KEY_RIGHT, KEY_A, KEY_LEFT, KEY_S, KEY_DOWN, KEY_W, KEY_UP]
 	if not event.keycode in dir_keys:
 		return
+	var ai := _character.get_node_or_null("CharacterAI")
+	if ai != null and ai.life_state != ai.LifeState.ALIVE:
+		return
 	if not event.pressed:
 		_held_keys.erase(event.keycode)
 		return

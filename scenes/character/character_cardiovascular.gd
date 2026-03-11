@@ -127,6 +127,10 @@ func tick() -> void:
 	bp_diastolic = mean_arterial_pressure - (pulse_pressure / 3.0)
 	bp_systolic = maxf(bp_diastolic + pulse_pressure, 50.0)
 
+	# PEA threshold: BP floored means no effective mechanical output — display HR as 0.
+	if bp_systolic <= 50.0:
+		heart_rate = 0.0
+
 	# CO-scaled fluid cost: exertion above resting adds up to 3× base insensible loss.
 	# Zero at resting CO, full 3× at MAX_CO. Added on top of renal base cost.
 	var co_excess: float = maxf(0.0, demanded_co - BASELINE_CO)

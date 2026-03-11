@@ -23,6 +23,8 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if not is_instance_valid(_character):
+		return
 	if _character.action_state == _character.ActionState.MENU:
 		return
 	if event is InputEventMouseButton and event.pressed:

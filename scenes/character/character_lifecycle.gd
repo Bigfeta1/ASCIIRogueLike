@@ -31,6 +31,10 @@ func die(target: Node) -> void:
 		died.emit(target)
 		target.queue_free()
 		return
+	if target.character_role == target.CharacterRole.PLAYER:
+		died.emit(target)
+		target.queue_free()
+		return
 	_occupancy_map.register_passable(movement.grid_pos, target)
 	if target.corpse_item_id != "":
 		target.get_node("CharacterInventory").add_item(target.corpse_item_id)
@@ -78,8 +82,25 @@ func restore_incapacitated(target: Node, saved_life_state: int) -> void:
 	_occupancy_map.register_passable(movement.grid_pos, target)
 
 
+# Called by CharacterCortex when SBP recovers after syncope.
+# Re-enables components and returns character to ALIVE state.
+func recover_syncope(target: Node) -> void:
+	var ai := target.get_node_or_null("CharacterAI")
+	if ai == null or ai.life_state != ai.LifeState.KNOCKED_OUT:
+		return
+	ai.life_state = ai.LifeState.ALIVE
+	var movement := target.get_node("CharacterMovement")
+	_occupancy_map.unregister_passable(movement.grid_pos, target)
+	_occupancy_map.register_solid(movement.grid_pos, target)
+	ai.set_process(true)
+	movement.set_process(true)
+	target.get_node("CharacterCombat").set_process(true)
+	revived.emit(target)
+
+
 func _disable_active_components(target: Node, ai: Node) -> void:
 	target.get_node("CharacterVision").clear()
 	ai.set_process(false)
-	target.get_node("CharacterMovement").set_process(false)
+	var movement := target.get_node("CharacterMovement")
+	movement.set_process(false)
 	target.get_node("CharacterCombat").set_process(false)

@@ -40,6 +40,8 @@ func _ready() -> void:
 	passive_timer.timeout.connect(_on_passive_tick)
 
 func _on_passive_tick() -> void:
+	if not is_instance_valid(_player):
+		return
 	if current_turn_state != TurnState.PLAYER_TURN:
 		return
 	if _player.cardiovascular != null:
@@ -55,6 +57,8 @@ func _on_passive_tick() -> void:
 		_player.cortex.tick()
 
 func _on_player_waited() -> void:
+	if not is_instance_valid(_player):
+		return
 	current_turn_state = TurnState.MAP_TURN
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
 	if _player.cardiovascular != null:
@@ -69,6 +73,8 @@ func _on_player_waited() -> void:
 	if _player.cortex != null:
 		_player.cortex.tick()
 	await get_tree().create_timer(0.1).timeout
+	if not is_instance_valid(_player):
+		return
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
 		if ai.life_state != ai.LifeState.ALIVE:
@@ -82,6 +88,8 @@ func _on_player_waited() -> void:
 	turn_changed.emit(TurnState.MAP_TURN, TurnState.PLAYER_TURN)
 
 func _on_player_moved() -> void:
+	if not is_instance_valid(_player):
+		return
 	current_turn_state = TurnState.MAP_TURN
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
 	if _player.cardiovascular != null:
@@ -102,6 +110,8 @@ func _on_player_moved() -> void:
 		turn_changed.emit(TurnState.MAP_TURN, TurnState.PLAYER_TURN)
 		return
 	await get_tree().create_timer(0.1).timeout
+	if not is_instance_valid(_player):
+		return
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
 		if ai.life_state != ai.LifeState.ALIVE:

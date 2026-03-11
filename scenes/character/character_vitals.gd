@@ -50,10 +50,13 @@ func heal(amount: int) -> void:
 		label.setup("+%dHP" % amount, Color.GREEN, character.position, _camera)
 
 func tick_regen() -> void:
+	var character := get_parent()
+	var ai := character.get_node_or_null("CharacterAI")
+	if ai != null and ai.life_state != ai.LifeState.ALIVE:
+		return
 	if hp >= hp_max:
 		_turns_since_regen = 0
 		return
-	var character := get_parent()
 	var mod: int = _levels.regen_mod()
 	var turns_needed: int = 7 - mod
 	_turns_since_regen += 1
