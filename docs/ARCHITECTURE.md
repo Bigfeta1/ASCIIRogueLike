@@ -445,21 +445,21 @@ Models HR, stroke volume, cardiac output, SVR, and blood pressure from plasma vo
 
 **Metabolic demand (`demanded_co`):**
 - Actions set a target CO via `set_demand(co: float)` — snaps up instantly if higher than current
-- Decays toward `BASELINE_CO` (5.94 L/min) each tick at rate `0.5 + parasympathetic_mod × 0.1` L/min/turn
+- Decays toward `BASELINE_CO` (7.5 L/min) each tick at rate `0.5 + parasympathetic_mod × 0.1` L/min/turn
 - Vagal reactivation (parasympathetic stat) drives post-exertion recovery — higher parasympathetic = faster decay
 
 **Action CO demands:**
 | Action | demanded_co |
 |--------|------------|
 | Wait | — (decays toward resting) |
-| Walk | 7.425 L/min → HR ≈ 75 bpm |
+| Walk | 8.0 L/min → HR ≈ 80 bpm |
 | Combat bump | 15.0 L/min → HR ≈ 150 bpm, SBP ≈ 210 mmHg |
 
 **Stroke volume** scales with plasma (Frank-Starling) and cardio stat:
 ```
 SV = (BASELINE_SV_ML + cardio_stat_mod × 12) × plasma_ratio
 ```
-Higher cardio → larger SV → same CO demand met at lower HR. At cardio=16 (mod=+3), SV=135 mL; combat HR drops from 151 to 111 bpm.
+Higher cardio → larger SV → same CO demand met at lower HR. At cardio=16 (mod=+3), SV=136 mL; resting HR drops to 55 bpm, combat HR drops from 150 to 110 bpm. Leveling cardio produces a visibly quieter resting heart rate.
 
 **Heart rate** takes the dominant driver:
 ```
@@ -477,6 +477,7 @@ PP  = 40 × (SV / BASELINE_SV)
 DBP = MAP − PP/3
 SBP = DBP + PP
 ```
+Baseline values: HR=75, SV=100 mL, CO=7.5 L/min, SVR=1000, MAP=93 mmHg, BP≈120/80.
 
 **Exertion fluid cost:** added to `renal.pending_plasma_cost` each tick:
 ```

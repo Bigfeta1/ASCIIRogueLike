@@ -456,12 +456,14 @@ func _open_entity_actions(entity: Dictionary) -> void:
 
 func _on_fill_confirmed(liquid: String, amount_liters: float) -> void:
 	var item_id: String
-	if interaction_sub_state == InteractionSubState.USE_ITEM:
+	if _use_item_id != "":
 		item_id = _use_item_id
 		var idx: int = _character.inventory.items.find(_use_item_id)
 		var contents: Dictionary = _character.inventory.get_liquid(idx)
 		var remaining: float = snappedf(contents.get("amount_liters", 0.0) - amount_liters, 0.001)
 		_character.inventory.set_liquid(idx, liquid, remaining)
+		if _character.renal != null:
+			_character.renal.drink(amount_liters)
 		_use_item_id = ""
 	else:
 		item_id = _collect_item_id

@@ -82,6 +82,16 @@ func _ready() -> void:
 	total_icf_solutes = intracellular_fluid * 0.001 * 285.0
 
 
+func drink(amount_liters: float) -> void:
+	# Oral water distributes into ECF. Split 1:3 plasma:interstitial (ECF ratio).
+	var amount_ml := amount_liters * 1000.0
+	plasma_fluid += amount_ml * 0.25
+	interstitial_fluid += amount_ml * 0.75
+	extracellular_fluid = plasma_fluid + interstitial_fluid
+	total_body_water = intracellular_fluid + extracellular_fluid
+	body_mass = maxf(dry_mass + (total_body_water / 1000.0), dry_mass)
+
+
 func consume_action_cost() -> void:
 	# Step 1: plasma loses free water.
 	plasma_fluid -= pending_plasma_cost
