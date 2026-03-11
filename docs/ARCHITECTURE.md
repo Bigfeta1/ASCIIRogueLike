@@ -449,15 +449,16 @@ Models HR, stroke volume, cardiac output, SVR, and blood pressure from plasma vo
 
 **Metabolic demand (`demanded_co`):**
 - Actions set a target CO via `set_demand(co: float)` — snaps up instantly if higher than current
-- Decays toward `BASELINE_CO` (7.5 L/min) each tick at rate `0.5 + parasympathetic_mod × 0.1` L/min/turn
+- Decays toward `BASELINE_CO` (7.5 L/min) each tick at rate `0.5 + parasympathetic_mod × 0.1` L/min/turn — decay happens at the very end of `tick()`, after all this-turn calculations are complete
 - Vagal reactivation (parasympathetic stat) drives post-exertion recovery — higher parasympathetic = faster decay
+- `demanded_co_pre_decay` is a snapshot of `demanded_co` taken immediately before the decay step. Pulmonary reads this value (not `demanded_co`) so it sees the demand that actually drove HR this turn, not the already-decayed value
 
 **Action CO demands:**
 | Action | demanded_co |
 |--------|------------|
 | Wait | — (decays toward resting) |
 | Walk | 8.0 L/min → HR ≈ 80 bpm |
-| Combat bump | 15.0 L/min → HR ≈ 150 bpm, SBP ≈ 210 mmHg |
+| Combat bump | 17.0 L/min → HR ≈ 170 bpm, elevated SBP |
 
 **Stroke volume** scales with plasma (Frank-Starling) and cardio stat:
 ```
@@ -519,9 +520,9 @@ VC    = IRV + TV + ERV
 **Respiratory rate** scales with metabolic demand:
 ```
 rr_range = (MAX_RR − BASELINE_RR) × (1.0 − cardio_mod × 0.1)
-RR = BASELINE_RR + rr_range × co_fraction    (co_fraction = (demanded_co − BASELINE_CO) / (MAX_CO − BASELINE_CO))
+RR = BASELINE_RR + rr_range × co_fraction    (co_fraction = (demanded_co_pre_decay − BASELINE_CO) / (MAX_CO − BASELINE_CO))
 ```
-Higher cardio stat → more efficient ventilation → lower RR for same demand. Pneumothorax adds compensatory tachypnea (×1.5 RR, capped at 40 bpm).
+Reads `cardiovascular.demanded_co_pre_decay` — the pre-decay snapshot — so it sees the demand that drove HR this turn, not the already-decayed value. Higher cardio stat → more efficient ventilation → lower RR for same demand. Pneumothorax adds compensatory tachypnea (×1.5 RR, capped at 40 bpm).
 
 **Gas exchange** (simplified alveolar gas equation):
 ```
@@ -537,6 +538,8 @@ Pneumothorax forces PAO2=50, PACO2=55 (hypoxia + hypercapnia).
 | ≥ 100 mmHg | 99% |
 | 60 mmHg | 90% (critical threshold) |
 | 27 mmHg | 50% (P50) |
+
+**Vitals wiring:** After each tick, `respiratory_rate` is written to `CharacterVitals.rr` (displayed in the top bar as "RR: N bpm"). `CharacterVitals._refresh_ui()` is called immediately after to update the HUD. Pulmonary receives the vitals node via `setup(organs, levels, vitals)`.
 
 **Cardiovascular feedback:** SpO2 written to `cardiovascular.spo2` each tick. Below 90%, effective CO is reduced linearly (50% CO at SpO2=50%). This means pneumothorax → hypoxia → impaired O2 delivery → effective CO falls despite high HR.
 

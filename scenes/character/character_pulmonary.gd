@@ -4,7 +4,7 @@ extends Node
 # Models lung volumes, respiratory rate, alveolar gas exchange (O2/CO2),
 # and pulmonary oxygenation status.
 # Feeds SpO2 back into cardiovascular to limit effective CO delivery under hypoxia.
-# Supports pneumothorax state and needle decompression treatment.
+# Supports tension pneumothorax with progressive pressure accumulation and venous return collapse.
 
 # ── Baseline constants ────────────────────────────────────────────────────────
 const BODY_MASS_KG: float = 75.0
@@ -15,6 +15,14 @@ const PATM: float = 760.0                    # mmHg atmospheric pressure
 const PH2O: float = 47.0                     # mmHg water vapour at 37°C
 const FIO2: float = 0.21                     # fraction inspired O2 (room air)
 const RESPIRATORY_QUOTIENT: float = 0.8      # CO2 produced / O2 consumed
+
+# Tension pneumothorax pressure accumulation
+# Each tick with active pneumothorax, pleural_pressure rises by PRESSURE_PER_TICK.
+# At MEDIASTINAL_SHIFT_THRESHOLD, mediastinal compression begins.
+# At VENA_CAVA_COLLAPSE_THRESHOLD, venous return collapses fully.
+const PRESSURE_PER_TICK: float = 2.0         # cmH2O per tick — one-way valve leak
+const MEDIASTINAL_SHIFT_THRESHOLD: float = 10.0   # cmH2O — shift begins, contralateral TV impaired
+const VENA_CAVA_COLLAPSE_THRESHOLD: float = 25.0  # cmH2O — venous return critically compromised
 
 # ── Lung volumes (mL, both lungs combined) ───────────────────────────────────
 var total_lung_capacity: float = 0.0         # TLC
@@ -40,8 +48,10 @@ var pao2_spo2: float = 99.0                  # SpO2 % — derived from PAO2 via 
 var pulm_vein_o2: float = 100.0              # mmHg pulmonary vein O2 (post gas exchange)
 
 # ── Disease states ────────────────────────────────────────────────────────────
-var pneumothorax: bool = false               # Lung collapsed — tidal volume → 0
+var pneumothorax: bool = false               # Lung collapsed
 var pneumothorax_side: String = ""           # "left" or "right"
+var pleural_pressure: float = 0.0            # cmH2O — accumulated intrapleural pressure (tension mechanism)
+var venous_return_fraction: float = 1.0      # 0.0–1.0 — fraction of normal venous return; fed into cardiovascular
 
 # ── Internal refs ─────────────────────────────────────────────────────────────
 var _organs: Node = null
@@ -73,6 +83,7 @@ func tick() -> void:
 	if _organs == null:
 		return
 
+	_update_tension_pressure()
 	_update_respiratory_rate()
 	_update_tidal_volume()
 	_update_ventilation()
@@ -85,6 +96,31 @@ func tick() -> void:
 	if _vitals != null:
 		_vitals.rr = roundi(respiratory_rate)
 		_vitals._refresh_ui()
+
+
+func _update_tension_pressure() -> void:
+	if not pneumothorax:
+		# Pressure dissipates quickly after decompression
+		pleural_pressure = maxf(0.0, pleural_pressure - PRESSURE_PER_TICK * 3.0)
+		venous_return_fraction = 1.0
+		return
+
+	# One-way valve: pressure rises each tick with active pneumothorax
+	pleural_pressure += PRESSURE_PER_TICK
+
+	# Venous return compression begins at mediastinal shift threshold.
+	# Falls linearly from 1.0 at MEDIASTINAL_SHIFT_THRESHOLD to 0.1 at VENA_CAVA_COLLAPSE_THRESHOLD.
+	if pleural_pressure <= MEDIASTINAL_SHIFT_THRESHOLD:
+		venous_return_fraction = 1.0
+	else:
+		var compression_fraction: float = (pleural_pressure - MEDIASTINAL_SHIFT_THRESHOLD) / (VENA_CAVA_COLLAPSE_THRESHOLD - MEDIASTINAL_SHIFT_THRESHOLD)
+		venous_return_fraction = maxf(0.1, 1.0 - compression_fraction * 0.9)
+
+	# Feed venous return collapse into cardiovascular as a plasma_ratio penalty.
+	# We reduce effective plasma seen by cardiovascular by suppressing plasma_fluid directly.
+	# This collapses preload → SV → CO via Frank-Starling without touching actual fluid compartments.
+	if _organs.get("cardiovascular") != null:
+		_organs.cardiovascular.venous_return_fraction = venous_return_fraction
 
 
 func _update_respiratory_rate() -> void:
@@ -102,25 +138,48 @@ func _update_respiratory_rate() -> void:
 		var rr_range: float = (MAX_RR - BASELINE_RR) * maxf(0.0, 1.0 - cardio_mod)
 		base_rr = BASELINE_RR + rr_range * co_fraction
 
-	if pneumothorax:
-		# Compensatory tachypnea — breathe faster to compensate for lost volume
-		base_rr = minf(base_rr * 1.5, MAX_RR)
+	# Hypoxic drive: SpO2 < 90% → peripheral chemoreceptors → tachypnea.
+	# Adds up to +28 bpm at SpO2=50% (full hypoxia). Takes the dominant driver.
+	if _organs.cardiovascular != null:
+		var spo2: float = _organs.cardiovascular.spo2
+		if spo2 < 90.0:
+			var hypoxic_rr: float = BASELINE_RR + (90.0 - spo2) / 40.0 * 28.0
+			base_rr = maxf(base_rr, hypoxic_rr)
 
-	respiratory_rate = clampf(base_rr, BASELINE_RR, MAX_RR)
+	base_rr = clampf(base_rr, BASELINE_RR, MAX_RR)
+
+	# During pneumothorax the mechanical insult is monotonic — RR only ratchets upward.
+	# Recovery only occurs after decompression.
+	if pneumothorax:
+		# Pressure-driven tachypnea: RR scales directly with pleural pressure toward MAX_RR.
+		# At VENA_CAVA_COLLAPSE_THRESHOLD and beyond, RR should reach 40.
+		var pressure_rr: float = BASELINE_RR + (pleural_pressure / VENA_CAVA_COLLAPSE_THRESHOLD) * (MAX_RR - BASELINE_RR)
+		base_rr = maxf(base_rr, pressure_rr)
+		base_rr = clampf(base_rr, BASELINE_RR, MAX_RR)
+		respiratory_rate = maxf(respiratory_rate, base_rr)
+	else:
+		var rr_alpha: float = 0.5 if base_rr > respiratory_rate else 0.2
+		respiratory_rate = lerpf(respiratory_rate, base_rr, rr_alpha)
 
 
 func _update_tidal_volume() -> void:
-	if pneumothorax:
-		# Collapsed lung — tidal volume halved (one lung working)
-		tidal_volume = (BODY_MASS_KG * TIDAL_VOLUME_FACTOR) * 0.5
+	var base_tv: float = BODY_MASS_KG * TIDAL_VOLUME_FACTOR
+	if not pneumothorax:
+		tidal_volume = base_tv
 	else:
-		tidal_volume = BODY_MASS_KG * TIDAL_VOLUME_FACTOR
+		# Ipsilateral lung collapsed — start at 50% TV.
+		# As mediastinal shift compresses contralateral lung, TV falls further.
+		var contralateral_compression: float = 0.0
+		if pleural_pressure > MEDIASTINAL_SHIFT_THRESHOLD:
+			contralateral_compression = minf(1.0, (pleural_pressure - MEDIASTINAL_SHIFT_THRESHOLD) / (VENA_CAVA_COLLAPSE_THRESHOLD - MEDIASTINAL_SHIFT_THRESHOLD))
+		# TV: 50% at shift onset, down to 25% at full collapse
+		tidal_volume = base_tv * (0.5 - contralateral_compression * 0.25)
 	current_lung_volume = functional_residual_capacity + tidal_volume
 
 
 func _update_ventilation() -> void:
 	minute_ventilation = tidal_volume * respiratory_rate
-	alveolar_ventilation = (tidal_volume - anatomic_deadspace) * respiratory_rate
+	alveolar_ventilation = maxf(0.0, tidal_volume - anatomic_deadspace) * respiratory_rate
 
 
 func _update_gas_exchange() -> void:
@@ -128,9 +187,25 @@ func _update_gas_exchange() -> void:
 	pio2 = (PATM - PH2O) * FIO2
 
 	if pneumothorax:
-		# Collapsed lung — alveolar O2 falls sharply, CO2 rises
-		pao2 = 50.0
-		paco2 = 55.0
+		# V/Q mismatch: ipsilateral lung is pure shunt (perfused but not ventilated).
+		# As pressure rises, contralateral lung is also compressed → worsening hypoxia + hypercapnia.
+		var shunt_fraction: float = 0.5  # ipsilateral lung = 50% of total perfusion, now shunt
+		# Contralateral compression worsens gas exchange further
+		if pleural_pressure > MEDIASTINAL_SHIFT_THRESHOLD:
+			var extra_shunt: float = minf(0.35, (pleural_pressure - MEDIASTINAL_SHIFT_THRESHOLD) / (VENA_CAVA_COLLAPSE_THRESHOLD - MEDIASTINAL_SHIFT_THRESHOLD) * 0.35)
+			shunt_fraction += extra_shunt
+
+		# Ventilated fraction handles gas exchange; hyperventilation improves PACO2 but cannot
+		# rescue the shunted fraction — shunted blood bypasses alveoli regardless of RR.
+		var baseline_alv_vent: float = (BODY_MASS_KG * TIDAL_VOLUME_FACTOR - anatomic_deadspace) * BASELINE_RR
+		var vent_ratio: float = alveolar_ventilation / baseline_alv_vent if baseline_alv_vent > 0.0 else 0.01
+		paco2 = clampf(40.0 / vent_ratio, 20.0, 80.0)
+		# PAO2 in ventilated alveoli — hyperventilation raises this but shunt dilutes the result
+		var ventilated_pao2: float = clampf(pio2 - (paco2 / RESPIRATORY_QUOTIENT), 40.0, 130.0)
+		# Mixed arterial PaO2: shunted blood is fixed at venous PO2 (~40 mmHg); no amount of
+		# hyperventilation rescues it. Clamp ventilated_pao2 benefit to avoid RR-driven oscillation.
+		var clamped_ventilated_pao2: float = minf(ventilated_pao2, 100.0)
+		pao2 = clamped_ventilated_pao2 * (1.0 - shunt_fraction) + 40.0 * shunt_fraction
 	else:
 		# Alveolar gas equation: PAO2 = PIO2 - (PACO2 / R)
 		# PACO2 driven by alveolar ventilation: higher ventilation → lower PACO2
@@ -170,6 +245,7 @@ func trigger_pneumothorax(side: String = "right") -> void:
 
 
 func resolve_pneumothorax() -> void:
-	# Needle decompression / chest tube — lung re-expands
+	# Needle decompression / chest tube — pressure vented, lung re-expands
 	pneumothorax = false
 	pneumothorax_side = ""
+	# pleural_pressure decays naturally in _update_tension_pressure each tick

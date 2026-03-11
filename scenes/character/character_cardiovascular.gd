@@ -24,6 +24,12 @@ var bp_systolic: float = 120.0            # mmHg
 var bp_diastolic: float = 80.0            # mmHg
 var pulse_pressure: float = 40.0          # mmHg
 
+# Smoothed targets — actual HR and SVR lerp toward these each tick.
+# Deterioration (target > current) is faster than recovery (target < current)
+# to ensure the mechanical insult dominates and prevents clean oscillation.
+var _hr_target: float = 75.0
+var _svr_target: float = 1000.0
+
 # Metabolic demand — set by actions, decays toward resting each tick.
 # Snaps up instantly if new demand is higher; decays down otherwise.
 var demanded_co: float = 7.5              # L/min — matches BASELINE_CO
@@ -32,6 +38,10 @@ var spo2: float = 99.0                    # % — written by pulmonary each tick
 # Pre-decay snapshot — readable by pulmonary after cardio.tick() to get the demand
 # value that drove this turn's HR, before vagal reactivation reduces it.
 var demanded_co_pre_decay: float = 7.5
+
+# Venous return fraction — written by pulmonary when tension pneumothorax compresses vena cava.
+# 1.0 = normal; falls toward 0.1 as mediastinal shift worsens. Reduces effective preload.
+var venous_return_fraction: float = 1.0
 
 var _organs: Node = null
 var _vitals: Node = null
@@ -57,23 +67,38 @@ func tick() -> void:
 	# Floor plasma_ratio to prevent SVR/HR from going to infinity at near-zero plasma.
 	var plasma_ratio := maxf(plasma / BASELINE_PLASMA_ML, 0.1)
 
-	# Frank-Starling: stroke volume scales with plasma volume.
+	# Frank-Starling: stroke volume scales with plasma volume and venous return.
+	# venous_return_fraction collapses preload during tension pneumothorax mediastinal shift.
 	# Cardio stat raises baseline SV — fitter heart pumps more per beat at any given filling.
 	var cardio_sv_bonus: float = 0.0
 	if _levels != null:
 		cardio_sv_bonus = _levels.stat_mod(_levels.cardio) * 12.0
-	stroke_volume = (BASELINE_SV_ML + cardio_sv_bonus) * plasma_ratio
+	var effective_preload: float = plasma_ratio * venous_return_fraction
+	effective_preload = maxf(effective_preload, 0.1)
+	stroke_volume = (BASELINE_SV_ML + cardio_sv_bonus) * effective_preload
 
-	# Baroreceptor reflex: compensatory tachycardia as plasma falls.
-	var baroreflex_hr: float = clampf(BASELINE_HR / plasma_ratio, BASELINE_HR, 180.0)
+	# Baroreceptor reflex: compensatory tachycardia as preload falls.
+	var baroreflex_hr: float = clampf(BASELINE_HR / effective_preload, BASELINE_HR, 180.0)
 
 	# Metabolic demand: HR needed to meet demanded_co given current SV.
 	var demand_hr: float = 0.0
 	if stroke_volume > 0.0:
 		demand_hr = demanded_co * 1000.0 / stroke_volume
 
-	# Dominant driver wins — whichever requires the higher HR.
-	heart_rate = clampf(maxf(baroreflex_hr, demand_hr), BASELINE_HR, 180.0)
+	# Hypoxic drive: SpO2 < 90% → peripheral chemoreceptors → sympathetic → tachycardia.
+	# Adds up to +60 bpm at SpO2=50% (full hypoxia).
+	var hypoxic_hr: float = 0.0
+	if spo2 < 90.0:
+		hypoxic_hr = BASELINE_HR + (90.0 - spo2) / 40.0 * 60.0
+
+	# Dominant driver wins — sets the HR target this tick.
+	_hr_target = clampf(maxf(maxf(baroreflex_hr, demand_hr), hypoxic_hr), BASELINE_HR, 180.0)
+
+	# Lerp heart_rate toward target — faster when rising (deterioration) than falling (recovery).
+	# This prevents clean oscillation: the body overshoots upward quickly but recovers slowly.
+	var hr_alpha: float = 0.6 if _hr_target > heart_rate else 0.25
+	heart_rate = lerpf(heart_rate, _hr_target, hr_alpha)
+	heart_rate = clampf(heart_rate, BASELINE_HR, 180.0)
 
 	# Cardiac output (L/min) — reduced by hypoxia (SpO2 < 90% impairs delivery).
 	# Below 90% SpO2, effective CO scales down linearly to 50% at SpO2=50%.
@@ -83,8 +108,16 @@ func tick() -> void:
 		spo2_modifier = clampf(spo2_modifier, 0.5, 1.0)
 	cardiac_output = (heart_rate * stroke_volume) / 1000.0 * spo2_modifier
 
-	# SVR rises with dehydration (sympathetic vasoconstriction).
-	systemic_vascular_resistance = BASELINE_SVR / plasma_ratio
+	# SVR target: rises with sympathetic tone (dehydration + hypoxia + low preload).
+	_svr_target = BASELINE_SVR / plasma_ratio
+	# Hypoxia/low preload adds additional sympathetic vasoconstriction
+	if spo2 < 90.0 or venous_return_fraction < 1.0:
+		var stress: float = maxf(1.0 - venous_return_fraction, (90.0 - spo2) / 40.0)
+		_svr_target *= (1.0 + stress * 0.5)
+
+	# SVR also lerps — rises faster than it falls (sympathetic activation is fast, washout is slow).
+	var svr_alpha: float = 0.5 if _svr_target > systemic_vascular_resistance else 0.2
+	systemic_vascular_resistance = lerpf(systemic_vascular_resistance, _svr_target, svr_alpha)
 
 	# MAP = CO × SVR / 80 (unit conversion factor)
 	mean_arterial_pressure = cardiac_output * systemic_vascular_resistance / 80.0

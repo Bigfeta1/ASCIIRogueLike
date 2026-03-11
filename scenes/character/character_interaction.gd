@@ -184,6 +184,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				_look_cursor.activate()
 			else:
 				_look_cursor.deactivate()
+		KEY_KP_1:
+			if _renal_debug_panel != null and _character.pulmonary != null:
+				if _character.pulmonary.pneumothorax:
+					_character.pulmonary.resolve_pneumothorax()
+				else:
+					_character.pulmonary.trigger_pneumothorax("right")
+				_refresh_renal_debug()
 		KEY_F12:
 			if _renal_debug_panel != null:
 				_character.movement.moved.disconnect(_refresh_renal_debug)
@@ -821,6 +828,8 @@ func _refresh_renal_debug() -> void:
 		+ "Pulm Vein O2:   %.1f mmHg\n" % pulm.pulm_vein_o2
 		+ "SpO2:           %.1f %%\n" % pulm.pao2_spo2
 		+ "Pneumothorax:   %s\n" % ("YES (%s)" % pulm.pneumothorax_side if pulm.pneumothorax else "No")
+		+ "Pleural Pres:   %.1f cmH2O\n" % pulm.pleural_pressure
+		+ "Venous Return:  %.0f %%\n" % (pulm.venous_return_fraction * 100.0)
 	)
 
 

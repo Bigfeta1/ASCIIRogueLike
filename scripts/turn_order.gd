@@ -33,6 +33,24 @@ func _ready() -> void:
 	_map_params = main.get_node("GridMap/MapParameters")
 	_player.get_node("CharacterMovement").moved.connect(_on_player_moved)
 	_player.get_node("CharacterMovement").waited.connect(_on_player_waited)
+	var passive_timer := Timer.new()
+	passive_timer.wait_time = 15.0
+	passive_timer.autostart = true
+	add_child(passive_timer)
+	passive_timer.timeout.connect(_on_passive_tick)
+
+func _on_passive_tick() -> void:
+	if current_turn_state != TurnState.PLAYER_TURN:
+		return
+	if _player.cardiovascular != null:
+		_player.cardiovascular.tick()
+	if _player.pulmonary != null:
+		_player.pulmonary.tick()
+	if _player.renal != null:
+		_player.renal.consume_action_cost()
+		_player.renal.tick()
+	if _player.hypothalamus != null:
+		_player.hypothalamus.tick()
 
 func _on_player_waited() -> void:
 	current_turn_state = TurnState.MAP_TURN
