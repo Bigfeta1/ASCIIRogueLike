@@ -7,17 +7,17 @@ extends Node
 
 # Baseline reference values (at normal plasma volume of 3750 mL)
 const BASELINE_PLASMA_ML: float = 3750.0
-const BASELINE_SV_ML: float = 99.0        # mL — gives CO=7.425 L/min at HR=75, MAP=93 at SVR=1000
-const BASELINE_HR: float = 60.0           # bpm — resting
-const BASELINE_SVR: float = 1000.0        # dyn·s·cm⁻⁵ — mid-normal range
-const BASELINE_MAP: float = 93.0          # mmHg — (120 + 2×80) / 3
-const BASELINE_CO: float = 5.94           # L/min — resting cardiac output (HR=60 × SV=99)
+const BASELINE_SV_ML: float = 100.0       # mL
+const BASELINE_HR: float = 75.0           # bpm — resting
+const BASELINE_SVR: float = 1000.0        # dyn·s·cm⁻⁵ — calibrated to MAP=93 at HR=75, SV=100
+const BASELINE_MAP: float = 93.0          # mmHg — CO=7.5 × SVR=1000 / 80
+const BASELINE_CO: float = 7.5            # L/min — resting cardiac output (HR=75 × SV=100)
 const MAX_CO: float = 20.0               # L/min — physiological ceiling
 
 # Live values
-var stroke_volume: float = 99.0           # mL
-var heart_rate: float = 60.0              # bpm
-var cardiac_output: float = 5.94          # L/min
+var stroke_volume: float = 100.0          # mL
+var heart_rate: float = 75.0              # bpm
+var cardiac_output: float = 7.5           # L/min
 var systemic_vascular_resistance: float = 1000.0
 var mean_arterial_pressure: float = 93.0  # mmHg
 var bp_systolic: float = 120.0            # mmHg
@@ -26,7 +26,7 @@ var pulse_pressure: float = 40.0          # mmHg
 
 # Metabolic demand — set by actions, decays toward resting each tick.
 # Snaps up instantly if new demand is higher; decays down otherwise.
-var demanded_co: float = 5.94             # L/min — matches BASELINE_CO
+var demanded_co: float = 7.5              # L/min — matches BASELINE_CO
 
 var _organs: Node = null
 var _vitals: Node = null

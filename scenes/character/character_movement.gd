@@ -127,7 +127,7 @@ func _check_move(delta: Vector2i) -> void:
 	_occupancy_map.move_solid(grid_pos, target, _character)
 	grid_pos = target
 	if _character.cardiovascular != null:
-		_character.cardiovascular.set_demand(7.425)
+		_character.cardiovascular.set_demand(8.0)
 	moved.emit()
 	_face(delta)
 	_snap()

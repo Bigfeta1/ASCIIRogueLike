@@ -81,6 +81,7 @@ func _ready() -> void:
 	renal.name = "CharacterRenal"
 	add_child(renal)
 	organs.renal = renal
+	renal.setup(organs)
 
 	hypothalamus = HypothalamusScript.new()
 	hypothalamus.name = "CharacterHypothalamus"

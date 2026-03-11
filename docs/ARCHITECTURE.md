@@ -354,7 +354,149 @@ regen_mod  = avg(adrenal, cardio, parasympathetic) mods
 
 ---
 
-## 12. Structure System
+## 12. Organ Systems
+
+Organ nodes are dynamically instantiated in `character.gd._ready()` for all non-STRUCTURE characters. They are not in the scene file. Each is added as a child and registered in `CharacterOrganRegistry`, which is the single access point for all organ refs. External systems (TurnOrder, cardiovascular) read organs through the registry rather than reaching into character directly.
+
+### CharacterOrganRegistry (`character_organ_registry.gd`)
+
+Holds refs: `renal`, `hypothalamus`, `cardiovascular`. Populated immediately after instantiation in `character.gd._ready()`.
+
+### Turn Order Integration
+
+Each player action triggers the organ tick pipeline in `TurnOrder` in this order:
+
+```
+1. cardiovascular.tick()   — computes CO fluid cost, adds to renal.pending_plasma_cost
+2. renal.consume_action_cost()  — deducts pending cost from plasma, cascades to compartments
+3. renal.tick()            — recalculates concentrations, osmolality, GFR, creatinine
+4. hypothalamus.tick()     — reads plasma_osmolality, emits thirst signals
+```
+
+Cardiovascular must tick before renal consumes so the exertion fluid cost is included in that turn's deduction.
+
+---
+
+### Renal System (`character_renal.gd`)
+
+Models fluid compartments, plasma solutes, GFR, and creatinine.
+
+**Fluid compartments (mL):**
+```
+TBW = 60% of body_mass (kg) × 1000
+ICF = 2/3 × TBW
+ECF = 1/3 × TBW
+  interstitial = 3/4 × ECF
+  plasma       = 1/4 × ECF
+```
+Baseline at 75 kg: TBW=45,000 mL, ICF=30,000, ECF=15,000, interstitial=11,250, plasma=3,750.
+
+**Fluid loss per action (`consume_action_cost`):**
+1. `plasma_fluid -= pending_plasma_cost` (base 0.434 mL + cardiovascular exertion surcharge)
+2. Plasma osmolality rises as plasma shrinks (fixed solute totals, shrinking volume)
+3. Elevated ECF osmolality pulls water from ICF proportional to the osmotic gradient
+4. ECF redistributes: interstitial stays at 3:1 ratio within ECF
+
+**Plasma solutes (fixed totals, rising concentration as volume falls):**
+- `total_plasma_sodium` → `plasma_sodium` (mEq/L)
+- `total_plasma_glucose` → `plasma_glucose` (mg/dL)
+- `total_plasma_bun` → `plasma_bun` (mg/dL)
+- Osmolality: `Posm = 2×Na + glucose/18 + BUN/2.8`
+
+**RPF and GFR** are jointly modulated by plasma volume, MAP, and sympathetic tone:
+
+```
+base_RPF = plasma_fluid × 0.176          (660 mL/min at baseline 3750 mL plasma)
+
+sympathetic_suppression = co_excess / (MAX_CO − BASELINE_CO)
+rpf_ceiling = lerp(1.0, 0.7, sympathetic_suppression)
+
+if MAP < 70:   map_ratio = MAP / 70        (shock — linear fall to zero)
+else:          map_ratio = min(1.0, rpf_ceiling)
+
+RPF = base_RPF × map_ratio
+GFR = RPF × filtration_fraction + filtration_correction
+```
+
+Three regimes:
+- **MAP ≥ 70, at rest** (`demanded_co` = resting): `rpf_ceiling` = 1.0, `map_ratio` = 1.0 → RPF and GFR at full baseline (~130 mL/min). Autoregulation holds regardless of where in the 70–180 range MAP sits.
+- **MAP ≥ 70, in combat** (high `demanded_co`): sympathetic vasoconstriction suppresses `rpf_ceiling` toward 0.7 → GFR 90–110 mL/min despite high systemic BP. Blood is redistributed to muscle.
+- **MAP < 70** (shock/severe dehydration): no autoregulation — RPF falls linearly to zero, GFR crashes (prerenal azotemia, creatinine rises).
+
+**Creatinine:** steady-state production 0.324 mg/turn; clearance = `GFR × plasma_creatinine × 0.25 min`. Rises when GFR falls.
+
+---
+
+### Hypothalamus (`character_hypothalamus.gd`)
+
+Reads `plasma_osmolality` from renal each tick. Emits signals at threshold crossings:
+
+| Signal | Trigger | Resolves |
+|--------|---------|---------|
+| `thirst_triggered` | osmolality > 290 | < 287 |
+| `dehydrated_triggered` | osmolality > 295 | < 292 |
+| `severely_dehydrated_triggered` | osmolality > 310 | < 306 |
+
+---
+
+### Cardiovascular System (`character_cardiovascular.gd`)
+
+Models HR, stroke volume, cardiac output, SVR, and blood pressure from plasma volume and metabolic demand.
+
+**Metabolic demand (`demanded_co`):**
+- Actions set a target CO via `set_demand(co: float)` — snaps up instantly if higher than current
+- Decays toward `BASELINE_CO` (5.94 L/min) each tick at rate `0.5 + parasympathetic_mod × 0.1` L/min/turn
+- Vagal reactivation (parasympathetic stat) drives post-exertion recovery — higher parasympathetic = faster decay
+
+**Action CO demands:**
+| Action | demanded_co |
+|--------|------------|
+| Wait | — (decays toward resting) |
+| Walk | 7.425 L/min → HR ≈ 75 bpm |
+| Combat bump | 15.0 L/min → HR ≈ 150 bpm, SBP ≈ 210 mmHg |
+
+**Stroke volume** scales with plasma (Frank-Starling) and cardio stat:
+```
+SV = (BASELINE_SV_ML + cardio_stat_mod × 12) × plasma_ratio
+```
+Higher cardio → larger SV → same CO demand met at lower HR. At cardio=16 (mod=+3), SV=135 mL; combat HR drops from 151 to 111 bpm.
+
+**Heart rate** takes the dominant driver:
+```
+baroreflex_hr = BASELINE_HR / plasma_ratio   (compensation for hypovolemia)
+demand_hr     = demanded_co × 1000 / SV       (metabolic demand)
+heart_rate    = max(baroreflex_hr, demand_hr), capped at 180
+```
+
+**MAP and BP:**
+```
+CO  = HR × SV / 1000
+SVR = BASELINE_SVR / plasma_ratio   (sympathetic vasoconstriction with dehydration)
+MAP = CO × SVR / 80
+PP  = 40 × (SV / BASELINE_SV)
+DBP = MAP − PP/3
+SBP = DBP + PP
+```
+
+**Exertion fluid cost:** added to `renal.pending_plasma_cost` each tick:
+```
+co_excess      = max(0, demanded_co − BASELINE_CO)
+co_fraction    = co_excess / (MAX_CO − BASELINE_CO)   # MAX_CO = 20 L/min
+co_fluid_cost  = DEFAULT_ACTION_COST_ML × 3.0 × co_fraction
+```
+Zero at resting, up to 3× base cost (1.302 mL/turn) at max exertion. Stacks on top of the 0.434 mL/turn insensible baseline.
+
+**Cardiovascular → Renal feedback loop:**
+
+Cardiovascular feeds two values into the renal system each tick:
+1. `demanded_co` → drives sympathetic suppression of RPF ceiling (combat redistributes blood away from kidneys)
+2. `mean_arterial_pressure` → drives RPF map_ratio (shock crushes renal perfusion)
+
+This creates a bidirectional cascade: dehydration drops plasma → drops SV and MAP → raises HR and SVR → sympathetic tone suppresses renal flow → GFR falls → creatinine rises → osmolality climbs → thirst intensifies. Combat accelerates the loop by simultaneously spiking demanded_co and MAP.
+
+---
+
+## 13. Structure System
 
 Structures (trees, chests, and in future: walls, doors, boulders, etc.) are `character.tscn` instances with `CharacterType.STRUCTURE`. They are not tiles — the GridMap cell underneath is always Floor. Structures own their traversal properties directly.
 
@@ -412,7 +554,7 @@ The `actions` array is data-driven — any string listed here appears in the int
 
 ---
 
-## 13. Zone Persistence (`world_state.gd`)
+## 14. Zone Persistence (`world_state.gd`)
 
 When the player exits a zone:
 1. All enemy states are serialized to `off_screen_enemies` (position, AI state, patrol info, stats, HP, inventory with durability/liquids, blood splatter flag)
@@ -427,7 +569,7 @@ Off-screen enemies have patrol movement simulated (1 step/turn) via `tick_off_sc
 
 ---
 
-## 14. Tile System (`tile_registry.gd`)
+## 15. Tile System (`tile_registry.gd`)
 
 Each tile has:
 ```json
@@ -451,7 +593,7 @@ Use `TileRegistry.get_original_tile(cell, current_tile_id)` to get the real tile
 
 ---
 
-## 15. Data Files
+## 16. Data Files
 
 ### `data/items.json`
 ```json
@@ -506,7 +648,7 @@ Categories: `melee`, `ranged`, `armor`, `clothes`, `medicine`, `container`, `cam
 
 `actions` is the exhaustive list of interaction menu options for that structure. `"Inspect"`, `"Lock On"`, and `"Unlock Target"` are always appended automatically — do not include them here.
 
-See §12 for full structure system documentation.
+See §13 for full structure system documentation.
 
 ### World Items (`scenes/items/world_item.tscn`)
 
@@ -522,7 +664,7 @@ World items are `MeshInstance3D` nodes with `world_item.gd` attached, placed as 
 
 ---
 
-## 16. UI Systems
+## 17. UI Systems
 
 | UI Node | Script | Purpose |
 |---------|--------|---------|
@@ -537,7 +679,7 @@ World items are `MeshInstance3D` nodes with `world_item.gd` attached, placed as 
 
 ---
 
-## 17. Input Map
+## 18. Input Map
 
 | Key | Action |
 |-----|--------|
@@ -551,7 +693,7 @@ World items are `MeshInstance3D` nodes with `world_item.gd` attached, placed as 
 
 ---
 
-## 18. Common Patterns
+## 19. Common Patterns
 
 ### Accessing a sibling component
 
@@ -613,7 +755,7 @@ func _ready() -> void:
 
 ---
 
-## 19. Blood Splatter
+## 20. Blood Splatter
 
 Blood splatter is a `MeshInstance3D` named `"BloodSplatter"` added as a child of the Character node on death (by `character_sprite.gd`). It has no script. To find it:
 
@@ -625,7 +767,7 @@ The camera is top-down; sprites are horizontal `PlaneMesh` instances. Do **not**
 
 ---
 
-## 20. Ownership Rules
+## 21. Ownership Rules
 
 These are hard rules about which node is the single authority for each piece of state. 
 Do not read or mutate these from outside the owning node unless the rule explicitly permits it.
@@ -760,7 +902,7 @@ No system may track occupancy independently. `CharacterVision.can_see()` and `Ch
 
 ---
 
-## 21. Known Limitations and Future Pressure Points
+## 22. Known Limitations and Future Pressure Points
 
 ### Scene-name coupling in component lookup — ~~resolved~~
 

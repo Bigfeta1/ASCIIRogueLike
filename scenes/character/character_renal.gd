@@ -57,6 +57,11 @@ var total_icf_solutes: float = 0.0  # mOsm
 const DEFAULT_ACTION_COST_ML: float = 0.434  # 2.5L/day ÷ 5760 turns/day
 var pending_plasma_cost: float = DEFAULT_ACTION_COST_ML
 
+var _organs: Node = null
+
+func setup(organ_registry: Node) -> void:
+	_organs = organ_registry
+
 
 func _ready() -> void:
 	# Compute baseline compartments and seed plasma_fluid once.
@@ -133,8 +138,24 @@ func tick() -> void:
 	# Plasma osmolality: Posm = 2×Na + glucose/18 + BUN/2.8
 	plasma_osmolality = (2.0 * plasma_sodium) + (plasma_glucose / 18.0) + (plasma_bun / 2.8)
 
-	# RPF scales directly with plasma volume. 660 mL/min at baseline 3750 mL plasma.
-	renal_plasma_flow = plasma_fluid * 0.176
+	# RPF scales with plasma volume and MAP.
+	# Baseline: 660 mL/min at 3750 mL plasma and MAP=93.
+	# RPF is modulated by MAP and sympathetic tone.
+	# Autoregulation keeps RPF near baseline across MAP 70–180 mmHg.
+	# Below 70: perfusion falls with MAP (shock).
+	# During exertion: sympathetic renal vasoconstriction reduces RPF ceiling.
+	# At peak combat demand, RPF falls to ~70% of baseline (blood redistributed to muscle).
+	var map_ratio := 1.0
+	if _organs != null and _organs.cardiovascular != null:
+		var map: float = _organs.cardiovascular.mean_arterial_pressure
+		var co_excess: float = maxf(0.0, _organs.cardiovascular.demanded_co - _organs.cardiovascular.BASELINE_CO)
+		var sympathetic_suppression: float = co_excess / (_organs.cardiovascular.MAX_CO - _organs.cardiovascular.BASELINE_CO)
+		var rpf_ceiling: float = lerpf(1.0, 0.7, sympathetic_suppression)
+		if map < 70.0:
+			map_ratio = maxf(map / 70.0, 0.0)
+		else:
+			map_ratio = minf(1.0, rpf_ceiling)
+	renal_plasma_flow = plasma_fluid * 0.176 * map_ratio
 	renal_blood_flow = renal_plasma_flow / (1.0 - hematocrit)
 
 	var efferent_effect := -(efferent_arteriole_diameter - 20.0)
