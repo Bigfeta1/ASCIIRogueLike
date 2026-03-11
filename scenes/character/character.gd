@@ -81,4 +81,4 @@ func _ready() -> void:
 		inventory.add_item("logs")
 	else:
 		var turn_order: Node = scene.get_node("GameLogic/TurnOrder")
-		ai.setup(grid_map, turn_order)
+		ai.setup(grid_map, turn_order, canvas_layer, camera)
