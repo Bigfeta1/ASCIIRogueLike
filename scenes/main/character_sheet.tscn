@@ -1,0 +1,748 @@
+[gd_scene load_steps=10 format=3 uid="uid://igp3es0v72q1"]
+
+[ext_resource type="Script" uid="uid://c4528qwm1k3g0" path="res://scenes/main/character_sheet.gd" id="1_tt0cm"]
+[ext_resource type="Texture2D" uid="uid://2666ys540gi" path="res://assets/images/ui/spr_menu_panel.png" id="2_dgnfu"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_tt0cm"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_dgnfu"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_sekv3"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_jskwr"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l7pil"]
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="LabelSettings" id="LabelSettings_0jrka"]
+font_size = 8
+
+[sub_resource type="LabelSettings" id="LabelSettings_l7pil"]
+font_size = 10
+
+[node name="CharacterSheet" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tt0cm")
+
+[node name="Control" type="Control" parent="."]
+visible = false
+anchors_preset = 0
+offset_left = 2223.8
+offset_top = 10.800003
+offset_right = 2223.8
+offset_bottom = 41.800003
+
+[node name="Panel" type="NinePatchRect" parent="."]
+custom_minimum_size = Vector2(1800, 0)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.528
+anchor_right = 0.5
+anchor_bottom = 0.541
+offset_left = -960.0
+offset_top = -540.0
+offset_right = 950.0
+offset_bottom = 460.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset = Vector2(960, 0)
+texture = ExtResource("2_dgnfu")
+region_rect = Rect2(0, 0, 560, 530)
+patch_margin_left = 75
+patch_margin_right = 85
+
+[node name="ColorRect" type="ColorRect" parent="Panel"]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 1820.0
+offset_bottom = 929.0
+color = Color(0.06469653, 0.06469653, 0.06469653, 1)
+
+[node name="TabBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.005
+anchor_top = 0.01
+anchor_right = 1.0
+anchor_bottom = 0.01
+offset_left = 33.4
+offset_top = 41.2
+offset_right = -65.599976
+offset_bottom = 72.2
+grow_horizontal = 2
+theme_override_constants/separation = 813
+
+[node name="StatsButton" type="Button" parent="TabBar"]
+layout_mode = 2
+text = "Stats"
+
+[node name="SkillsButton" type="Button" parent="TabBar"]
+layout_mode = 2
+text = "Skills"
+
+[node name="InventoryButton" type="Button" parent="TabBar"]
+layout_mode = 2
+text = "Inventory"
+
+[node name="StatsPanel" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="StatsHBox" type="HBoxContainer" parent="StatsPanel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.159
+anchor_right = 0.5
+anchor_bottom = 0.159
+offset_left = -610.0
+offset_right = 610.0
+offset_bottom = 46.0
+grow_horizontal = 2
+theme_override_constants/separation = 64
+
+[node name="MusclePanel" type="Panel" parent="StatsPanel/StatsHBox"]
+custom_minimum_size = Vector2(150, 45)
+layout_mode = 2
+
+[node name="MuscleLabel" type="Label" parent="StatsPanel/StatsHBox/MusclePanel"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -27.5
+offset_right = 27.5
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "Muscle"
+horizontal_alignment = 1
+
+[node name="MuscleStat" type="Label" parent="StatsPanel/StatsHBox/MusclePanel"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -5.0
+offset_top = -23.0
+offset_right = 5.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "X"
+label_settings = SubResource("LabelSettings_tt0cm")
+
+[node name="CardioPanel" type="Panel" parent="StatsPanel/StatsHBox"]
+custom_minimum_size = Vector2(150, 45)
+layout_mode = 2
+
+[node name="CardioLabel" type="Label" parent="StatsPanel/StatsHBox/CardioPanel"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -27.5
+offset_right = 27.5
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "Cardio"
+horizontal_alignment = 1
+
+[node name="CardioStat" type="Label" parent="StatsPanel/StatsHBox/CardioPanel"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -5.0
+offset_top = -23.0
+offset_right = 5.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "X"
+label_settings = SubResource("LabelSettings_dgnfu")
+
+[node name="AdrenalPanel" type="Panel" parent="StatsPanel/StatsHBox"]
+custom_minimum_size = Vector2(150, 45)
+layout_mode = 2
+
+[node name="AdrenalLabel" type="Label" parent="StatsPanel/StatsHBox/AdrenalPanel"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -27.5
+offset_right = 27.5
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "Adrenal"
+horizontal_alignment = 1
+
+[node name="AdrenalStat" type="Label" parent="StatsPanel/StatsHBox/AdrenalPanel"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -5.0
+offset_top = -23.0
+offset_right = 5.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "X"
+label_settings = SubResource("LabelSettings_sekv3")
+
+[node name="SympatheticPanel" type="Panel" parent="StatsPanel/StatsHBox"]
+custom_minimum_size = Vector2(150, 45)
+layout_mode = 2
+
+[node name="SympatheticLabel" type="Label" parent="StatsPanel/StatsHBox/SympatheticPanel"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -30.5
+offset_right = 30.5
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "Sympathetic"
+horizontal_alignment = 1
+
+[node name="SympatheticStat" type="Label" parent="StatsPanel/StatsHBox/SympatheticPanel"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -5.0
+offset_top = -23.0
+offset_right = 5.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "X"
+label_settings = SubResource("LabelSettings_sekv3")
+
+[node name="ParasympatheticPanel" type="Panel" parent="StatsPanel/StatsHBox"]
+custom_minimum_size = Vector2(150, 45)
+layout_mode = 2
+
+[node name="ParasympatheticLabel" type="Label" parent="StatsPanel/StatsHBox/ParasympatheticPanel"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.079
+offset_left = -27.5
+offset_right = 27.5
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "Parasympathetic"
+label_settings = SubResource("LabelSettings_jskwr")
+horizontal_alignment = 1
+
+[node name="ParasympatheticStat" type="Label" parent="StatsPanel/StatsHBox/ParasympatheticPanel"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -5.0
+offset_top = -23.0
+offset_right = 5.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "X"
+label_settings = SubResource("LabelSettings_sekv3")
+
+[node name="AffectPanel" type="Panel" parent="StatsPanel/StatsHBox"]
+custom_minimum_size = Vector2(150, 45)
+layout_mode = 2
+
+[node name="AffectLabel" type="Label" parent="StatsPanel/StatsHBox/AffectPanel"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -27.5
+offset_right = 27.5
+offset_bottom = 23.0
+grow_horizontal = 2
+text = "Affect"
+horizontal_alignment = 1
+
+[node name="AffectStat" type="Label" parent="StatsPanel/StatsHBox/AffectPanel"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -5.0
+offset_top = -23.0
+offset_right = 5.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "X"
+label_settings = SubResource("LabelSettings_sekv3")
+
+[node name="SkillsPanel" type="Control" parent="."]
+layout_mode = 1
+anchor_left = 0.04
+anchor_top = 0.18
+anchor_right = 0.96
+anchor_bottom = 0.95
+offset_left = -45.0
+offset_top = -72.0
+offset_right = -45.0
+offset_bottom = -72.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="InventoryPanel" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchor_left = 0.04
+anchor_top = 0.18
+anchor_right = 0.96
+anchor_bottom = 0.95
+offset_left = -66.799995
+offset_top = -122.40001
+offset_right = -26.199951
+offset_bottom = -100.400024
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EquipmentSlots" type="Control" parent="InventoryPanel"]
+anchors_preset = 0
+offset_left = 725.0
+offset_top = 97.0
+offset_right = 1136.0
+offset_bottom = 699.0
+
+[node name="ArmContainer" type="VBoxContainer" parent="InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = -76.0
+offset_top = 160.0
+offset_right = 142.0
+offset_bottom = 378.0
+
+[node name="ShoulderPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/ArmContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/ArmContainer/ShoulderPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Shoulder"
+label_settings = SubResource("LabelSettings_0jrka")
+
+[node name="BracersPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/ArmContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/ArmContainer/BracersPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Bracers"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="GlovesPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/ArmContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/ArmContainer/GlovesPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Gloves"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 34.0
+offset_right = 318.0
+offset_bottom = 548.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="InventoryPanel/EquipmentSlots/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="HeadPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer/HBoxContainer/HeadPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Head"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="FacePanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer/HBoxContainer/FacePanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Face"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="NeckPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer/NeckPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Neck"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Chest" type="HBoxContainer" parent="InventoryPanel/EquipmentSlots/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="ChestPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer/Chest/ChestPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Chest"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="ShirtPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer/Chest"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer/Chest/ShirtPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Shirt"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="BeltPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer/BeltPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Belt"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="LegsPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer/LegsPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Legs"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Feet Panel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer/Feet Panel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Feet"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = 352.0
+offset_top = 130.0
+offset_right = 496.0
+offset_bottom = 402.0
+theme_override_constants/separation = 31
+
+[node name="OuterBack" type="HBoxContainer" parent="InventoryPanel/EquipmentSlots/VBoxContainer2"]
+layout_mode = 2
+
+[node name="Outerwear" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/OuterBack"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/OuterBack/Outerwear"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Outerwear"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="BackPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/OuterBack"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/OuterBack/BackPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Back"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Rings" type="HBoxContainer" parent="InventoryPanel/EquipmentSlots/VBoxContainer2"]
+layout_mode = 2
+
+[node name="Outerwear" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/Rings"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/Rings/Outerwear"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Ring 1"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="BackPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/Rings"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/Rings/BackPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Ring 2"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Trinkets" type="HBoxContainer" parent="InventoryPanel/EquipmentSlots/VBoxContainer2"]
+layout_mode = 2
+
+[node name="Outerwear" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/Trinkets"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/Trinkets/Outerwear"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Trinket 1"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="BackPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/Trinkets"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/VBoxContainer2/Trinkets/BackPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "Trinket 2"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="Chest" type="HBoxContainer" parent="InventoryPanel/EquipmentSlots"]
+layout_mode = 0
+offset_left = 93.0
+offset_top = 274.0
+offset_right = 237.0
+offset_bottom = 344.0
+theme_override_constants/separation = 92
+alignment = 1
+
+[node name="ChestPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/Chest"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 5
+size_flags_vertical = 5
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/Chest/ChestPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "R Hand"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="ShirtPanel" type="Panel" parent="InventoryPanel/EquipmentSlots/Chest"]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_l7pil")
+
+[node name="Label" type="Label" parent="InventoryPanel/EquipmentSlots/Chest/ShirtPanel"]
+layout_mode = 0
+offset_left = 4.0
+offset_right = 44.0
+offset_bottom = 14.0
+text = "L Hand"
+label_settings = SubResource("LabelSettings_l7pil")
+
+[node name="WeightLabels" type="Control" parent="InventoryPanel"]
+anchors_preset = 0
+offset_left = 22.0
+offset_right = 62.0
+offset_bottom = 40.0
+
+[node name="Title" type="Label" parent="InventoryPanel/WeightLabels"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "Weight:"
+
+[node name="CurrentWeightLabel" type="Label" parent="InventoryPanel/WeightLabels"]
+layout_mode = 0
+offset_left = 68.0
+offset_right = 108.0
+offset_bottom = 23.0
+text = "x"
+
+[node name="Slash" type="Label" parent="InventoryPanel/WeightLabels"]
+layout_mode = 0
+offset_left = 98.0
+offset_right = 138.0
+offset_bottom = 23.0
+text = "/"
+
+[node name="CurrentWeightLabel2" type="Label" parent="InventoryPanel/WeightLabels"]
+layout_mode = 0
+offset_left = 111.0
+offset_right = 151.0
+offset_bottom = 23.0
+text = "x"
+
+[node name="InventoryList" type="Control" parent="InventoryPanel"]
+anchors_preset = 0
+offset_left = 25.0
+offset_top = 56.0
+offset_right = 380.0
+offset_bottom = 812.0
+
+[node name="ScrollContainer" type="ScrollContainer" parent="InventoryPanel/InventoryList"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ItemList" type="VBoxContainer" parent="InventoryPanel/InventoryList/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ItemActionPanel" type="PanelContainer" parent="InventoryPanel"]
+visible = false
+layout_mode = 0
+offset_left = 25.0
+offset_top = 56.0
+offset_right = 175.0
+offset_bottom = 116.0
+
+[node name="ActionList" type="VBoxContainer" parent="InventoryPanel/ItemActionPanel"]
+layout_mode = 2
+
+[node name="InspectLabel" type="Label" parent="InventoryPanel/ItemActionPanel/ActionList"]
+layout_mode = 2
+text = "Inspect"
+
+[node name="DropLabel" type="Label" parent="InventoryPanel/ItemActionPanel/ActionList"]
+layout_mode = 2
+text = "Drop"
+
+[node name="Labels" type="Control" parent="InventoryPanel"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="AttackWeightLabel" type="Label" parent="InventoryPanel/Labels"]
+layout_mode = 0
+offset_left = 1072.0
+offset_top = 88.0
+offset_right = 1112.0
+offset_bottom = 111.0
+text = "Attack Weight:"
+
+[node name="ArmorWeightLabel" type="Label" parent="InventoryPanel/Labels"]
+layout_mode = 0
+offset_left = 1074.0
+offset_top = 108.0
+offset_right = 1187.0
+offset_bottom = 131.0
+text = "Armor Weight:"

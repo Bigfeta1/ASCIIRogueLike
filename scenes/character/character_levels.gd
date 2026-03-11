@@ -57,13 +57,13 @@ func _ready() -> void:
 	pass
 
 func setup(character_sheet: Control, top_bar: Control) -> void:
-	var stats_hbox := character_sheet.get_node("StatsPanel/HBoxContainer")
-	_label_muscle = stats_hbox.get_node("MuscleLabel")
-	_label_cardio = stats_hbox.get_node("CardioLabel")
-	_label_adrenal = stats_hbox.get_node("AdrenalLabel")
-	_label_sympathetic = stats_hbox.get_node("SympatheticLabel")
-	_label_parasympathetic = stats_hbox.get_node("ParasympatheticLabel")
-	_label_affect = stats_hbox.get_node("AffectLabel")
+	var stats_hbox := character_sheet.get_node("StatsPanel/StatsHBox")
+	_label_muscle = stats_hbox.get_node("MusclePanel/MuscleStat")
+	_label_cardio = stats_hbox.get_node("CardioPanel/CardioStat")
+	_label_adrenal = stats_hbox.get_node("AdrenalPanel/AdrenalStat")
+	_label_sympathetic = stats_hbox.get_node("SympatheticPanel/SympatheticStat")
+	_label_parasympathetic = stats_hbox.get_node("ParasympatheticPanel/ParasympatheticStat")
+	_label_affect = stats_hbox.get_node("AffectPanel/AffectStat")
 	var xp_bar := top_bar.get_node("XPBar")
 	_label_level_amount = xp_bar.get_node("LevelLabel/LevelAmount")
 	_label_current_xp = xp_bar.get_node("CurrentXPLabel")
@@ -73,12 +73,12 @@ func setup(character_sheet: Control, top_bar: Control) -> void:
 
 
 func _refresh_ui() -> void:
-	_label_muscle.text = "Muscle: %d" % muscle
-	_label_cardio.text = "Cardio: %d" % cardio
-	_label_adrenal.text = "Adrenal: %d" % adrenal
-	_label_sympathetic.text = "Sympathetic: %d" % sympathetic
-	_label_parasympathetic.text = "Parasympathetic: %d" % parasympathetic
-	_label_affect.text = "Affect: %d" % affect
+	_label_muscle.text = str(muscle)
+	_label_cardio.text = str(cardio)
+	_label_adrenal.text = str(adrenal)
+	_label_sympathetic.text = str(sympathetic)
+	_label_parasympathetic.text = str(parasympathetic)
+	_label_affect.text = str(affect)
 	_label_level_amount.text = str(level)
 	_label_current_xp.text = str(xp)
 	_label_max_xp.text = str(xp_to_next())

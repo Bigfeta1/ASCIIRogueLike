@@ -112,7 +112,7 @@ func hear_sound(intensity: int, source_pos: Vector2i) -> void:
 
 
 func see_player(player_pos: Vector2i, distance: float) -> void:
-	if behavior_state == BehaviorState.COMBAT or behavior_state == BehaviorState.ALERT or behavior_state == BehaviorState.SUSPICIOUS:
+	if behavior_state == BehaviorState.COMBAT or behavior_state == BehaviorState.ALERT or behavior_state == BehaviorState.SUSPICIOUS or behavior_state == BehaviorState.RETURN:
 		print("[AI] see_player blocked | enemy=%s | current_state=%s" % [get_parent().name, BehaviorState.keys()[behavior_state]])
 		return
 	var vision_range: float = _levels.sympathetic
