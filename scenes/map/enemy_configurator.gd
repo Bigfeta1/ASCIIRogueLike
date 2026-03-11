@@ -57,6 +57,47 @@ func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 				if splatter != null:
 					splatter.queue_free()
 
+		# Restore organ state
+		var organs: Dictionary = record.get("organs", {})
+		if not organs.is_empty():
+			var cardio: Node = enemy.cardiovascular
+			if cardio != null:
+				cardio.heart_rate = organs.get("heart_rate", cardio.heart_rate)
+				cardio.bp_systolic = organs.get("bp_systolic", cardio.bp_systolic)
+				cardio.bp_diastolic = organs.get("bp_diastolic", cardio.bp_diastolic)
+				cardio.mean_arterial_pressure = organs.get("mean_arterial_pressure", cardio.mean_arterial_pressure)
+				cardio.cardiac_output = organs.get("cardiac_output", cardio.cardiac_output)
+				cardio.stroke_volume = organs.get("stroke_volume", cardio.stroke_volume)
+				cardio.systemic_vascular_resistance = organs.get("systemic_vascular_resistance", cardio.systemic_vascular_resistance)
+				cardio.demanded_co = organs.get("demanded_co", cardio.demanded_co)
+				cardio.venous_return_fraction = organs.get("venous_return_fraction", cardio.venous_return_fraction)
+				cardio.spo2 = organs.get("spo2", cardio.spo2)
+			var pulm: Node = enemy.pulmonary
+			if pulm != null:
+				pulm.respiratory_rate = organs.get("respiratory_rate", pulm.respiratory_rate)
+				pulm.tidal_volume = organs.get("tidal_volume", pulm.tidal_volume)
+				pulm.pao2 = organs.get("pao2", pulm.pao2)
+				pulm.paco2 = organs.get("paco2", pulm.paco2)
+				pulm.pao2_spo2 = organs.get("pao2_spo2", pulm.pao2_spo2)
+				pulm.pneumothorax = organs.get("pneumothorax", pulm.pneumothorax)
+				pulm.pneumothorax_side = organs.get("pneumothorax_side", pulm.pneumothorax_side)
+				pulm.pleural_pressure = organs.get("pleural_pressure", pulm.pleural_pressure)
+				pulm.pulmonary_embolism = organs.get("pulmonary_embolism", pulm.pulmonary_embolism)
+				pulm.pe_severity = organs.get("pe_severity", pulm.pe_severity)
+				pulm.pe_rv_strain = organs.get("pe_rv_strain", pulm.pe_rv_strain)
+			var renal: Node = enemy.renal
+			if renal != null:
+				renal.plasma_fluid = organs.get("plasma_fluid", renal.plasma_fluid)
+				renal.interstitial_fluid = organs.get("interstitial_fluid", renal.interstitial_fluid)
+				renal.intracellular_fluid = organs.get("intracellular_fluid", renal.intracellular_fluid)
+			var coag: Node = enemy.coagulation
+			if coag != null:
+				coag.stasis_score = organs.get("stasis_score", coag.stasis_score)
+				coag.endothelial_injury = organs.get("endothelial_injury", coag.endothelial_injury)
+				coag.crosslinkage = organs.get("crosslinkage", coag.crosslinkage)
+				coag.heparin_active = organs.get("heparin_active", coag.heparin_active)
+				coag.embolism_triggered = organs.get("embolism_triggered", coag.embolism_triggered)
+
 		# Restore inventory directly, bypassing weight checks
 		var inv := enemy.get_node("CharacterInventory")
 		for inv_record in record.get("inventory", []):

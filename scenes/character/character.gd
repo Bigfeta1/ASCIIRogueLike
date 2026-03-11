@@ -6,6 +6,7 @@ const HypothalamusScript := preload("res://scenes/character/character_hypothalam
 const CardiovascularScript := preload("res://scenes/character/character_cardiovascular.gd")
 const PulmonaryScript := preload("res://scenes/character/character_pulmonary.gd")
 const CortexScript := preload("res://scenes/character/character_cortex.gd")
+const CoagulationScript := preload("res://scenes/character/character_coagulation.gd")
 
 enum ActionState { MOVEMENT, LOOK, MENU, INTERACTION }
 enum CharacterType { SURGEON, ENEMY, STRUCTURE }
@@ -57,6 +58,7 @@ var hypothalamus: Node = null
 var cardiovascular: Node = null
 var pulmonary: Node = null
 var cortex: Node = null
+var coagulation: Node = null
 
 
 func _ready() -> void:
@@ -111,6 +113,12 @@ func _ready() -> void:
 	organs.cortex = cortex
 	cortex.setup(organs, vitals)
 
+	coagulation = CoagulationScript.new()
+	coagulation.name = "CharacterCoagulation"
+	add_child(coagulation)
+	organs.coagulation = coagulation
+	coagulation.setup(organs)
+
 	sound.setup(grid_map)
 	interact_cursor.setup(grid_map)
 	look_cursor.setup(grid_map, camera, canvas_layer.get_node("LookModeInfo"))
@@ -126,6 +134,7 @@ func _ready() -> void:
 		inventory.add_item("field_bandage")
 		inventory.add_item("field_bandage")
 		inventory.add_item("aspiration_needle")
+		inventory.add_item("heparin")
 		inventory.add_item("tinder_box")
 		inventory.add_item("logs")
 	else:

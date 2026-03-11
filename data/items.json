@@ -77,6 +77,16 @@
 		"slot": null
 	},
 	{
+		"id": "heparin",
+		"name": "Heparin",
+		"weight": 0.05,
+		"category": "medicine",
+		"interaction": "use",
+		"sprite": "res://assets/images/inventory_items/medical/spr_heparin.png",
+		"description": "A prefilled syringe of unfractionated heparin. Inhibits thrombin and Factor Xa, halting clot progression. Use to treat pulmonary embolism.",
+		"slot": null
+	},
+	{
 		"id": "corpse_soldier",
 		"name": "Soldier Corpse",
 		"weight": 80.0,

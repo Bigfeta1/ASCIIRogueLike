@@ -16,6 +16,25 @@ var _player_actions: Node
 var _map_params: Node
 var _player: Node
 
+func _tick_enemy_organs(enemy: Node, is_moving: bool) -> void:
+	if enemy.cardiovascular != null:
+		enemy.cardiovascular.tick()
+	if enemy.pulmonary != null:
+		enemy.pulmonary.tick()
+	if enemy.renal != null:
+		enemy.renal.consume_action_cost()
+		enemy.renal.tick()
+	if enemy.hypothalamus != null:
+		enemy.hypothalamus.tick()
+	if enemy.cortex != null:
+		enemy.cortex.tick()
+	if enemy.coagulation != null:
+		if is_moving:
+			enemy.coagulation.on_moved()
+		else:
+			enemy.coagulation.on_waited()
+		enemy.coagulation.tick()
+
 func register_enemy(enemy: Node) -> void:
 	_enemies.append(enemy)
 	enemy.get_node("CharacterAI").set_player(_player)
@@ -50,14 +69,18 @@ func _on_player_waited() -> void:
 		_player.hypothalamus.tick()
 	if _player.cortex != null:
 		_player.cortex.tick()
+	if _player.coagulation != null:
+		_player.coagulation.on_waited()
+		_player.coagulation.tick()
 	await get_tree().create_timer(0.1).timeout
 	if not is_instance_valid(_player):
 		return
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
-		if ai.life_state != ai.LifeState.ALIVE:
-			continue
-		ai.take_turn_step()
+		var alive: bool = ai.life_state == ai.LifeState.ALIVE
+		if alive:
+			ai.take_turn_step()
+		_tick_enemy_organs(enemy, alive)
 		enemy.get_node("CharacterVitals").tick_regen()
 	WorldState.tick_off_screen_enemies()
 	_map_params.advance_time(15)
@@ -81,6 +104,9 @@ func _on_player_moved() -> void:
 		_player.hypothalamus.tick()
 	if _player.cortex != null:
 		_player.cortex.tick()
+	if _player.coagulation != null:
+		_player.coagulation.on_moved()
+		_player.coagulation.tick()
 	_player_actions.spend_action()
 	if _player_actions.has_bonus_turn():
 		_player_actions.consume_bonus_turn()
@@ -92,9 +118,10 @@ func _on_player_moved() -> void:
 		return
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
-		if ai.life_state != ai.LifeState.ALIVE:
-			continue
-		ai.take_turn_step()
+		var alive: bool = ai.life_state == ai.LifeState.ALIVE
+		if alive:
+			ai.take_turn_step()
+		_tick_enemy_organs(enemy, alive)
 		enemy.get_node("CharacterVitals").tick_regen()
 	WorldState.tick_off_screen_enemies()
 	_map_params.advance_time(15)

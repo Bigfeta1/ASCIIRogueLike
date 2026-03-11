@@ -9,3 +9,4 @@ var hypothalamus: Node = null
 var cardiovascular: Node = null
 var pulmonary: Node = null
 var cortex: Node = null
+var coagulation: Node = null

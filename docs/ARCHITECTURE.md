@@ -360,25 +360,27 @@ Organ nodes are dynamically instantiated in `character.gd._ready()` for all non-
 
 ### CharacterOrganRegistry (`character_organ_registry.gd`)
 
-Holds refs: `renal`, `hypothalamus`, `cardiovascular`, `pulmonary`. Populated immediately after instantiation in `character.gd._ready()`.
+Holds refs: `renal`, `hypothalamus`, `cardiovascular`, `pulmonary`, `cortex`, `coagulation`. Populated immediately after instantiation in `character.gd._ready()`.
 
 ### Turn Order Integration
 
 Each player action triggers the organ tick pipeline in `TurnOrder` in this order:
 
 ```
-1. cardiovascular.tick()   — computes CO, BP, HR; adds exertion fluid cost to renal.pending_plasma_cost
-2. pulmonary.tick()        — reads demanded_co → RR/TV/gas exchange → writes SpO2 back to cardiovascular
+1. cardiovascular.tick()        — computes CO, BP, HR; adds exertion fluid cost to renal.pending_plasma_cost
+2. pulmonary.tick()             — reads demanded_co → RR/TV/gas exchange → writes SpO2 back to cardiovascular
 3. renal.consume_action_cost()  — deducts pending cost from plasma, cascades to compartments
-4. renal.tick()            — recalculates concentrations, osmolality, GFR, creatinine
-5. hypothalamus.tick()     — reads plasma_osmolality, emits thirst signals
-6. cortex.tick()           — checks SBP/MAP; triggers syncope, ischemic HP loss, or PEA/death
+4. renal.tick()                 — recalculates concentrations, osmolality, GFR, creatinine
+5. hypothalamus.tick()          — reads plasma_osmolality, emits thirst signals
+6. cortex.tick()                — checks SBP/MAP; triggers syncope, ischemic HP loss, or PEA/death
+7. coagulation.on_moved/on_waited() + coagulation.tick() — updates Virchow inputs, runs cascade, triggers/resolves PE
 ```
 
 Order rationale:
 - Cardiovascular ticks first so `demanded_co` and `spo2` are available to pulmonary.
 - Pulmonary ticks second so SpO2 is written before renal reads MAP-adjusted CO.
 - Renal consumes after both so the full exertion fluid cost (base + CO surcharge) is deducted together.
+- Coagulation ticks last — it reads SpO2 and plasma volume from upstream organs for the hypercoagulable modifier.
 
 ---
 
@@ -551,6 +553,8 @@ Pneumothorax forces PAO2=50, PACO2=55 (hypoxia + hypercapnia).
 **Disease API:**
 - `trigger_pneumothorax(side)` — initiates tension pneumothorax; `pleural_pressure` begins accumulating each tick
 - `resolve_pneumothorax()` — needle decompression / chest tube; pneumothorax cleared, pressure drains over subsequent ticks, venous return recovers
+- `trigger_pe(severity)` — activates pulmonary embolism at given severity (0.0–1.0); starts RV strain accumulation
+- `resolve_pe()` — clears pulmonary embolism flag; `pe_rv_strain` drains at 0.03/tick; vitals recover as RV recovers
 
 **Tension pneumothorax cascade:**
 
@@ -584,6 +588,23 @@ Expected cascade progression per tick:
 6. At VENA_CAVA_COLLAPSE_THRESHOLD: RR=40, HR maximum, BP crashing — obstructive shock
 7. Resolving (needle decompression): pressure drains, venous return recovers, RR/HR lerp back down
 
+**Pulmonary embolism cascade:**
+
+`pe_rv_strain` (0.0–1.0) accumulates each tick while `pulmonary_embolism == true` at rate `pe_severity × 0.15/tick`. It drains at 0.03/tick after resolution. RV strain drives:
+- `venous_return_fraction` falls toward `1.0 - pe_rv_strain × 0.8` (min 0.2) — lerped asymmetrically (alpha 0.4 deteriorating / 0.15 recovering) to prevent oscillation
+- Dead space tachypnea: `pe_rr_drive = BASELINE_RR + pe_severity × 20 + pe_rv_strain × 8` — tachypnea is the first clinical sign
+- SpO2 falls via dead space gas exchange model: obstructed regions ventilated but not perfused; atelectasis shunt adds additional hypoxia
+
+Clinical phase progression:
+| Phase | pe_rv_strain | RR | HR | SBP |
+|-------|-------------|-----|-----|------|
+| Early | 0.0–0.3 | 22–26 | 90–110 | normal |
+| Middle (RV strain) | 0.3–0.6 | 27–33 | 110–130 | mildly reduced |
+| Late (obstructive shock) | 0.6–0.9 | 34–40 | 130–150 | < 90 |
+| Terminal | > 0.9 | 40 | → 0 (PEA) | → 0 |
+
+PE resolves via `coagulation` — when `crosslinkage` drops below `EMBOLISM_THRESHOLD`, `resolve_pe()` is called and RV strain begins recovering.
+
 ---
 
 ### Cerebral Cortex (`character_cortex.gd`)
@@ -600,12 +621,61 @@ Monitors MAP and SBP each tick. Owns two distinct failure modes: syncope (acute 
 - MAP recovery resets `hypoperfusion_ticks` and clears `ischemia_active`
 
 **PEA display threshold:**
-In `character_cardiovascular.gd`, when `bp_systolic` is floored at 50 mmHg (no effective mechanical output), `heart_rate` is set to 0.0 immediately. This represents pulseless electrical activity — the display shows HR=0 and BP=50/N before neuronal death completes.
+In `character_cardiovascular.gd`, when `bp_systolic < 60 mmHg`, `heart_rate` is set to 0.0 immediately. This represents pulseless electrical activity — the display shows HR=0 before neuronal death completes.
 
 **`CharacterLifecycle` additions:**
 - `recover_syncope(target)` — reverses `knock_out`: restores ALIVE state, re-registers solid in OccupancyMap, re-enables AI/Movement/Combat processing, emits `revived`
 - Player death path in `die()`: if `character_role == PLAYER`, emits `died` and calls `queue_free()` immediately (no corpse, no splatter)
 - `_disable_active_components` now also calls `movement.set_process_unhandled_input(false)` to block directional input while incapacitated; space bar (wait) remains functional via a `life_state` gate in `CharacterMovement._unhandled_input`
+
+---
+
+### Coagulation System (`character_coagulation.gd`)
+
+Models the full clotting cascade using Virchow's Triad as the activation model. Ported from the GML coagulation simulation in VitalSignsRevised2.
+
+**Virchow's Triad inputs:**
+
+| Input | Variable | Driven By |
+|-------|----------|-----------|
+| Stasis | `stasis_score` (0–100) | +2/tick always; +5 bonus on wait; -20 on move |
+| Endothelial injury | `endothelial_injury` (0–100) | `add_endothelial_injury(amount)` from combat damage; -1/tick decay |
+| Hypercoagulable state | `hypercoag` multiplier | Dehydration (plasma ratio < 1.0) + hypoxia (SpO2 < 90%) |
+
+**Cascade activation rate:**
+```
+injury_component = 0.1 + (endothelial_injury / 100) × 0.9   (stasis alone = 0.1 baseline)
+activation_rate  = (stasis_score / 100) × injury_component × hypercoag
+f = (10 / 13.5) × activation_rate                           (step rate — scales all pathway steps)
+```
+
+**Pathways (all gated by activation_rate via `f`):**
+```
+Extrinsic:  VII → VIIa + TF → TF-VIIa → Xa
+Common:     Xa → Prothrombin → Thrombin → Fibrinogen → Fibrin → Crosslinkage (0–100%)
+Intrinsic:  Thrombin → XIa → IXa  (amplifies Xa, gated by thrombin_inhibited)
+```
+
+**Fibrinolysis:** `plasmin = 1.5` (constant) — subtracts from `crosslinkage` every tick. At full activation, cascade adds ~2.5/tick, so plasmin loses. When heparin blocks cascade, plasmin wins and clears ~1.5%/tick — 60% clot resolves in ~40 turns.
+
+**Embolism trigger/resolution:**
+- `crosslinkage >= EMBOLISM_THRESHOLD (60%)` → `embolism_triggered = true` → `pulmonary.trigger_pe(severity)` — severity scales with how far above threshold
+- `crosslinkage < EMBOLISM_THRESHOLD` (after heparin + fibrinolysis) → `embolism_triggered = false` → `pulmonary.resolve_pe()`
+
+**Heparin** (`heparin_active = true`): sets `xa_inhibited` and `thrombin_inhibited` flags — blocks Xa→Thrombin, Thrombin→Fibrin, Fibrin→Crosslinkage, and intrinsic amplification. Cascade halts; plasmin takes over. Existing clot is NOT dissolved by heparin — only fibrinolysis clears it.
+
+**Combat wiring:** `character_combat.gd` calls `coagulation.add_endothelial_injury(damage × 3.0)` on every hit against the player — wounds drive the cascade.
+
+**Gameplay loop:**
+1. Take damage (endothelial injury rises) + wait (stasis rises) → crosslinkage builds
+2. At 60%: PE fires → RV strain → tachypnea, then tachycardia, then hypotension
+3. Apply heparin → cascade halts → plasmin slowly clears crosslinkage
+4. Crosslinkage drops below 60% → PE resolves → RV strain drains → vitals recover
+5. Recovery takes many turns proportional to accumulated RV strain — massive PE may be fatal if treated too late
+
+**Debug keys** (debug panel must be open):
+- `Numpad 2` — add 40% endothelial injury (simulate chronic endothelial dysfunction e.g. smoking)
+- `Numpad 3` — fast-forward cascade to threshold (crosslinkage=60%, all upstream factors primed → PE fires next tick)
 
 ---
 
@@ -727,6 +797,13 @@ Use `TileRegistry.get_original_tile(cell, current_tile_id)` to get the real tile
 ```
 
 Categories: `melee`, `ranged`, `armor`, `clothes`, `medicine`, `container`, `camping`, `misc`
+
+**Medical items and their effects:**
+| Item | Effect on use |
+|------|--------------|
+| `field_bandage` | `vitals.heal(5)` if HP < max; consumed |
+| `aspiration_needle` | `pulmonary.resolve_pneumothorax()` if pneumothorax active; single use |
+| `heparin` | `coagulation.apply_heparin()` — halts cascade, lets fibrinolysis clear clot; single use |
 
 ### `data/enemies.json`
 ```json

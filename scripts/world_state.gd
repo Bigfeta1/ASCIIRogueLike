@@ -155,7 +155,49 @@ func serialize_enemy(enemy_node: Node, zone_id: Vector2i) -> Dictionary:
 		"corpse_item_id": enemy_node.corpse_item_id,
 		"has_blood_splatter": has_blood_splatter,
 		"inventory": inv_records,
+		"organs": _serialize_organs(enemy_node),
 	}
+
+func _serialize_organs(enemy_node: Node) -> Dictionary:
+	var d: Dictionary = {}
+	var cardio: Node = enemy_node.cardiovascular
+	if cardio != null:
+		d["heart_rate"] = cardio.heart_rate
+		d["bp_systolic"] = cardio.bp_systolic
+		d["bp_diastolic"] = cardio.bp_diastolic
+		d["mean_arterial_pressure"] = cardio.mean_arterial_pressure
+		d["cardiac_output"] = cardio.cardiac_output
+		d["stroke_volume"] = cardio.stroke_volume
+		d["systemic_vascular_resistance"] = cardio.systemic_vascular_resistance
+		d["demanded_co"] = cardio.demanded_co
+		d["venous_return_fraction"] = cardio.venous_return_fraction
+		d["spo2"] = cardio.spo2
+	var pulm: Node = enemy_node.pulmonary
+	if pulm != null:
+		d["respiratory_rate"] = pulm.respiratory_rate
+		d["tidal_volume"] = pulm.tidal_volume
+		d["pao2"] = pulm.pao2
+		d["paco2"] = pulm.paco2
+		d["pao2_spo2"] = pulm.pao2_spo2
+		d["pneumothorax"] = pulm.pneumothorax
+		d["pneumothorax_side"] = pulm.pneumothorax_side
+		d["pleural_pressure"] = pulm.pleural_pressure
+		d["pulmonary_embolism"] = pulm.pulmonary_embolism
+		d["pe_severity"] = pulm.pe_severity
+		d["pe_rv_strain"] = pulm.pe_rv_strain
+	var renal: Node = enemy_node.renal
+	if renal != null:
+		d["plasma_fluid"] = renal.plasma_fluid
+		d["interstitial_fluid"] = renal.interstitial_fluid
+		d["intracellular_fluid"] = renal.intracellular_fluid
+	var coag: Node = enemy_node.coagulation
+	if coag != null:
+		d["stasis_score"] = coag.stasis_score
+		d["endothelial_injury"] = coag.endothelial_injury
+		d["crosslinkage"] = coag.crosslinkage
+		d["heparin_active"] = coag.heparin_active
+		d["embolism_triggered"] = coag.embolism_triggered
+	return d
 
 func add_off_screen_enemy(record: Dictionary) -> void:
 	off_screen_enemies.append(record)

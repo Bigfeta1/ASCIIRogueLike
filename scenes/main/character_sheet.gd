@@ -224,6 +224,12 @@ func _confirm_action() -> void:
 					character.pulmonary.resolve_pneumothorax()
 					_inventory.remove_item(_active_item_id)
 				return
+			if _active_item_id == "heparin":
+				var character := _inventory.get_parent()
+				if character.coagulation != null:
+					character.coagulation.apply_heparin()
+					_inventory.remove_item(_active_item_id)
+				return
 			var vitals := _inventory.get_parent().get_node("CharacterVitals")
 			if vitals.hp < vitals.hp_max:
 				vitals.heal(5)

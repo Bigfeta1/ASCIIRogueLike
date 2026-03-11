@@ -175,6 +175,8 @@ func _apply_damage(target: Node) -> void:
 		_spawn_damage_label(target, damage)
 	if target.character_role == target.CharacterRole.PLAYER:
 		vitals._refresh_ui()
+		if target.coagulation != null:
+			target.coagulation.add_endothelial_injury(damage * 3.0)
 	print("[DEATH] %s hp=%d" % [target.name, vitals.hp])
 	if vitals.hp <= 0:
 		print("[DEATH] incapacitating %s" % target.name)

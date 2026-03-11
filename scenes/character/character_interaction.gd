@@ -44,6 +44,7 @@ var _renal_debug_panel: Control = null
 var _hypothalamus_debug_panel: Control = null
 var _cardiovascular_debug_panel: Control = null
 var _pulmonary_debug_panel: Control = null
+var _coagulation_debug_panel: Control = null
 
 
 func _ready() -> void:
@@ -192,11 +193,12 @@ func _unhandled_input(event: InputEvent) -> void:
 					_character.pulmonary.trigger_pneumothorax("right")
 				_refresh_renal_debug()
 		KEY_KP_2:
-			if _renal_debug_panel != null and _character.pulmonary != null:
-				if _character.pulmonary.pulmonary_embolism:
-					_character.pulmonary.resolve_pe()
-				else:
-					_character.pulmonary.trigger_pe(0.6)
+			if _renal_debug_panel != null and _character.coagulation != null:
+				_character.coagulation.add_endothelial_injury(40.0)
+				_refresh_renal_debug()
+		KEY_KP_3:
+			if _renal_debug_panel != null and _character.coagulation != null:
+				_character.coagulation.trigger_trauma()
 				_refresh_renal_debug()
 		KEY_F12:
 			if _renal_debug_panel != null:
@@ -210,6 +212,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_cardiovascular_debug_panel = null
 				_pulmonary_debug_panel.queue_free()
 				_pulmonary_debug_panel = null
+				_coagulation_debug_panel.queue_free()
+				_coagulation_debug_panel = null
 			else:
 				_show_renal_debug()
 		KEY_Q, KEY_ESCAPE:
@@ -759,6 +763,14 @@ func _show_renal_debug() -> void:
 	canvas_layer.add_child(pulm_panel)
 	_pulmonary_debug_panel = pulm_panel
 
+	var coag_panel := PanelContainer.new()
+	coag_panel.position = Vector2(1210, 60)
+	var coag_label := Label.new()
+	coag_label.add_theme_font_size_override("font_size", 14)
+	coag_panel.add_child(coag_label)
+	canvas_layer.add_child(coag_panel)
+	_coagulation_debug_panel = coag_panel
+
 	_refresh_renal_debug()
 	_character.movement.moved.connect(_refresh_renal_debug)
 	_character.movement.waited.connect(_refresh_renal_debug)
@@ -839,6 +851,35 @@ func _refresh_renal_debug() -> void:
 		+ "Venous Return:  %.0f %%\n" % (pulm.venous_return_fraction * 100.0)
 		+ "PE:             %s\n" % ("YES (%.0f%%)" % (pulm.pe_severity * 100.0) if pulm.pulmonary_embolism else "No")
 		+ "RV Strain:      %.0f %%\n" % (pulm.pe_rv_strain * 100.0)
+	)
+
+	if _coagulation_debug_panel == null:
+		return
+	var coag: Node = _character.coagulation
+	var coag_label: Label = _coagulation_debug_panel.get_child(0)
+	coag_label.text = (
+		"[COAGULATION DEBUG]\n"
+		+ "Stasis:         %.0f %%\n" % coag.stasis_score
+		+ "Injury:         %.0f %%\n" % coag.endothelial_injury
+		+ "Heparin:        %s\n" % ("ACTIVE" if coag.heparin_active else "No")
+		+ "── Extrinsic ──\n"
+		+ "VII:            %.1f\n" % coag.factor_7
+		+ "VIIa:           %.1f\n" % coag.factor_7a
+		+ "Tissue Factor:  %.1f\n" % coag.tissue_factor
+		+ "TF-VIIa:        %.1f\n" % coag.tf_viia
+		+ "── Common ──\n"
+		+ "Xa:             %.1f\n" % coag.factor_10a
+		+ "Prothrombin:    %.1f\n" % coag.prothrombin
+		+ "Thrombin:       %.1f\n" % coag.thrombin
+		+ "Fibrinogen:     %.1f\n" % coag.fibrinogen
+		+ "Fibrin:         %.1f\n" % coag.fibrin
+		+ "Clot:           %.1f %%\n" % coag.crosslinkage
+		+ "── Intrinsic ──\n"
+		+ "XIa:            %.1f\n" % coag.factor_11a
+		+ "IXa:            %.1f\n" % coag.factor_9a
+		+ "Embolized:      %s\n" % ("YES" if coag.embolism_triggered else "No")
+		+ "── Fibrinolytic ──\n"
+		+ "Plasmin:        %.1f\n" % coag.plasmin
 	)
 
 
