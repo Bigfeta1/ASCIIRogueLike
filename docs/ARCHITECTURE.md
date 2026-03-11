@@ -452,6 +452,7 @@ Models HR, stroke volume, cardiac output, SVR, and blood pressure from plasma vo
 - Decays toward `BASELINE_CO` (7.5 L/min) each tick at rate `0.5 + parasympathetic_mod × 0.1` L/min/turn — decay happens at the very end of `tick()`, after all this-turn calculations are complete
 - Vagal reactivation (parasympathetic stat) drives post-exertion recovery — higher parasympathetic = faster decay
 - `demanded_co_pre_decay` is a snapshot of `demanded_co` taken immediately before the decay step. Pulmonary reads this value (not `demanded_co`) so it sees the demand that actually drove HR this turn, not the already-decayed value
+- `venous_return_fraction` — written by pulmonary each tick during tension pneumothorax; reduces effective preload in Frank-Starling: `effective_preload = plasma_ratio × venous_return_fraction`
 
 **Action CO demands:**
 | Action | demanded_co |
@@ -470,7 +471,9 @@ Higher cardio → larger SV → same CO demand met at lower HR. At cardio=16 (mo
 ```
 baroreflex_hr = BASELINE_HR / plasma_ratio   (compensation for hypovolemia)
 demand_hr     = demanded_co × 1000 / SV       (metabolic demand)
-heart_rate    = max(baroreflex_hr, demand_hr), capped at 180
+hr_target     = max(baroreflex_hr, demand_hr, hypoxic_hr), capped at 180
+heart_rate    → hr_target via lerp (alpha 0.6 rising, 0.25 falling — asymmetric to prevent oscillation)
+SVR also lerps toward target (alpha 0.5 rising, 0.2 falling)
 ```
 
 **MAP and BP:**
@@ -544,8 +547,40 @@ Pneumothorax forces PAO2=50, PACO2=55 (hypoxia + hypercapnia).
 **Cardiovascular feedback:** SpO2 written to `cardiovascular.spo2` each tick. Below 90%, effective CO is reduced linearly (50% CO at SpO2=50%). This means pneumothorax → hypoxia → impaired O2 delivery → effective CO falls despite high HR.
 
 **Disease API:**
-- `trigger_pneumothorax(side)` — collapses one lung; TV halved, PAO2=50, tachypnea
-- `resolve_pneumothorax()` — needle decompression / chest tube; full volumes restore
+- `trigger_pneumothorax(side)` — initiates tension pneumothorax; `pleural_pressure` begins accumulating each tick
+- `resolve_pneumothorax()` — needle decompression / chest tube; pneumothorax cleared, pressure drains over subsequent ticks, venous return recovers
+
+**Tension pneumothorax cascade:**
+
+`pleural_pressure` (cmH2O) accumulates by `PRESSURE_PER_TICK` (2.0) each tick while pneumothorax is active. Two thresholds gate progressive mechanical failure:
+
+| Threshold | Value | Effect |
+|-----------|-------|--------|
+| `MEDIASTINAL_SHIFT_THRESHOLD` | 10 cmH2O | Mediastinal shift begins; contralateral TV starts falling; shunt fraction worsens |
+| `VENA_CAVA_COLLAPSE_THRESHOLD` | 25 cmH2O | Venous return critically compromised; `venous_return_fraction` reaches 0.1 |
+
+`venous_return_fraction` (1.0 → 0.1) is written to `cardiovascular.venous_return_fraction` each tick, collapsing effective preload via Frank-Starling without touching actual fluid compartments.
+
+Gas exchange during pneumothorax uses a shunt model rather than the alveolar gas equation:
+- Ipsilateral lung = pure shunt (50% of perfusion, zero ventilation)
+- As pressure rises past mediastinal shift threshold, contralateral compression adds up to 35% more shunt
+- Hyperventilation lowers PACO2 but cannot rescue SpO2 — shunted blood bypasses alveoli regardless of RR (ventilated PAO2 clamped at 100 mmHg)
+
+RR during pneumothorax ratchets upward only (never decreases until resolved), driven by both hypoxic drive and direct pressure scaling:
+```
+pressure_rr = BASELINE_RR + (pleural_pressure / VENA_CAVA_COLLAPSE_THRESHOLD) × (MAX_RR − BASELINE_RR)
+RR = max(current_RR, max(hypoxic_rr, pressure_rr))
+```
+At full collapse (25 cmH2O), RR reaches 40 bpm.
+
+Expected cascade progression per tick:
+1. Lung collapses → shunt → SpO2 falls → hypoxic HR and RR drives activate
+2. Pressure rises → mediastinal shift → TV falls further, shunt worsens, SpO2 worsens
+3. venous_return_fraction falls → effective preload collapses → SV falls → CO falls
+4. Sympathetic compensation: HR and SVR rise (via lerp, asymmetric — fast up, slow down)
+5. MAP briefly preserved or mildly elevated, then falls as SV collapse overwhelms SVR compensation
+6. At VENA_CAVA_COLLAPSE_THRESHOLD: RR=40, HR maximum, BP crashing — obstructive shock
+7. Resolving (needle decompression): pressure drains, venous return recovers, RR/HR lerp back down
 
 ---
 

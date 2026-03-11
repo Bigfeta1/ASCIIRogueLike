@@ -51,6 +51,8 @@ func _on_passive_tick() -> void:
 		_player.renal.tick()
 	if _player.hypothalamus != null:
 		_player.hypothalamus.tick()
+	if _player.cortex != null:
+		_player.cortex.tick()
 
 func _on_player_waited() -> void:
 	current_turn_state = TurnState.MAP_TURN
@@ -64,6 +66,8 @@ func _on_player_waited() -> void:
 		_player.renal.tick()
 	if _player.hypothalamus != null:
 		_player.hypothalamus.tick()
+	if _player.cortex != null:
+		_player.cortex.tick()
 	await get_tree().create_timer(0.1).timeout
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
@@ -89,6 +93,8 @@ func _on_player_moved() -> void:
 		_player.renal.tick()
 	if _player.hypothalamus != null:
 		_player.hypothalamus.tick()
+	if _player.cortex != null:
+		_player.cortex.tick()
 	_player_actions.spend_action()
 	if _player_actions.has_bonus_turn():
 		_player_actions.consume_bonus_turn()

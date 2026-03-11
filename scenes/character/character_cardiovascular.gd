@@ -125,7 +125,7 @@ func tick() -> void:
 	# Derive systolic and diastolic from MAP and pulse pressure.
 	pulse_pressure = 40.0 * (stroke_volume / BASELINE_SV_ML)
 	bp_diastolic = mean_arterial_pressure - (pulse_pressure / 3.0)
-	bp_systolic = bp_diastolic + pulse_pressure
+	bp_systolic = maxf(bp_diastolic + pulse_pressure, 50.0)
 
 	# CO-scaled fluid cost: exertion above resting adds up to 3× base insensible loss.
 	# Zero at resting CO, full 3× at MAX_CO. Added on top of renal base cost.

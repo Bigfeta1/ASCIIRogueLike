@@ -8,3 +8,4 @@ var renal: Node = null
 var hypothalamus: Node = null
 var cardiovascular: Node = null
 var pulmonary: Node = null
+var cortex: Node = null
