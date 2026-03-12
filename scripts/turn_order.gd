@@ -18,7 +18,7 @@ var _player: Node
 
 func _tick_enemy_organs(enemy: Node, is_moving: bool) -> void:
 	if enemy.cardiovascular != null:
-		enemy.cardiovascular.tick()
+		enemy.cardiovascular.tick(0.016)
 	if enemy.pulmonary != null:
 		enemy.pulmonary.tick()
 	if enemy.renal != null:
@@ -59,7 +59,7 @@ func _on_player_waited() -> void:
 	current_turn_state = TurnState.MAP_TURN
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
 	if _player.cardiovascular != null:
-		_player.cardiovascular.tick()
+		_player.cardiovascular.tick(0.016)
 	if _player.pulmonary != null:
 		_player.pulmonary.tick()
 	if _player.renal != null:
@@ -94,7 +94,7 @@ func _on_player_moved() -> void:
 	current_turn_state = TurnState.MAP_TURN
 	turn_changed.emit(TurnState.PLAYER_TURN, TurnState.MAP_TURN)
 	if _player.cardiovascular != null:
-		_player.cardiovascular.tick()
+		_player.cardiovascular.tick(0.016)
 	if _player.pulmonary != null:
 		_player.pulmonary.tick()
 	if _player.renal != null:

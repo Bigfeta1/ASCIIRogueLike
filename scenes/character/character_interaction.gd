@@ -200,6 +200,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _renal_debug_panel != null and _character.coagulation != null:
 				_character.coagulation.trigger_trauma()
 				_refresh_renal_debug()
+		KEY_KP_4:
+			if _renal_debug_panel != null and _character.cardiovascular != null:
+				var cardio: Node = _character.cardiovascular
+				cardio.force_fire_sa_node()
+				# Run enough ticks to cover the full myocyte cycle (0.140s at 0.016s/tick = ~9 ticks)
+				for _i in 12:
+					cardio.tick(0.016)
+				_refresh_renal_debug()
 		KEY_F12:
 			if _renal_debug_panel != null:
 				_character.movement.moved.disconnect(_refresh_renal_debug)
@@ -820,16 +828,30 @@ func _refresh_renal_debug() -> void:
 	var cardio: Node = _character.cardiovascular
 	var cardio_label: Label = _cardiovascular_debug_panel.get_child(0)
 	cardio_label.text = (
-		"[CARDIOVASCULAR DEBUG]\n"
-		+ "Stroke Volume:  %.1f mL\n" % cardio.stroke_volume
-		+ "Heart Rate:     %.0f bpm\n" % cardio.heart_rate
-		+ "Cardiac Output: %.2f L/min\n" % cardio.cardiac_output
-		+ "Demanded CO:    %.2f L/min\n" % cardio.demanded_co_pre_decay
-		+ "SpO2:           %.1f %%\n" % cardio.spo2
-		+ "SVR:            %.0f dyn·s·cm⁻⁵\n" % cardio.systemic_vascular_resistance
-		+ "MAP:            %.1f mmHg\n" % cardio.mean_arterial_pressure
-		+ "BP:             %.0f/%.0f mmHg\n" % [cardio.bp_systolic, cardio.bp_diastolic]
-		+ "Pulse Pressure: %.1f mmHg\n" % cardio.pulse_pressure
+		"[CARDIOVASCULAR]\n"
+		+ "HR:         %.0f bpm\n" % cardio.heart_rate
+		+ "SV:         %.1f mL\n" % cardio.SV
+		+ "EDV:        %.1f mL\n" % cardio.EDV
+		+ "ESV:        %.1f mL\n" % cardio.ESV
+		+ "EF:         %.1f %%\n" % cardio.EF
+		+ "CO:         %.2f L/min\n" % cardio.cardiac_output
+		+ "MAP:        %.1f mmHg\n" % cardio.mean_arterial_pressure
+		+ "BP:         %.0f/%.0f mmHg\n" % [cardio.systolic_bp, cardio.diastolic_bp]
+		+ "TPR:        %.1f\n" % cardio.TPR
+		+ "\n[LEFT ATRIA]\n"
+		+ "LA Vol:     %.1f mL\n" % cardio.la_volume
+		+ "PCWP:       %.1f mmHg\n" % cardio.pcwp
+		+ "Mitral:     %s\n" % ("OPEN" if cardio.mitral_valve_open else "CLOSED")
+		+ "Atrial:     %s\n" % ("SYSTOLE" if cardio.atrial_state == cardio.AtrialState.SYSTOLE else "DIASTOLE")
+		+ "\n[LEFT VENTRICLE]\n"
+		+ "LV Vol:     %.1f mL\n" % cardio.lv_volume
+		+ "LV Press:   %.1f mmHg\n" % cardio.lv_pressure
+		+ "Aortic:     %s\n" % ("OPEN" if cardio.lv_aortic_valve_open else "CLOSED")
+		+ "\n[SA NODE]\n"
+		+ "Vm:         %.1f mV\n" % cardio.sa_node_membrane_potential
+		+ "SA State:   %s\n" % cardio.SinoAtrialStates.keys()[cardio.sa_state]
+		+ "\n[EP]\n"
+		+ "EP State:   %s\n" % cardio.ElectricalPathwayStates.keys()[cardio.ep_state]
 	)
 
 	if _pulmonary_debug_panel == null:

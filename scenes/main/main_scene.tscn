@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://mjt58ix46v16"]
+[gd_scene load_steps=14 format=3 uid="uid://mjt58ix46v16"]
 
 [ext_resource type="Script" uid="uid://da2bhqgx7ybn4" path="res://scripts/turn_order.gd" id="1_271kv"]
 [ext_resource type="Texture2D" uid="uid://2666ys540gi" path="res://assets/images/ui/spr_menu_panel.png" id="1_s7l2u"]
@@ -23,6 +23,9 @@ font_size = 13
 
 [sub_resource type="LabelSettings" id="LabelSettings_w4lj1"]
 font_size = 15
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_a4cr6"]
+bg_color = Color(0.04320292, 0.13641793, 0.21430084, 1)
 
 [node name="MainScene" type="Node3D"]
 
@@ -261,6 +264,7 @@ layout_mode = 0
 layout_mode = 2
 
 [node name="InteractModal" type="Control" parent="CanvasLayer"]
+visible = false
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -338,6 +342,24 @@ offset_right = 425.0
 offset_bottom = 236.0
 label_settings = SubResource("LabelSettings_w4lj1")
 autowrap_mode = 2
+
+[node name="NotificationPanel" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="CanvasLayer/NotificationPanel"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -300.0
+offset_right = 500.0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_a4cr6")
 
 [node name="GameLogic" type="Node" parent="."]
 

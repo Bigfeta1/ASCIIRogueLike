@@ -1,12 +1,12 @@
 extends Node3D
 
-const RenalScript := preload("res://scenes/character/character_renal.gd")
-const OrganRegistryScript := preload("res://scenes/character/character_organ_registry.gd")
-const HypothalamusScript := preload("res://scenes/character/character_hypothalamus.gd")
-const CardiovascularScript := preload("res://scenes/character/character_cardiovascular.gd")
-const PulmonaryScript := preload("res://scenes/character/character_pulmonary.gd")
-const CortexScript := preload("res://scenes/character/character_cortex.gd")
-const CoagulationScript := preload("res://scenes/character/character_coagulation.gd")
+const OrganRegistryScript := preload("res://scenes/character/organs/character_organ_registry.gd")
+const RenalScript := preload("res://scenes/character/organs/character_renal.gd")
+const HypothalamusScript := preload("res://scenes/character/organs/character_hypothalamus.gd")
+const CardiovascularScript := preload("res://scenes/character/organs/character_cardiovascular.gd")
+const PulmonaryScript := preload("res://scenes/character/organs/character_pulmonary.gd")
+const CortexScript := preload("res://scenes/character/organs/character_cortex.gd")
+const CoagulationScript := preload("res://scenes/character/organs/character_coagulation.gd")
 
 enum ActionState { MOVEMENT, LOOK, MENU, INTERACTION }
 enum CharacterType { SURGEON, ENEMY, STRUCTURE }
@@ -67,6 +67,7 @@ func _ready() -> void:
 	var canvas_layer: CanvasLayer = scene.get_node("CanvasLayer")
 	var camera: Camera3D = scene.get_node("Camera3D")
 
+
 	# Inject scene-level refs into components that need them.
 	# Components resolve siblings themselves in their own _ready(); only scene-external
 	# refs are injected here so no component hardcodes scene paths.
@@ -78,7 +79,8 @@ func _ready() -> void:
 
 	if character_type == CharacterType.STRUCTURE:
 		return
-
+	
+	
 	organs = OrganRegistryScript.new()
 	organs.name = "CharacterOrganRegistry"
 	add_child(organs)
@@ -129,6 +131,7 @@ func _ready() -> void:
 		levels.setup(character_sheet, canvas_layer.get_node("TopBar"))
 		inventory.setup(character_sheet)
 		interaction.setup(grid_map, character_sheet, canvas_layer.get_node("LootModal"), canvas_layer.get_node("InteractModal"))
+		
 		inventory.add_item("combat_knife")
 		inventory.add_item("field_bandage")
 		inventory.add_item("field_bandage")

@@ -165,6 +165,8 @@ func tick() -> void:
 			map_ratio = maxf(map / 70.0, 0.0)
 		else:
 			map_ratio = minf(1.0, rpf_ceiling)
+	
+	
 	renal_plasma_flow = plasma_fluid * 0.176 * map_ratio
 	renal_blood_flow = renal_plasma_flow / (1.0 - hematocrit)
 

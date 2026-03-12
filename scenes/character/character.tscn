@@ -46,6 +46,8 @@ shader_parameter/corner_length = 0.2
 [node name="Character" type="Node3D"]
 transform = Transform3D(3.876, 0, 0, 0, 3.876, 0, 0, 0, 3.876, 0, 0, 0)
 script = ExtResource("2_a5ia6")
+character_type = null
+character_role = null
 
 [node name="CharacterActions" type="Node" parent="."]
 script = ExtResource("12_actions")
