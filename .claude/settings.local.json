@@ -5,7 +5,8 @@
       "WebSearch",
       "WebFetch(domain:forum.godotengine.org)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:medium.com)"
+      "WebFetch(domain:medium.com)",
+      "Bash(python3 -c \"MAP=0.0; pulse=40.0; DBP=MAP-pulse/3; SBP=3*MAP-2*DBP; print\\('CO=0 -> DBP=%.2f SBP=%.2f' % \\(DBP,SBP\\)\\); print\\('Init diastolic_bp=80 systolic_bp=120 approach:'\\); print\\('Tick 1: CO=0, SV=0, would overwrite BP to 0/-13 unless guarded'\\)\" 2>&1)"
     ]
   }
 }

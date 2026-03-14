@@ -167,8 +167,8 @@ func _serialize_organs(enemy_node: Node) -> Dictionary:
 		d["bp_diastolic"] = cardio.bp_diastolic
 		d["mean_arterial_pressure"] = cardio.mean_arterial_pressure
 		d["cardiac_output"] = cardio.cardiac_output
-		d["stroke_volume"] = cardio.stroke_volume
-		d["systemic_vascular_resistance"] = cardio.systemic_vascular_resistance
+		d["stroke_volume"] = cardio.SV
+		d["systemic_vascular_resistance"] = cardio.TPR
 		d["demanded_co"] = cardio.demanded_co
 		d["venous_return_fraction"] = cardio.venous_return_fraction
 		d["spo2"] = cardio.spo2

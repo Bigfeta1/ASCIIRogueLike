@@ -43,6 +43,7 @@ var pending_target: Node = null
 var _renal_debug_panel: Control = null
 var _hypothalamus_debug_panel: Control = null
 var _cardiovascular_debug_panel: Control = null
+var _cardiac_pressure_graph: CardiacPressureGraph = null
 var _pulmonary_debug_panel: Control = null
 var _coagulation_debug_panel: Control = null
 
@@ -204,9 +205,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _renal_debug_panel != null and _character.cardiovascular != null:
 				var cardio: Node = _character.cardiovascular
 				cardio.force_fire_sa_node()
-				# Run enough ticks to cover the full myocyte cycle (0.140s at 0.016s/tick = ~9 ticks)
-				for _i in 12:
+				# Full cardiac cycle is ~0.59s; run 40 ticks at 0.016s each to capture it
+				for _i in 40:
 					cardio.tick(0.016)
+					if _cardiac_pressure_graph != null:
+						_cardiac_pressure_graph.record(cardio)
 				_refresh_renal_debug()
 		KEY_F12:
 			if _renal_debug_panel != null:
@@ -218,6 +221,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_hypothalamus_debug_panel = null
 				_cardiovascular_debug_panel.queue_free()
 				_cardiovascular_debug_panel = null
+				_cardiac_pressure_graph.queue_free()
+				_cardiac_pressure_graph = null
 				_pulmonary_debug_panel.queue_free()
 				_pulmonary_debug_panel = null
 				_coagulation_debug_panel.queue_free()
@@ -763,6 +768,11 @@ func _show_renal_debug() -> void:
 	canvas_layer.add_child(cardio_panel)
 	_cardiovascular_debug_panel = cardio_panel
 
+	var graph := CardiacPressureGraph.new()
+	graph.position = Vector2(610, 500)
+	canvas_layer.add_child(graph)
+	_cardiac_pressure_graph = graph
+
 	var pulm_panel := PanelContainer.new()
 	pulm_panel.position = Vector2(910, 60)
 	var pulm_label := Label.new()
@@ -839,20 +849,23 @@ func _refresh_renal_debug() -> void:
 		+ "BP:         %.0f/%.0f mmHg\n" % [cardio.systolic_bp, cardio.diastolic_bp]
 		+ "TPR:        %.1f\n" % cardio.TPR
 		+ "\n[LEFT ATRIA]\n"
-		+ "LA Vol:     %.1f mL\n" % cardio.la_volume
+		+ "LA Vol:     %.1f mL\n" % cardio.la.volume
 		+ "PCWP:       %.1f mmHg\n" % cardio.pcwp
-		+ "Mitral:     %s\n" % ("OPEN" if cardio.mitral_valve_open else "CLOSED")
-		+ "Atrial:     %s\n" % ("SYSTOLE" if cardio.atrial_state == cardio.AtrialState.SYSTOLE else "DIASTOLE")
+		+ "Mitral:     %s\n" % ("OPEN" if cardio.la.valve_open else "CLOSED")
+		+ "Atrial:     %s\n" % ("SYSTOLE" if cardio.la.in_systole else "DIASTOLE")
 		+ "\n[LEFT VENTRICLE]\n"
-		+ "LV Vol:     %.1f mL\n" % cardio.lv_volume
-		+ "LV Press:   %.1f mmHg\n" % cardio.lv_pressure
-		+ "Aortic:     %s\n" % ("OPEN" if cardio.lv_aortic_valve_open else "CLOSED")
+		+ "LV Vol:     %.1f mL\n" % cardio.lv.volume
+		+ "LV Press:   %.1f mmHg\n" % cardio.lv.pressure
+		+ "Aortic:     %s\n" % ("OPEN" if cardio.lv.valve_open else "CLOSED")
 		+ "\n[SA NODE]\n"
 		+ "Vm:         %.1f mV\n" % cardio.sa_node_membrane_potential
 		+ "SA State:   %s\n" % cardio.SinoAtrialStates.keys()[cardio.sa_state]
 		+ "\n[EP]\n"
 		+ "EP State:   %s\n" % cardio.ElectricalPathwayStates.keys()[cardio.ep_state]
 	)
+
+	if _cardiac_pressure_graph != null:
+		_cardiac_pressure_graph.record(cardio)
 
 	if _pulmonary_debug_panel == null:
 		return

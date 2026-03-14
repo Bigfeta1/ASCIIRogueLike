@@ -55,7 +55,7 @@ func tick() -> void:
 				# Electrical activity ceases — HR, CO, BP all collapse to zero.
 				cardio.heart_rate = 0.0
 				cardio.cardiac_output = 0.0
-				cardio.stroke_volume = 0.0
+				cardio.SV = 0.0
 				cardio.mean_arterial_pressure = 0.0
 				cardio.bp_systolic = 0.0
 				cardio.bp_diastolic = 0.0

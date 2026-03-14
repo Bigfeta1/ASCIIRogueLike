@@ -8,7 +8,7 @@ var hp: int = 10
 var hp_max: int = 10
 var bp_systolic: int = 120
 var bp_diastolic: int = 80
-var hr: int = 75
+var hr: int = 60
 var rr: int = 12
 var temperature: float = 37.0
 

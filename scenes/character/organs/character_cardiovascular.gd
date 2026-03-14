@@ -2,54 +2,141 @@ extends Node
 
 # Cardiovascular system — full cardiac cycle.
 
-signal beat_initiated                          # SA node threshold reached; triggers EP
-signal atrial_region_depolarized(region: int)  # each atrial region completes depolarization
-signal mitral_valve_closing                    # LV pressure first exceeds PCWP; c-wave ascent starts
-signal mitral_valve_closed                     # valve fully shut; c-wave peak
-signal v_wave_peak(pcwp: float)                # PCWP peak at end of ventricular systole — LA maximally filled
-signal y_descent_start(pcwp: float)            # mitral opens, LA begins draining into LV
+signal beat_initiated                # SA node threshold reached; triggers EP
+signal v_wave_peak(pcwp: float)      # PCWP peak at end of ventricular systole — LA maximally filled
+signal y_descent_start(pcwp: float)  # mitral opens, LA begins draining into LV
 
 var _organs: Node = null
 var _vitals: Node = null
 var _levels: Node = null
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CARDIAC CHAMBERS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+var la: CardiacChamber = null
+var lv: CardiacChamber = null
+var ra: CardiacChamber = null
+var rv: CardiacChamber = null
+
+func _init_chambers() -> void:
+	la = CardiacChamber.new()
+	la.fascicle_count       = 1
+	la.regions_per_fascicle = 3
+	la.sweep_duration       = 0.08
+	la.myocyte_durations    = [0.002, 0.005, 0.073, 0.060, 0.0]
+	la.myocyte_force        = [0.15,  0.50,  1.00,  0.20,  0.0]
+	la.e_min                = 0.20
+	la.e_max                = 0.60
+	la.e_rise_rate          = 5.0
+	la.e_decay_rate         = 3.0
+	la.v0                   = 10.0
+	la.initial_volume       = 55.0
+	la.valve_conductance    = 25.0
+	la.init_regions()
+	la.region_depolarized.connect(_on_la_region_depolarized)
+
+	lv = CardiacChamber.new()
+	lv.fascicle_count       = 3
+	lv.regions_per_fascicle = 3
+	lv.sweep_duration       = 0.03
+	lv.myocyte_durations    = [0.002, 0.005, 0.100, 0.080, 0.0]
+	lv.myocyte_force        = [0.10,  0.40,  1.00,  0.25,  0.0]
+	lv.e_min                = 0.1
+	lv.e_max                = 2.5
+	lv.e_rise_rate          = 8.0
+	lv.e_decay_rate         = 8.0
+	lv.v0                   = 10.0
+	lv.initial_volume       = 100.0
+	lv.valve_conductance    = 15.0
+	lv.init_regions()
+
+	ra = CardiacChamber.new()
+	ra.fascicle_count       = 1
+	ra.regions_per_fascicle = 3
+	ra.sweep_duration       = 0.08
+	ra.myocyte_durations    = [0.002, 0.005, 0.073, 0.060, 0.0]
+	ra.myocyte_force        = [0.15,  0.50,  1.00,  0.20,  0.0]
+	ra.e_min                = 0.25
+	ra.e_max                = 0.67
+	ra.e_rise_rate          = 5.0
+	ra.e_decay_rate         = 3.0
+	ra.v0                   = 8.0
+	ra.initial_volume       = 22.0
+	ra.valve_conductance    = 20.0
+	ra.init_regions()
+
+	rv = CardiacChamber.new()
+	rv.fascicle_count       = 3
+	rv.regions_per_fascicle = 3
+	rv.sweep_duration       = 0.03
+	rv.myocyte_durations    = [0.002, 0.005, 0.100, 0.080, 0.0]
+	rv.myocyte_force        = [0.10,  0.40,  1.00,  0.25,  0.0]
+	rv.e_min                = 0.05
+	rv.e_max                = 0.60
+	rv.e_rise_rate          = 6.0
+	rv.e_decay_rate         = 6.0
+	rv.v0                   = 10.0
+	rv.initial_volume       = 100.0
+	rv.valve_conductance    = 3.0
+	rv.init_regions()
+
+func _on_la_region_depolarized(region: int) -> void:
+	print("[CARDIO] LA region %d depolarized" % region)
+
 func _ready() -> void:
 	beat_initiated.connect(_on_beat_initiated)
-	atrial_region_depolarized.connect(_on_atrial_region_depolarized)
-	mitral_valve_closing.connect(_on_mitral_valve_closing)
-	mitral_valve_closed.connect(_on_mitral_valve_closed)
 
 func setup(organ_registry: Node, vitals: Node, levels: Node) -> void:
 	_organs = organ_registry
 	_vitals = vitals
 	_levels = levels
-	_init_atrial_regions()
+	_init_chambers()
 
 func tick(delta: float) -> void:
 	_step_sa_node(delta)
 	_step_electrical_pathway(delta)
 	_step_heart()
-	_step_atrial_sweep(delta)
-	_tick_atrial_myocytes(delta)
-	_step_left_ventricle(delta)
-	_step_left_atria(delta)
+	# Sweeps triggered from _on_beat_initiated and _ep_transition
+	la.step_sweep(delta)
+	ra.step_sweep(delta)
+	lv.step_sweep(delta)
+	rv.step_sweep(delta)
+	# Myocytes — ventricles before atria so valve logic sees current LV pressure
+	lv.step_myocytes(delta)
+	rv.step_myocytes(delta)
+	la.step_myocytes(delta)
+	ra.step_myocytes(delta)
+	# Elastance + pressure
+	lv.step_elastance(delta)
+	rv.step_elastance(delta)
+	la.step_elastance(delta)
+	ra.step_elastance(delta)
+	# Valve logic and volume transfers
+	_step_valves(delta)
+	# Recompute ventricular pressures after ejection — volume changed, elastance did not
+	lv.pressure = lv.elastance * maxf(0.0, lv.volume - lv.v0)
+	rv.pressure = rv.elastance * maxf(0.0, rv.volume - rv.v0)
+	# Open aortic valve = pressure equilibrium: eject excess volume to match aorta
+	if lv.valve_open and lv.elastance > 0.0:
+		var lv_eq_volume: float = aorta_pressure / lv.elastance + lv.v0
+		var lv_transfer: float = lv.volume - lv_eq_volume
+		if lv_transfer > 0.0:
+			lv_transfer    = minf(lv_transfer, maxf(0.0, lv.volume - lv.v0))
+			lv.volume     -= lv_transfer
+			aorta_pressure += lv_transfer / 1.5
+		lv.pressure = lv.elastance * maxf(0.0, lv.volume - lv.v0)
 	_step_aorta(delta)
-	_step_right_atria()
-	_step_right_ventricle(delta)
+	_step_pulmonary_artery(delta)
 
-	var region_states: String = ""
-	for i in atrial_regions:
-		var r: Dictionary = atrial_regions_state[i]
-		region_states += "R%d:%s " % [i, AtrialMyocyteState.keys()[r["myocyte"]]]
-	print("[CARDIO] tick | EP=%s SA=%s | atria=%s [%s] | LA=%.1fmL PCWP=%.1fmmHg mitral=%s | LV=%.1fmL LVp=%.1f aortic=%s" % [
+	print("[CARDIO] EP=%s SA=%s | LA=%.1fmL p=%.1f mitral=%s | LV=%.1fmL p=%.1f aortic=%s aorta=%.1f(notch=%.1f) | RA=%.1fmL p=%.1f | RV=%.1fmL p=%.1f" % [
 		ElectricalPathwayStates.keys()[ep_state],
 		SinoAtrialStates.keys()[sa_state],
-		AtrialState.keys()[atrial_state],
-		region_states.strip_edges(),
-		la_volume, pcwp,
-		"O" if mitral_valve_open else "X",
-		lv_volume, lv_pressure,
-		"O" if lv_aortic_valve_open else "X",
+		la.volume, la.pressure, "O" if la.valve_open else "X",
+		lv.volume, lv.pressure, "O" if lv.valve_open else "X",
+		aorta_pressure, _dicrotic_notch_boost,
+		ra.volume, ra.pressure,
+		rv.volume, rv.pressure,
 	])
 
 func force_fire_sa_node() -> void:
@@ -61,19 +148,19 @@ func force_fire_sa_node() -> void:
 # HEART
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-var heart_rate: float           = 60.0
-var EDV: float                  = 0.0
-var ESV: float                  = 50.0
-var SV: float                   = 0.0
-var EF: float                   = 0.0
-var TPR: float                  = 17.7
-var cardiac_output: float       = 0.0
+var heart_rate: float             = 60.0
+var EDV: float                    = 142.0
+var ESV: float                    = 62.0
+var SV: float                     = 0.0
+var EF: float                     = 0.0
+var TPR: float                    = 17.7
+var cardiac_output: float         = 0.0
 var mean_arterial_pressure: float = 0.0
-var pulse_pressure: float       = 40.0
-var diastolic_bp: float         = 0.0
-var systolic_bp: float          = 0.0
-var bp_systolic: float          = 0.0   # alias for cortex/pulmonary compatibility
-var bp_diastolic: float         = 0.0   # alias
+var pulse_pressure: float         = 40.0
+var diastolic_bp: float           = 0.0
+var systolic_bp: float            = 0.0
+var bp_systolic: float            = 0.0   # alias for cortex/pulmonary compatibility
+var bp_diastolic: float           = 0.0   # alias
 
 var venous_return_fraction: float = 1.0
 
@@ -82,6 +169,9 @@ const MAX_CO: float      = 20.0
 var demanded_co: float           = BASELINE_CO
 var demanded_co_pre_decay: float = BASELINE_CO
 var spo2: float                  = 99.0
+
+# pcwp alias — always la.pressure; kept for signal payloads and external readers
+var pcwp: float = 8.0
 
 func set_demand(co: float) -> void:
 	demanded_co_pre_decay = co
@@ -92,7 +182,7 @@ func _step_heart() -> void:
 	if _organs != null and _organs.renal != null:
 		solve_for_preload()
 
-	SV = EDV - ESV
+	SV = maxf(0.0, EDV - ESV)
 	EF = (SV / EDV) * 100.0 if EDV > 0.0 else 0.0
 
 	if not sa_node_cardioplegia:
@@ -107,17 +197,26 @@ func _step_heart() -> void:
 	bp_systolic            = systolic_bp
 	bp_diastolic           = diastolic_bp
 
+	if _vitals != null:
+		_vitals.hr         = roundi(heart_rate)
+		_vitals.bp_systolic  = roundi(systolic_bp)
+		_vitals.bp_diastolic = roundi(diastolic_bp)
+		_vitals._refresh_ui()
+
 func solve_for_preload() -> void:
-	var plasma_fluid: float              = _organs.renal.plasma_fluid
+	var plasma_fluid: float                  = _organs.renal.plasma_fluid
 	var plasma_fluid_to_preload_ratio: float = 100.0 / 3750.0
-	var cardiac_preload: float           = plasma_fluid * plasma_fluid_to_preload_ratio * venous_return_fraction
+	var cardiac_preload: float               = plasma_fluid * plasma_fluid_to_preload_ratio * venous_return_fraction
 	EDV = ESV + cardiac_preload
+
+var cardiac_cycle_duration: float   = 1.0
+var atrial_systole_duration: float  = 0.1
+var atrial_diastole_duration: float = 0.9
 
 func _update_cycle_durations() -> void:
 	cardiac_cycle_duration   = 60.0 / heart_rate
 	atrial_systole_duration  = 0.10
 	atrial_diastole_duration = maxf(0.0, cardiac_cycle_duration - atrial_systole_duration)
-	time_to_depolarize_node  = ATRIAL_DEPOLARIZATION_DURATION / float(atrial_regions)
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -190,7 +289,6 @@ enum ElectricalPathwayStates {
 var ep_state: ElectricalPathwayStates = ElectricalPathwayStates.DIASTOLIC_FILLING
 var ep_state_timer: float             = 0.0
 
-# Durations in seconds, indexed by ElectricalPathwayStates enum value.
 const EP_STATE_DURATIONS: Array[float] = [0.08, 0.06, 0.03, 0.03, 0.15, 0.03, 0.21]
 
 func _on_beat_initiated() -> void:
@@ -198,7 +296,8 @@ func _on_beat_initiated() -> void:
 	ep_cycle_reset = false
 	ep_running     = true
 	_ep_transition(ElectricalPathwayStates.ATRIAL_DEPOLARIZATION)
-	_run_atrial_depolarization()
+	la.trigger_sweep()
+	ra.trigger_sweep()
 
 func _ep_transition(next_state: ElectricalPathwayStates) -> void:
 	ep_state       = next_state
@@ -212,6 +311,8 @@ func _ep_transition(next_state: ElectricalPathwayStates) -> void:
 			print("[CARDIO] EP → AV_DELAY")
 		ElectricalPathwayStates.VENTRICULAR_DEPOLARIZATION:
 			ep_cardiac_phase1 = true
+			lv.trigger_sweep()
+			rv.trigger_sweep()
 			print("[CARDIO] EP → VENTRICULAR_DEPOLARIZATION")
 		ElectricalPathwayStates.EARLY_REPOLARIZATION:
 			ep_cardiac_phase1 = true
@@ -257,271 +358,159 @@ func _step_electrical_pathway(delta: float) -> void:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# LEFT ATRIA
+# VALVES + VOLUME TRANSFER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-var pcwp: float             = 8.0
-var mitral_valve_open: bool = true
-var _pcwp_prev: float       = 8.0
-var _v_wave_emitted: bool   = false
+# Venous return constants — pulmonary veins into LA
+const LA_VENOUS_RETURN_RATE_SYSTOLE: float  = 100.0  # mL/s — reservoir phase (mitral closed)
+const LA_VENOUS_RETURN_RATE_DIASTOLE: float = 42.0   # mL/s — conduit/booster phase
+const LA_CONTRACTION_RATE: float            = 250.0  # mL/s total active ejection rate
+
+# Venous return constants — systemic veins into RA
+const RA_VENOUS_RETURN_RATE_SYSTOLE: float  = 34.0   # mL/s
+const RA_VENOUS_RETURN_RATE_DIASTOLE: float = 25.0   # mL/s
+const RA_CONTRACTION_RATE: float            = 180.0  # mL/s
+
+# C-wave: transient elastance spike on LA at mitral closure
+var _mitral_valve_diameter: float   = 1.0
+const MITRAL_CLOSE_RATE: float      = 33.3   # diameter/s — fully closed in ~0.03s
+const C_WAVE_ELASTANCE_BOOST: float = 0.30   # mmHg/mL added to la.e_max transiently
+const C_WAVE_DECAY_RATE: float      = 10.0   # /s — elastance boost decay after full closure
+var _c_wave_boost: float            = 0.0    # current extra elastance on LA
+
+# PCWP waveform detection
+var _pcwp_prev: float        = 8.0
+var _v_wave_emitted: bool    = false
 var _y_descent_emitted: bool = false
 
-# LA volume — PCWP derived via: pcwp = max(0, (la_volume - LA_UNSTRESSED_VOLUME) / LA_COMPLIANCE)
-var la_volume: float              = 35.0
-const LA_UNSTRESSED_VOLUME: float = 10.0  # mL — volume at zero transmural pressure
-# LA compliance is nonlinear — see _derive_pcwp()
-const LA_VENOUS_RETURN_RATE_SYSTOLE: float  = 120.0 # mL/s — reservoir phase (mitral closed, LA filling)
-const LA_VENOUS_RETURN_RATE_DIASTOLE: float = 50.0  # mL/s — conduit/booster phase (LA emptying into LV)
+func _step_valves(delta: float) -> void:
+	pcwp = la.pressure
 
-func _get_pulmonary_venous_return_rate() -> float:
-	return LA_VENOUS_RETURN_RATE_SYSTOLE if ep_cardiac_phase1 else LA_VENOUS_RETURN_RATE_DIASTOLE
-const LA_CONTRACTION_RATE: float  = 250.0 # mL/s total; /atrial_regions per region; * 0.08s ≈ 20 mL ejected
-const MITRAL_CONDUCTANCE: float   = 25.0  # mL/s/mmHg — passive mitral flow rate
+	# ── Pulmonary venous return into LA ───────────────────────────────────────
+	var la_vr_rate: float = LA_VENOUS_RETURN_RATE_SYSTOLE if ep_cardiac_phase1 else LA_VENOUS_RETURN_RATE_DIASTOLE
+	la.volume += la_vr_rate * delta
 
-# C-wave: leaflet bulge adds transient pressure during mitral closure — modeled directly on PCWP.
-var mitral_valve_diameter: float    = 1.0
-var c_wave_pressure: float          = 0.0
-const C_WAVE_PEAK_PRESSURE: float   = 3.0   # mmHg — peak c-wave pressure contribution
-const MITRAL_CLOSE_RATE: float      = 33.3  # diameter/s — closes fully in ~0.03 s
-const C_WAVE_DECAY_RATE: float      = 100.0 # mmHg/s — c-wave pressure decay after full closure
+	# ── Systemic venous return into RA ────────────────────────────────────────
+	var ra_vr_rate: float = RA_VENOUS_RETURN_RATE_SYSTOLE if ep_cardiac_phase1 else RA_VENOUS_RETURN_RATE_DIASTOLE
+	ra.volume += ra_vr_rate * delta
 
-enum AtriaElectricalState { RESTING, DEPOLARIZING, DEPOLARIZED, REPOLARIZING }
-enum AtrialMyocyteState {
-	PHASE_0,  # fast Na⁺ influx — rapid depolarization          ~0.002 s
-	PHASE_1,  # transient K⁺ outward — initial repolarization   ~0.005 s
-	PHASE_2,  # Ca²⁺ plateau balanced by K⁺ efflux             ~0.073 s
-	PHASE_3,  # delayed rectifier K⁺ — repolarization           ~0.060 s
-	PHASE_4   # resting membrane potential
-}
-enum AtriaMechanicalState { CONTRACTION, RELAXATION }
-enum AtrialState { SYSTOLE, DIASTOLE }
-
-const ATRIAL_MYOCYTE_DURATIONS: Dictionary = {
-	AtrialMyocyteState.PHASE_0: 0.002,
-	AtrialMyocyteState.PHASE_1: 0.005,
-	AtrialMyocyteState.PHASE_2: 0.073,
-	AtrialMyocyteState.PHASE_3: 0.060,
-	AtrialMyocyteState.PHASE_4: 0.0
-}
-
-const ATRIAL_MYOCYTE_FORCE: Dictionary = {
-	AtrialMyocyteState.PHASE_0: 0.15,  # rapid depolarization — force just beginning to develop
-	AtrialMyocyteState.PHASE_1: 0.50,  # early contraction — rising force
-	AtrialMyocyteState.PHASE_2: 1.00,  # plateau — peak force
-	AtrialMyocyteState.PHASE_3: 0.20,  # repolarization — force tapering off
-	AtrialMyocyteState.PHASE_4: 0.00   # resting
-}
-
-const ATRIAL_DEPOLARIZATION_DURATION: float = 0.08
-const ATRIAL_REPOLARIZATION_DURATION: float = 0.08
-
-var cardiac_cycle_duration: float   = 1.0
-var atrial_diastole_duration: float = 0.9
-var atrial_systole_duration: float  = 0.1
-
-var atrial_regions: int = 3
-var time_to_depolarize_node: float  = ATRIAL_DEPOLARIZATION_DURATION / 3.0
-
-var atrial_regions_state: Dictionary = {}
-var atrial_state: AtrialState        = AtrialState.DIASTOLE
-
-# Atrial sweep state
-var atrial_sweep_active: bool       = false
-var atrial_sweep_region_index: int  = 0
-var atrial_sweep_timer: float       = 0.0
-
-func _init_atrial_regions() -> void:
-	atrial_regions_state.clear()
-	for i in atrial_regions:
-		atrial_regions_state[i] = {
-			"electrical":    AtriaElectricalState.RESTING,
-			"mechanical":    AtriaMechanicalState.RELAXATION,
-			"myocyte":       AtrialMyocyteState.PHASE_4,
-			"myocyte_timer": 0.0
-		}
-
-func _run_atrial_depolarization() -> void:
-	atrial_sweep_active       = true
-	atrial_sweep_region_index = 0
-	atrial_sweep_timer        = 0.0
-	for i in atrial_regions:
-		atrial_regions_state[i]["electrical"]    = AtriaElectricalState.RESTING
-		atrial_regions_state[i]["mechanical"]    = AtriaMechanicalState.RELAXATION
-		atrial_regions_state[i]["myocyte"]       = AtrialMyocyteState.PHASE_4
-		atrial_regions_state[i]["myocyte_timer"] = 0.0
-
-func _step_atrial_sweep(delta: float) -> void:
-	if not atrial_sweep_active:
-		return
-	atrial_sweep_timer += delta
-	while atrial_sweep_timer >= time_to_depolarize_node and atrial_sweep_region_index < atrial_regions:
-		atrial_sweep_timer -= time_to_depolarize_node
-		atrial_regions_state[atrial_sweep_region_index]["electrical"] = AtriaElectricalState.DEPOLARIZED
-		atrial_region_depolarized.emit(atrial_sweep_region_index)
-		atrial_sweep_region_index += 1
-	if atrial_sweep_region_index >= atrial_regions:
-		atrial_sweep_active = false
-
-func _derive_pcwp() -> void:
-	var x: float = maxf(0.0, la_volume - LA_UNSTRESSED_VOLUME)
-	pcwp = 2.0 * (exp(x / 20.0) - 1.0) + c_wave_pressure
-
-func _on_mitral_valve_closing() -> void:
-	print("[CARDIO] Mitral CLOSING — c-wave start | LA=%.1f mL PCWP=%.1f mmHg" % [la_volume, pcwp])
-	mitral_valve_diameter = 1.0
-	c_wave_pressure       = 0.0
-
-func _on_mitral_valve_closed() -> void:
-	print("[CARDIO] Mitral CLOSED — c-wave peak | LA=%.1f mL PCWP=%.1f mmHg" % [la_volume, pcwp])
-
-func _on_atrial_region_depolarized(region: int) -> void:
-	print("[CARDIO] Atrial region %d depolarized — myocyte PHASE_0 armed" % region)
-	atrial_regions_state[region]["myocyte"]       = AtrialMyocyteState.PHASE_0
-	atrial_regions_state[region]["myocyte_timer"]  = 0.0
-	atrial_regions_state[region]["mechanical"]    = AtriaMechanicalState.CONTRACTION
-
-func _tick_atrial_myocytes(delta: float) -> void:
-	la_volume += _get_pulmonary_venous_return_rate() * delta
-
-	for i in atrial_regions:
-		var region: Dictionary = atrial_regions_state[i]
-		var phase: AtrialMyocyteState = region["myocyte"]
-		if phase == AtrialMyocyteState.PHASE_4:
-			continue
-
-		region["myocyte_timer"] += delta
-
-		var force: float = ATRIAL_MYOCYTE_FORCE[phase]
-		if mitral_valve_open and force > 0.0:
-			var outflow: float = (LA_CONTRACTION_RATE / float(atrial_regions)) * force * delta
-			outflow = minf(outflow, maxf(0.0, la_volume - LA_UNSTRESSED_VOLUME))
-			la_volume -= outflow
-			lv_volume += outflow
-
-		var duration: float = ATRIAL_MYOCYTE_DURATIONS[phase]
-		if duration > 0.0 and region["myocyte_timer"] >= duration:
-			region["myocyte_timer"] = 0.0
-			match phase:
-				AtrialMyocyteState.PHASE_0:
-					region["myocyte"] = AtrialMyocyteState.PHASE_1
-					print("[CARDIO] Region %d myocyte PHASE_0→1 (plateau onset)" % i)
-				AtrialMyocyteState.PHASE_1:
-					region["myocyte"] = AtrialMyocyteState.PHASE_2
-					print("[CARDIO] Region %d myocyte PHASE_1→2 (plateau)" % i)
-				AtrialMyocyteState.PHASE_2:
-					region["myocyte"] = AtrialMyocyteState.PHASE_3
-					print("[CARDIO] Region %d myocyte PHASE_2→3 (relaxation)" % i)
-				AtrialMyocyteState.PHASE_3:
-					region["myocyte"] = AtrialMyocyteState.PHASE_4
-					region["mechanical"] = AtriaMechanicalState.RELAXATION
-					region["electrical"] = AtriaElectricalState.REPOLARIZING
-					print("[CARDIO] Region %d myocyte PHASE_3→4 (resting)" % i)
-
-	_update_atrial_state()
-
-func _update_atrial_state() -> void:
-	var contracting: int = 0
-	for i in atrial_regions:
-		if atrial_regions_state[i]["mechanical"] == AtriaMechanicalState.CONTRACTION:
-			contracting += 1
-	atrial_state = AtrialState.SYSTOLE if contracting > 0 else AtrialState.DIASTOLE
-
-func _step_left_atria(delta: float) -> void:
-	_derive_pcwp()
-
-	var ventricular_closure_phase: bool = (
+	# ── Mitral valve (LA → LV) ────────────────────────────────────────────────
+	var ventricular_closure: bool = (
 		ep_state == ElectricalPathwayStates.VENTRICULAR_DEPOLARIZATION or
 		ep_state == ElectricalPathwayStates.EARLY_REPOLARIZATION or
 		ep_state == ElectricalPathwayStates.T_WAVE
 	)
-
-	var should_close_mitral: bool = ventricular_closure_phase and (lv_pressure > pcwp + 1.0)
+	var should_close_mitral: bool = ventricular_closure and (lv.pressure > la.pressure + 1.0)
 
 	if should_close_mitral:
-		if mitral_valve_open:
-			mitral_valve_closing.emit()
-			mitral_valve_open = false
-		_resolve_c_wave(delta)
+		if la.valve_open:
+			la.valve_open         = false
+			_mitral_valve_diameter = 1.0
+			_c_wave_boost          = 0.0
+			print("[CARDIO] Mitral CLOSING | LA=%.1fmL p=%.1f" % [la.volume, la.pressure])
+		_resolve_mitral_c_wave(delta)
 	else:
-		if not ventricular_closure_phase:
-			mitral_valve_open     = true
-			mitral_valve_diameter = 1.0
-			c_wave_pressure       = 0.0
+		if not ventricular_closure:
+			la.valve_open         = true
+			_mitral_valve_diameter = 1.0
+			_c_wave_boost          = 0.0
+			la.e_max               = 0.60  # restore baseline e_max
 
-		if mitral_valve_open:
-			var flow: float = maxf(0.0, (pcwp - lv_pressure) * MITRAL_CONDUCTANCE * delta)
-			flow       = minf(flow, maxf(0.0, la_volume - LA_UNSTRESSED_VOLUME))
-			la_volume -= flow
-			lv_volume += flow
+	if la.valve_open:
+		# Active contraction flow (booster phase)
+		var la_force: float = 0.0
+		for i in la.region_count:
+			if la._regions[i]["mechanical"] == 1:
+				la_force += la.myocyte_force[la._regions[i]["myocyte"]]
+		if la_force > 0.0:
+			var active_flow: float = (LA_CONTRACTION_RATE / float(la.region_count)) * la_force * delta
+			active_flow  = minf(active_flow, maxf(0.0, la.volume - la.v0))
+			la.volume   -= active_flow
+			lv.volume   += active_flow
+		# Passive filling flow (pressure gradient)
+		var passive_flow: float = maxf(0.0, (la.pressure - lv.pressure) * la.valve_conductance * delta)
+		passive_flow  = minf(passive_flow, maxf(0.0, la.volume - la.v0))
+		la.volume    -= passive_flow
+		lv.volume    += passive_flow
 
-	la_volume = maxf(LA_UNSTRESSED_VOLUME, la_volume)
+	la.volume = maxf(la.v0, la.volume)
 
-	# V-wave peak: PCWP was rising during systole and just turned over
-	if not _v_wave_emitted and not ep_cardiac_phase1 and not mitral_valve_open and pcwp < _pcwp_prev:
+	# ── Aortic valve (LV → aorta) ─────────────────────────────────────────────
+	if not lv.valve_open and lv.pressure >= aorta_pressure:
+		lv.valve_open = true
+	if lv.valve_open and lv.pressure < aorta_pressure:
+		lv.valve_open = false
+
+	if lv.valve_open:
+		var eject_flow: float = maxf(0.0, (lv.pressure - aorta_pressure) * lv.valve_conductance * delta)
+		eject_flow     = minf(eject_flow, maxf(0.0, lv.volume - lv.v0))
+		lv.volume     -= eject_flow
+		aorta_pressure += eject_flow / 1.5
+
+	lv.pressure = clampf(lv.pressure, 0.0, 200.0)
+
+	# ── Tricuspid valve (RA → RV) ─────────────────────────────────────────────
+	var should_close_tricuspid: bool = ventricular_closure and (rv.pressure > ra.pressure + 1.0)
+
+	if should_close_tricuspid:
+		ra.valve_open = false
+	elif not ventricular_closure:
+		ra.valve_open = true
+
+	if ra.valve_open:
+		var ra_force: float = 0.0
+		for i in ra.region_count:
+			if ra._regions[i]["mechanical"] == 1:
+				ra_force += ra.myocyte_force[ra._regions[i]["myocyte"]]
+		if ra_force > 0.0:
+			var active_flow: float = (RA_CONTRACTION_RATE / float(ra.region_count)) * ra_force * delta
+			active_flow  = minf(active_flow, maxf(0.0, ra.volume - ra.v0))
+			ra.volume   -= active_flow
+			rv.volume   += active_flow
+		var passive_flow: float = maxf(0.0, (ra.pressure - rv.pressure) * ra.valve_conductance * delta)
+		passive_flow  = minf(passive_flow, maxf(0.0, ra.volume - ra.v0))
+		ra.volume    -= passive_flow
+		rv.volume    += passive_flow
+
+	ra.volume = maxf(ra.v0, ra.volume)
+
+	# ── Pulmonic valve (RV → pulmonary artery) ────────────────────────────────
+	if not rv.valve_open and rv.pressure >= pulmonary_pressure:
+		rv.valve_open = true
+	if rv.valve_open and rv.pressure < pulmonary_pressure:
+		rv.valve_open = false
+
+	if rv.valve_open:
+		var eject_flow: float = maxf(0.0, (rv.pressure - pulmonary_pressure) * rv.valve_conductance * delta)
+		eject_flow          = minf(eject_flow, maxf(0.0, rv.volume - rv.v0))
+		rv.volume          -= eject_flow
+		pulmonary_pressure += eject_flow * 0.1
+
+	rv.pressure = clampf(rv.pressure, 0.0, 60.0)
+
+	# ── PCWP waveform detection ───────────────────────────────────────────────
+	if not _v_wave_emitted and not ep_cardiac_phase1 and not la.valve_open and pcwp < _pcwp_prev:
 		_v_wave_emitted = true
 		v_wave_peak.emit(pcwp)
-		print("[CARDIO] v-wave peak detected | PCWP=%.1f mmHg" % pcwp)
+		print("[CARDIO] v-wave peak | PCWP=%.1f mmHg" % pcwp)
 
-	# Y-descent start: mitral just opened and PCWP is falling
-	if not _y_descent_emitted and mitral_valve_open and pcwp < _pcwp_prev:
+	if not _y_descent_emitted and la.valve_open and pcwp < _pcwp_prev:
 		_y_descent_emitted = true
 		y_descent_start.emit(pcwp)
-		print("[CARDIO] y-descent start detected | PCWP=%.1f mmHg" % pcwp)
+		print("[CARDIO] y-descent start | PCWP=%.1f mmHg" % pcwp)
 
 	_pcwp_prev = pcwp
 
-func _resolve_c_wave(delta: float) -> void:
-	if mitral_valve_diameter > 0.0:
-		mitral_valve_diameter = maxf(0.0, mitral_valve_diameter - MITRAL_CLOSE_RATE * delta)
-		c_wave_pressure = C_WAVE_PEAK_PRESSURE * (1.0 - mitral_valve_diameter)
-		if mitral_valve_diameter == 0.0:
-			mitral_valve_closed.emit()
+func _resolve_mitral_c_wave(delta: float) -> void:
+	if _mitral_valve_diameter > 0.0:
+		_mitral_valve_diameter = maxf(0.0, _mitral_valve_diameter - MITRAL_CLOSE_RATE * delta)
+		_c_wave_boost          = C_WAVE_ELASTANCE_BOOST * (1.0 - _mitral_valve_diameter)
+		la.e_max               = 0.60 + _c_wave_boost
+		if _mitral_valve_diameter == 0.0:
+			print("[CARDIO] Mitral CLOSED | LA=%.1fmL p=%.1f" % [la.volume, la.pressure])
 	else:
-		c_wave_pressure = maxf(0.0, c_wave_pressure - C_WAVE_DECAY_RATE * delta)
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# LEFT VENTRICLE
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-var lv_pressure: float           = 4.0
-var lv_volume: float             = 100.0
-var lv_aortic_valve_open: bool   = false
-
-# Time-varying elastance model: lv_pressure = E(t) * (lv_volume - V0)
-# E(t) ramps up during systole and decays during diastole.
-var lv_elastance: float          = 0.1   # mmHg/mL — current elastance
-const LV_E_MIN: float            = 0.1   # mmHg/mL — diastolic (passive) elastance
-const LV_E_MAX: float            = 2.5   # mmHg/mL — systolic (active) elastance
-const LV_E_RISE_RATE: float      = 30.0  # /s — elastance rise rate during systole
-const LV_E_DECAY_RATE: float     = 8.0   # /s — elastance decay rate during diastole
-const LV_V0: float               = 10.0  # mL — dead volume (pressure = 0 at this volume)
-
-func _step_left_ventricle(delta: float) -> void:
-	# Drive elastance up during systole, decay during diastole
-	if ep_cardiac_phase1:
-		lv_elastance = minf(LV_E_MAX, lv_elastance + LV_E_RISE_RATE * delta)
-	else:
-		lv_elastance = maxf(LV_E_MIN, lv_elastance - LV_E_DECAY_RATE * delta)
-
-	# LV pressure fully emergent from elastance and volume
-	lv_pressure = lv_elastance * maxf(0.0, lv_volume - LV_V0)
-
-	# Aortic valve: opens when LV pressure exceeds aorta, closes when it falls below
-	if not lv_aortic_valve_open and lv_pressure >= aorta_pressure:
-		lv_aortic_valve_open = true
-	if lv_aortic_valve_open and lv_pressure < aorta_pressure:
-		lv_aortic_valve_open = false
-
-	# Ejection — flow proportional to LV-aorta pressure gradient
-	if lv_aortic_valve_open:
-		var eject_flow: float = maxf(0.0, (lv_pressure - aorta_pressure) * 3.0 * delta)
-		eject_flow = minf(eject_flow, maxf(0.0, lv_volume - LV_V0))
-		lv_volume     -= eject_flow
-		aorta_pressure += eject_flow * 0.5
-
-	lv_pressure = clampf(lv_pressure, 0.0, 200.0)
-	lv_volume   = clampf(lv_volume, ESV, EDV)
+		_c_wave_boost = maxf(0.0, _c_wave_boost - C_WAVE_DECAY_RATE * delta)
+		la.e_max      = 0.60 + _c_wave_boost
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -534,82 +523,47 @@ var aorta_pressure_max: float  = 120.0
 var aorta_blood_flow: bool     = false
 var aorta_blood_flow_end: bool = false
 
-func _step_aorta(delta: float) -> void:
-	if not lv_aortic_valve_open:
-		aorta_pressure -= 25.0 * delta
+var _aortic_valve_was_open: bool   = false
+var _dicrotic_notch_boost: float   = 0.0
+var _incisura_pending: bool        = false
+var _incisura_close_pressure: float = 0.0  # aorta pressure at valve closure
+const DICROTIC_NOTCH_DIP: float    = 5.0
+const DICROTIC_NOTCH_HEIGHT: float = 0.5
+const DICROTIC_NOTCH_DECAY: float  = 80.0
 
-	aorta_pressure_min = diastolic_bp
-	aorta_pressure_max = systolic_bp
+func _step_aorta(delta: float) -> void:
+	var notch_fired: bool = _aortic_valve_was_open and not lv.valve_open
+	_aortic_valve_was_open = lv.valve_open
+
+	if notch_fired:
+		_incisura_close_pressure = aorta_pressure
+		aorta_pressure          -= DICROTIC_NOTCH_DIP
+		_incisura_pending        = true
+	elif _incisura_pending:
+		aorta_pressure        += DICROTIC_NOTCH_DIP + DICROTIC_NOTCH_HEIGHT
+		_dicrotic_notch_boost  = DICROTIC_NOTCH_HEIGHT
+		_incisura_pending      = false
+	elif _dicrotic_notch_boost > 0.0:
+		_dicrotic_notch_boost = maxf(0.0, _dicrotic_notch_boost - DICROTIC_NOTCH_DECAY * delta)
+
+	if not lv.valve_open and not notch_fired and not _incisura_pending:
+		aorta_pressure -= 55.0 * delta
+
+	aorta_pressure_min = 8.0
+	aorta_pressure_max = 160.0
 	aorta_pressure     = clampf(aorta_pressure, aorta_pressure_min, aorta_pressure_max)
 
-	aorta_blood_flow     = lv_aortic_valve_open
-	aorta_blood_flow_end = not lv_aortic_valve_open and ep_cardiac_phase1
+	aorta_blood_flow     = lv.valve_open
+	aorta_blood_flow_end = not lv.valve_open and ep_cardiac_phase1
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# RIGHT ATRIA
+# PULMONARY ARTERY
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-var ra_pressure: float            = 4.8
-var ra_pressure_max: float        = 6.5
-var ra_tricuspid_valve_open: bool = true
+var pulmonary_pressure: float = 15.0
 
-func _step_right_atria() -> void:
-	if ep_state == ElectricalPathwayStates.ATRIAL_DEPOLARIZATION:
-		if ra_pressure < ra_pressure_max:
-			ra_pressure += (1.7 / 6.0)
-
-	if ep_state == ElectricalPathwayStates.AV_DELAY:
-		if ra_pressure > 5.0:
-			ra_pressure -= (1.5 / 5.0)
-		if pcwp <= 2.0 and ep_state_timer >= EP_STATE_DURATIONS[ElectricalPathwayStates.AV_DELAY]:
-			ra_tricuspid_valve_open = false
-
-	if ep_state == ElectricalPathwayStates.ISOVOLUMETRIC_RELAXATION:
-		if pcwp <= 2.0:
-			ra_tricuspid_valve_open = true
-
-	if ep_cycle_reset:
-		ra_pressure = 4.8
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# RIGHT VENTRICLE
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-var rv_pressure: float           = 5.0
-var rv_pressure_systolic: float  = 20.0
-var rv_pressure_diastolic: float = 5.0
-var rv_pulmonic_valve_open: bool = false
-var rv_pulmonic_valve_timer: float = 3.0
-var rv_splitting_modifier: float   = 1.0
-
-func _step_right_ventricle(delta: float) -> void:
-	if ra_tricuspid_valve_open and not rv_pulmonic_valve_open:
-		rv_pressure = ra_pressure
-
-	if rv_pulmonic_valve_open:
-		if rv_pressure < rv_pressure_systolic:
-			rv_pressure += 10.0 * delta
-
-	if rv_pressure < ra_pressure:
-		rv_pressure = ra_pressure
-
-	if lv_aortic_valve_open and not rv_pulmonic_valve_open:
-		rv_pulmonic_valve_timer -= 1.0 * rv_splitting_modifier
-		if rv_pulmonic_valve_timer <= 0.0:
-			rv_pulmonic_valve_open  = true
-			rv_pulmonic_valve_timer = 3.0
-
-	if not lv_aortic_valve_open and rv_pulmonic_valve_open:
-		rv_pulmonic_valve_timer -= 1.0 * rv_splitting_modifier
-		if rv_pulmonic_valve_timer <= 0.0:
-			rv_pulmonic_valve_open  = false
-			rv_pulmonic_valve_timer = 3.0
-
-	rv_pressure = roundf(rv_pressure)
-	rv_pressure = maxf(ra_pressure, rv_pressure)
-
-	if ep_cycle_reset:
-		rv_pressure             = 5.0
-		ra_tricuspid_valve_open = false
+func _step_pulmonary_artery(delta: float) -> void:
+	if not rv.valve_open:
+		pulmonary_pressure -= 4.0 * delta
+	pulmonary_pressure = clampf(pulmonary_pressure, 8.0, 30.0)

@@ -1,6 +1,8 @@
 # Cardiovascular System
 
-**File:** `scenes/character/organs/character_cardiovascular.gd`
+**Files:**
+- `scenes/character/organs/character_cardiovascular.gd` — coordinator: SA node, EP pathway, valve logic, volume transfers, aorta, pulmonary artery
+- `scenes/character/organs/cardiac_chamber.gd` — reusable chamber class (all 4 chambers)
 
 Full cardiac cycle simulation. Tick entry point: `tick(delta: float)` — called from `turn_order.gd` with `delta=0.016` on every player move/wait.
 
@@ -14,14 +16,113 @@ Order matters — each step sees the previous step's output.
 _step_sa_node(delta)
 _step_electrical_pathway(delta)
 _step_heart()
-_step_atrial_sweep(delta)
-_tick_atrial_myocytes(delta)
-_step_left_ventricle(delta)   ← before LA so mitral logic sees current LV pressure
-_step_left_atria(delta)
+la.step_sweep(delta)       ← triggered on beat_initiated
+ra.step_sweep(delta)
+lv.step_sweep(delta)       ← triggered on VENTRICULAR_DEPOLARIZATION
+rv.step_sweep(delta)
+lv.step_myocytes(delta)    ← ventricles before atria (LV pressure must be current for valve logic)
+rv.step_myocytes(delta)
+la.step_myocytes(delta)
+ra.step_myocytes(delta)
+lv.step_elastance(delta)
+rv.step_elastance(delta)
+la.step_elastance(delta)
+ra.step_elastance(delta)
+_step_valves(delta)        ← all 4 valves + volume transfers + PCWP waveform detection
 _step_aorta(delta)
-_step_right_atria()
-_step_right_ventricle(delta)
+_step_pulmonary_artery(delta)
 ```
+
+---
+
+## CardiacChamber
+
+**File:** `scenes/character/organs/cardiac_chamber.gd`
+
+All 4 chambers are instances of `CardiacChamber` (RefCounted). The coordinator holds `la`, `lv`, `ra`, `rv`.
+
+### Configuration (set before `init_regions()`)
+
+| Property | Type | Meaning |
+|---|---|---|
+| `fascicle_count` | int | 1 for atria, 3 for ventricles |
+| `regions_per_fascicle` | int | always 3 |
+| `sweep_duration` | float | seconds to traverse all fascicles |
+| `myocyte_durations[5]` | Array[float] | AP phase durations (phases 0–4) |
+| `myocyte_force[5]` | Array[float] | force envelope per phase (0.0–1.0) |
+| `e_min` | float | passive diastolic elastance mmHg/mL |
+| `e_max` | float | peak systolic elastance mmHg/mL |
+| `e_rise_rate` | float | elastance rise rate /s |
+| `e_decay_rate` | float | elastance decay rate /s |
+| `v0` | float | dead volume mL (pressure = 0 here) |
+| `initial_volume` | float | starting volume mL |
+| `valve_conductance` | float | outflow valve conductance mL/s/mmHg |
+
+### Runtime State (read by coordinator)
+
+| Property | Meaning |
+|---|---|
+| `volume` | current chamber volume mL |
+| `pressure` | `elastance * max(0, volume - v0)` mmHg |
+| `elastance` | current E(t) mmHg/mL |
+| `in_systole` | true if any region is in CONTRACTION |
+| `valve_open` | outflow valve state — set by coordinator |
+
+### Signals
+
+| Signal | When |
+|---|---|
+| `region_depolarized(region)` | sweep reaches each region |
+| `systole_started` | first region enters CONTRACTION |
+| `diastole_started` | last region exits CONTRACTION |
+
+### Electrical Sweep
+
+`trigger_sweep()` — resets all regions to PHASE_4/RELAXATION, starts sweep.
+
+`step_sweep(delta)` — advances sweep timer. Fires fascicles sequentially; all regions in a fascicle depolarize simultaneously. Each fired region: myocyte→PHASE_0, mechanical→CONTRACTION, emits `region_depolarized`.
+
+- Atria: 1 fascicle × 3 regions = 3 regions total
+- Ventricles: 3 fascicles × 3 regions = 9 regions total; fascicles fire sequentially over `sweep_duration`
+
+### Myocyte Action Potential
+
+`step_myocytes(delta)` — advances each active region through phases 0→1→2→3→4. Returns summed active force (used by coordinator for active contraction volume transfer). On PHASE_3→4: mechanical→RELAXATION.
+
+| Phase | Atrial duration | Ventricular duration | Force |
+|---|---|---|---|
+| 0 | 0.002s | 0.002s | 0.15 / 0.10 |
+| 1 | 0.005s | 0.005s | 0.50 / 0.40 |
+| 2 | 0.073s | 0.100s | 1.00 |
+| 3 | 0.060s | 0.080s | 0.20 / 0.25 |
+| 4 | ∞ (resting) | ∞ | 0.00 |
+
+### Elastance + Pressure Model
+
+`step_elastance(delta)` — sums active force across all contracting regions, normalizes by `region_count`, drives elastance up or lets it decay:
+
+```
+normalized_force = active_force / region_count
+if normalized_force > 0:
+    elastance = min(e_max, elastance + normalized_force * e_rise_rate * delta)
+else:
+    elastance = max(e_min, elastance - e_decay_rate * delta)
+
+pressure = elastance * max(0, volume - v0)
+```
+
+This replaces both the old LA compliance curve and the old LV `ep_cardiac_phase1` flat elastance ramp. Pressure is always fully emergent from volume and elastance.
+
+---
+
+## Chamber Constants
+
+| Chamber | e_min | e_max | e_rise | e_decay | v0 | vol_init | fascicles | sweep |
+|---|---|---|---|---|---|---|---|---|
+| LA | 0.20 | 0.60 | 5.0 | 3.0 | 10 mL | 35 mL | 1 | 0.08s |
+| LV | 0.10 | 2.50 | 30.0 | 8.0 | 10 mL | 100 mL | 3 | 0.03s |
+| RA | 0.25 | 0.67 | 5.0 | 3.0 | 8 mL | 28 mL | 1 | 0.08s |
+| RV | 0.05 | 0.60 | 15.0 | 6.0 | 10 mL | 100 mL | 3 | 0.03s |
 
 ---
 
@@ -37,7 +138,7 @@ Membrane potential: `Vm = -130 + ic_na + ic_ca + ic_k`
 | PHASE_0 | Threshold reached. Fires `beat_initiated` signal. Transitions to PHASE_3. |
 | PHASE_3 | Repolarization. K⁺ efflux decays. Resets all currents to baseline → back to PHASE_4. |
 
-`force_fire_sa_node()` — debug helper: sets `Vm=10`, `sa_state=PHASE_0` to manually trigger a beat.
+`force_fire_sa_node()` — debug helper: sets `Vm=10`, `sa_state=PHASE_0`.
 
 ---
 
@@ -49,13 +150,13 @@ Delta-based timer. One state advance per tick.
 
 | State | Duration | Notes |
 |---|---|---|
-| ATRIAL_DEPOLARIZATION | 0.08s | Triggers atrial sweep |
+| ATRIAL_DEPOLARIZATION | 0.08s | Triggers `la.trigger_sweep()` and `ra.trigger_sweep()` |
 | AV_DELAY | 0.06s | AV node conduction delay |
-| VENTRICULAR_DEPOLARIZATION | 0.03s | QRS complex; `ep_cardiac_phase1 = true` |
+| VENTRICULAR_DEPOLARIZATION | 0.03s | QRS; `ep_cardiac_phase1 = true`; triggers `lv.trigger_sweep()` and `rv.trigger_sweep()` |
 | EARLY_REPOLARIZATION | 0.03s | ST segment |
 | T_WAVE | 0.15s | Ventricular repolarization |
-| ISOVOLUMETRIC_RELAXATION | 0.03s | Both valves closed; elastance decays; emits `v_wave_peak` |
-| DIASTOLIC_FILLING | 0.21s | Mitral opens; LV fills; emits `y_descent_start` |
+| ISOVOLUMETRIC_RELAXATION | 0.03s | Both valves closed; elastance decays; resets `_v_wave_emitted` |
+| DIASTOLIC_FILLING | 0.21s | Mitral opens; LV fills; resets `_y_descent_emitted` |
 
 **Key flags:**
 - `ep_cardiac_phase1` — true during VENTRICULAR_DEPOLARIZATION, EARLY_REPOLARIZATION, T_WAVE
@@ -64,149 +165,218 @@ Delta-based timer. One state advance per tick.
 
 ---
 
-## Atrial Sweep
+## Valves + Volume Transfer (`_step_valves`)
 
-Triggered on `beat_initiated` via `_run_atrial_depolarization()`.
+All valve logic lives in the coordinator. Chambers are dumb — they expose `valve_open` (bool) which the coordinator sets each tick.
 
-- `atrial_regions = 3`
-- `time_to_depolarize_node = 0.08s / 3 ≈ 0.027s` per region
-- Timer-driven: each region's `electrical` state set to DEPOLARIZED in sequence
-- Each depolarization emits `atrial_region_depolarized(region)` which arms that region's myocyte at PHASE_0 and sets mechanical state to CONTRACTION immediately
+### Venous Return
 
----
+- Pulmonary veins → LA: `120.0 mL/s` when `ep_cardiac_phase1` (reservoir phase), `50.0 mL/s` otherwise
+- Systemic veins → RA: `40.0 mL/s` / `30.0 mL/s` same logic
 
-## Atrial Myocytes
+### Mitral Valve (LA → LV)
 
-Per-region action potential. Triggered by `atrial_region_depolarized` signal.
+**Close condition:** inside ventricular closure phases (`VENTRICULAR_DEPOLARIZATION`, `EARLY_REPOLARIZATION`, `T_WAVE`) AND `lv.pressure > la.pressure + 1.0`
 
-| Phase | Duration | Force | Mechanical | Notes |
-|---|---|---|---|---|
-| PHASE_0 | 0.002s | 0.15 | CONTRACTION | Fast Na⁺ depolarization; force just beginning |
-| PHASE_1 | 0.005s | 0.50 | CONTRACTION | Transient K⁺; rising force |
-| PHASE_2 | 0.073s | 1.00 | CONTRACTION | Ca²⁺ plateau; peak force |
-| PHASE_3 | 0.060s | 0.20 | RELAXATION | K⁺ repolarization; tapering force |
-| PHASE_4 | ∞ | 0.00 | RELAXATION | Resting |
+**Open condition:** outside ventricular closure phases — resets `_mitral_valve_diameter = 1.0`, clears c-wave boost
 
-Force multiplier applied to ejection: `(LA_CONTRACTION_RATE / atrial_regions) * force * delta`
+When open, two flow components:
+1. **Active** — sum of LA regional forces drives `LA_CONTRACTION_RATE = 250.0 mL/s` proportionally
+2. **Passive** — `(la.pressure - lv.pressure) * la.valve_conductance * delta` (conductance = 25.0 mL/s/mmHg)
 
-- `LA_CONTRACTION_RATE = 250.0` mL/s — peak rate; actual output shaped by force profile
-- Ejection only occurs when `mitral_valve_open = true`
-- Produces a crude rise → peak → taper force envelope rather than a rectangular on/off profile
+Both flows clamp against `la.volume - la.v0`.
 
-Atrial state (`SYSTOLE`/`DIASTOLE`) derived each tick: SYSTOLE if any region is in CONTRACTION.
+### C-Wave (mitral closure transient)
 
----
+Modeled as a transient boost to `la.e_max` rather than a direct pressure addition — keeps the pressure model physically consistent.
 
-## Left Atria — Volume Model
+1. On mitral close: `_mitral_valve_diameter = 1.0`, `_c_wave_boost = 0.0`
+2. Diameter decrements at `MITRAL_CLOSE_RATE = 33.3/s` → fully closed in ~0.03s
+3. While closing: `_c_wave_boost = C_WAVE_ELASTANCE_BOOST * (1 - diameter)` → peaks at +0.30 mmHg/mL on `la.e_max`
+4. After full closure: boost decays at `C_WAVE_DECAY_RATE = 10.0/s`
+5. `la.e_max` restored to 0.60 on mitral open
 
-PCWP is never set directly. It is always derived from `la_volume` using an exponential compliance curve:
+### Aortic Valve (LV → aorta)
 
-```
-x = max(0, la_volume - LA_UNSTRESSED_VOLUME)
-pcwp = 2.0 * (exp(x / 20.0) - 1.0) + c_wave_pressure
-```
+Opens emergently when `lv.pressure >= aorta_pressure`, closes when it falls below.
 
-Nonlinear — very compliant at low volumes, stiffens sharply at high volumes:
-- LA=35 mL (x=25): ~5 mmHg — normal
-- LA=50 mL (x=40): ~17 mmHg — elevated
-- LA=70 mL (x=60): ~38 mmHg — pulmonary edema
+Ejection flow: `(lv.pressure - aorta_pressure) * lv.valve_conductance * delta` (conductance = 3.0), capped at `lv.volume - lv.v0`. Ejected volume raises `aorta_pressure` at 0.5 mmHg/mL.
 
-| Constant | Value | Meaning |
-|---|---|---|
-| `LA_UNSTRESSED_VOLUME` | 10.0 mL | Volume at zero transmural pressure |
-| `LA_VENOUS_RETURN_RATE_SYSTOLE` | 120.0 mL/s | Pulmonary venous return during reservoir phase (mitral closed) |
-| `LA_VENOUS_RETURN_RATE_DIASTOLE` | 50.0 mL/s | Pulmonary venous return during conduit/booster phase |
-| `LA_CONTRACTION_RATE` | 250.0 mL/s | Peak atrial ejection rate |
-| `MITRAL_CONDUCTANCE` | 25.0 mL/s/mmHg | Passive mitral flow rate during diastole |
+### Tricuspid Valve (RA → RV)
 
-Venous return is cycle-dependent: `120.0 mL/s` when `ep_cardiac_phase1` (LA filling against closed mitral), `50.0 mL/s` otherwise.
+Same pattern as mitral — closes during ventricular closure when `rv.pressure > ra.pressure + 1.0`, opens outside it. Active + passive flow.
 
-Passive mitral flow (diastole only): `(pcwp - lv_pressure) * MITRAL_CONDUCTANCE * delta`
+### Pulmonic Valve (RV → pulmonary artery)
+
+Same pattern as aortic — opens when `rv.pressure >= pulmonary_pressure`, closes when it falls below. Ejected volume raises `pulmonary_pressure` at 0.1 mmHg/mL.
 
 ---
 
-## Mitral Valve
+## Aorta
 
-Valve state owned entirely by `_step_left_atria`. Never set elsewhere.
+Pressure decays at 25.0 mmHg/s when aortic valve closed. Clamped to `[diastolic_bp, systolic_bp]` (from `_step_heart`).
 
-**Ventricular closure phases:** `VENTRICULAR_DEPOLARIZATION`, `EARLY_REPOLARIZATION`, `T_WAVE`
+`aorta_blood_flow` — true while aortic valve open
+`aorta_blood_flow_end` — true when valve just closed during `ep_cardiac_phase1`
 
-**Close condition:** inside ventricular closure phases AND `lv_pressure > pcwp + 1.0`
+## Pulmonary Artery
 
-**Open condition:** outside ventricular closure phases only — resets `mitral_valve_diameter = 1.0`, clears `c_wave_pressure`
-
-### C-Wave (leaflet bulge)
-
-Modeled as a direct pressure addition to PCWP — LA volume stays physically honest.
-
-```
-pcwp = passive_pcwp + c_wave_pressure
-```
-
-1. On `mitral_valve_closing`: resets `mitral_valve_diameter = 1.0`, `c_wave_pressure = 0.0`
-2. `_resolve_c_wave(delta)`: decrements diameter at `MITRAL_CLOSE_RATE = 33.3/s` → fully closed in ~0.03s
-3. While closing: `c_wave_pressure = C_WAVE_PEAK_PRESSURE * (1.0 - diameter)` — peaks at 3 mmHg
-4. After full closure: `c_wave_pressure` decays at `C_WAVE_DECAY_RATE = 100.0 mmHg/s`
-5. On full close: emits `mitral_valve_closed`
+Pressure decays at 4.0 mmHg/s when pulmonic valve closed. Clamped to `[8.0, 30.0]` mmHg.
 
 ---
 
-## Left Ventricle — Time-Varying Elastance Model
+## PCWP
 
-LV pressure is fully emergent from volume and elastance. No EP state drives pressure directly.
+`pcwp` on the coordinator is an alias: updated to `la.pressure` at the top of `_step_valves` each tick. Used for signal payloads and external readers.
 
-```
-lv_pressure = lv_elastance * max(0, lv_volume - LV_V0)
-```
+### V-wave and Y-descent detection
 
-| Constant | Value | Meaning |
-|---|---|---|
-| `LV_E_MIN` | 0.1 mmHg/mL | Diastolic (passive) elastance |
-| `LV_E_MAX` | 2.5 mmHg/mL | Systolic (active) elastance |
-| `LV_E_RISE_RATE` | 30.0 /s | Elastance rise rate during `ep_cardiac_phase1` |
-| `LV_E_DECAY_RATE` | 8.0 /s | Elastance decay rate outside `ep_cardiac_phase1` |
-| `LV_V0` | 10.0 mL | Dead volume — pressure = 0 at this volume |
+Both are waveform-detected (not phase-tagged) inside `_step_valves`:
 
-- Aortic valve opens/closes emergently: opens when `lv_pressure >= aorta_pressure`, closes when it falls below
-- Ejection flow: `(lv_pressure - aorta_pressure) * 3.0 * delta`, capped at `lv_volume - LV_V0`
-- Mitral valve closure is fully emergent — LV pressure vs PCWP comparison in `_step_left_atria`
+- **v_wave_peak**: fired when `pcwp < _pcwp_prev` while mitral is closed and outside `ep_cardiac_phase1` — PCWP peak as LA fills against closed mitral
+- **y_descent_start**: fired when `pcwp < _pcwp_prev` while mitral just opened — LA begins draining into LV
 
 ---
 
-## Signals
+## Signals (coordinator-level)
 
 | Signal | When fired |
 |---|---|
 | `beat_initiated` | SA node PHASE_0 threshold reached |
-| `atrial_region_depolarized(region)` | Sweep reaches each atrial region |
-| `mitral_valve_closing` | Mitral first closes; c-wave starts |
-| `mitral_valve_closed` | Mitral fully shut |
-| `v_wave_peak(pcwp)` | PCWP turns over after systolic rise — waveform-detected, not phase-tagged |
-| `y_descent_start(pcwp)` | PCWP falls after mitral opens — waveform-detected, not phase-tagged |
+| `v_wave_peak(pcwp)` | PCWP turns over after systolic rise |
+| `y_descent_start(pcwp)` | PCWP falls after mitral opens |
 
-All connections established in `_ready()`.
+Chamber-level signals (`region_depolarized`, `systole_started`, `diastole_started`) are on each `CardiacChamber` instance. The coordinator connects to `la.region_depolarized` for debug prints.
+
+All connections established in `_ready()` (coordinator self-signals) or `_init_chambers()` (chamber signals), called from `setup()` during character initialization.
+
+---
+
+## Signal Flow — Full Cardiac Cycle
+
+```
+SA Node (PHASE_4 slow depolarization)
+    │
+    │  Vm reaches +10
+    ▼
+SA Node PHASE_0
+    │
+    ├─► beat_initiated ──────────────────────────────────────────────────────┐
+    │                                                                         │
+    ▼                                                                         ▼
+SA Node PHASE_3 (repolarize, reset)              _on_beat_initiated()
+                                                      │
+                                                      ├─► _ep_transition(ATRIAL_DEPOLARIZATION)
+                                                      ├─► la.trigger_sweep()
+                                                      └─► ra.trigger_sweep()
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EP: ATRIAL_DEPOLARIZATION (0.08s)
+    │
+    │  la.step_sweep(delta) fires regions 0,1,2
+    │      │
+    │      └─► la.region_depolarized(0) → _on_la_region_depolarized (debug print)
+    │          la.region_depolarized(1) → _on_la_region_depolarized
+    │          la.region_depolarized(2) → _on_la_region_depolarized
+    │          (ra fires same pattern, no handler connected)
+    │
+    │  la/ra myocytes: PHASE_4 → 0 → 1 → 2 → 3 → 4
+    │  la/ra elastance rises → la.pressure rises → passive mitral flow LA→LV
+    │
+    │  0.08s elapsed
+    ▼
+EP: AV_DELAY (0.06s)
+    │  (atrial myocytes finishing, elastance decaying back toward e_min)
+    │
+    │  0.06s elapsed
+    ▼
+EP: VENTRICULAR_DEPOLARIZATION (0.03s)
+    │
+    ├─► ep_cardiac_phase1 = true
+    ├─► lv.trigger_sweep()   (3 fascicles fire over 0.03s)
+    │       └─► lv.region_depolarized(0..8) — 9 regions armed
+    └─► rv.trigger_sweep()
+    │
+    │  lv/rv myocytes: PHASE_0→1→2→3→4 (~0.187s total)
+    │  lv elastance rises → lv.pressure rises
+    │  lv.pressure > la.pressure+1 → mitral closes → c-wave boost on la.e_max
+    │  lv.pressure >= aorta_pressure → aortic valve opens → ejection begins
+    │
+    │  0.03s elapsed
+    ▼
+EP: EARLY_REPOLARIZATION (0.03s)
+    │  ep_cardiac_phase1 = true
+    │  lv ejecting, elastance near e_max
+    │
+    │  0.03s elapsed
+    ▼
+EP: T_WAVE (0.15s)
+    │  ep_cardiac_phase1 = true
+    │  lv myocytes entering PHASE_3→4, force tapering
+    │  elastance decaying, lv.pressure falling
+    │  lv.pressure < aorta_pressure → aortic valve closes
+    │
+    │  0.15s elapsed
+    ▼
+EP: ISOVOLUMETRIC_RELAXATION (0.03s)
+    │
+    ├─► ep_cardiac_phase1 = false
+    ├─► _v_wave_emitted = false   (arm v-wave detection)
+    │
+    │  lv elastance decaying → lv.pressure falling
+    │  la filling from pulmonary veins → la.pressure rising
+    │  _step_valves detects: pcwp < _pcwp_prev while mitral closed
+    │      └─► v_wave_peak.emit(pcwp)
+    │
+    │  0.03s elapsed
+    ▼
+EP: DIASTOLIC_FILLING (0.21s)
+    │
+    ├─► _y_descent_emitted = false   (arm y-descent detection)
+    │
+    │  ventricular_closure = false → mitral opens
+    │  la.pressure > lv.pressure → passive flow LA→LV
+    │  _step_valves detects: pcwp < _pcwp_prev while mitral open
+    │      └─► y_descent_start.emit(pcwp)
+    │
+    │  0.21s elapsed
+    ▼
+ep_cycle_reset = true, ep_running = false
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SA Node has been slow-depolarizing this whole time → next beat_initiated fires
+```
+
+**Key observations:**
+- `beat_initiated` is the only signal that escapes the SA node — everything else is direct function calls or internal state transitions
+- The 3 coordinator-level signals (`beat_initiated`, `v_wave_peak`, `y_descent_start`) are the only ones external organs can subscribe to
+- Chamber signals (`region_depolarized`, `systole_started`, `diastole_started`) are self-contained — only the debug print handler is connected to `la.region_depolarized` currently
+- The c-wave has no signal — it is a side effect of mitral closure detected inside `_step_valves`
 
 ---
 
 ## Compatibility
 
-Other organs reference these vars from cardiovascular:
+Other organs reference these vars from the cardiovascular coordinator:
 
 - `bp_systolic`, `bp_diastolic` — aliases for `systolic_bp`/`diastolic_bp`
 - `demanded_co`, `demanded_co_pre_decay`
 - `BASELINE_CO = 5.0`, `MAX_CO = 20.0`
 - `spo2 = 99.0`
 - `set_demand(co)` — sets demanded cardiac output
+- `pcwp` — alias for `la.pressure`
 
 ---
 
 ## Debug
 
 - **F12** — toggles cardiovascular debug panel (wired in `character_interaction.gd`)
-- **Numpad 4** — calls `force_fire_sa_node()` + 12 manual ticks to observe full cascade
+- **Numpad 4** — calls `force_fire_sa_node()` + 12 manual ticks
 - Tick print format:
   ```
-  EP=... SA=... | atria=... [R0:... R1:... R2:...] | LA=...mL PCWP=...mmHg mitral=O/X | LV=...mL LVp=... aortic=O/X
+  EP=... SA=... | LA=...mL p=...mmHg mitral=O/X | LV=...mL p=... aortic=O/X | RA=...mL p=... | RV=...mL p=...
   ```
 
 ---
@@ -215,25 +385,25 @@ Other organs reference these vars from cardiovascular:
 
 | Context | Rating |
 |---|---|
-| Game-ready left atrial model | **highly accurate** |
-| Simplified physiology simulator | high end of moderate to low end of high |
-| Research-grade atrial hemodynamics | not highly accurate |
+| Game-ready cardiac model | **high** |
+| Simplified physiology simulator | moderate-high |
+| Research-grade hemodynamics | not intended |
 
-The left atrium now behaves as a chamber with timed excitation, phased mechanical contribution, nonlinear compliance, reservoir/conduit/booster roles, and waveform features tied to chamber behavior.
+All 4 chambers now share the same time-varying elastance model with regional myocyte activation and sweeping depolarization. Pressure is always emergent from `E(t) * (V - V0)`.
 
 ### Remaining Limitations
 
 | Limitation | Why it matters |
 |---|---|
-| V-wave and y-descent are still partly heuristic detections | more emergent than before, but not fully flow-physics derived |
-| Pulmonary venous return is phase-switched | real return is more continuous |
-| Mitral reopening is partly phase-permissive | not purely pressure-gradient governed |
-| Atrial force is bucket-weighted | good approximation, not continuous activation-tension coupling |
-| LV remains the downstream determinant of atrial emptying | unavoidable in a coupled chamber model |
+| Frank-Starling preload still used for CO/SV in `_step_heart` | lv.volume not yet feeding back into SV/EF/CO calculation |
+| Venous return is phase-switched, not continuous | real return is more continuous |
+| Mitral/tricuspid reopening is partly phase-permissive | not purely pressure-gradient governed |
+| Pulmonary artery is a single-compartment pressure var | no pulmonary vascular resistance model |
+| No interventricular septal coupling | RV/LV interact mechanically in reality |
 
 ---
 
 ## Pending
 
-- Right heart is placeholder only
-- LV volume coupling to LA: currently uses Frank-Starling preload model (`EDV`/`ESV`) rather than direct LA→LV volume transfer
+- Feed `lv.volume` EDV/ESV sampling back into `_step_heart` to replace Frank-Starling preload model
+- Right heart valve logic is functional but constants are less validated than left heart
