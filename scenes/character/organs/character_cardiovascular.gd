@@ -44,11 +44,11 @@ func _init_chambers() -> void:
 	lv.myocyte_force        = [0.10,  0.40,  1.00,  0.25,  0.0]
 	lv.e_min                = 0.1
 	lv.e_max                = 2.5
-	lv.e_rise_rate          = 8.0
-	lv.e_decay_rate         = 8.0
+	lv.e_rise_rate          = 25.0
+	lv.e_decay_rate         = 60.0
 	lv.v0                   = 10.0
-	lv.initial_volume       = 100.0
-	lv.valve_conductance    = 15.0
+	lv.initial_volume       = 120.0
+	lv.valve_conductance    = 50.0
 	lv.init_regions()
 
 	ra = CardiacChamber.new()
@@ -97,46 +97,42 @@ func tick(delta: float) -> void:
 	_step_sa_node(delta)
 	_step_electrical_pathway(delta)
 	_step_heart()
-	# Sweeps triggered from _on_beat_initiated and _ep_transition
+
 	la.step_sweep(delta)
 	ra.step_sweep(delta)
 	lv.step_sweep(delta)
 	rv.step_sweep(delta)
-	# Myocytes — ventricles before atria so valve logic sees current LV pressure
+
 	lv.step_myocytes(delta)
 	rv.step_myocytes(delta)
 	la.step_myocytes(delta)
 	ra.step_myocytes(delta)
-	# Elastance + pressure
+
 	lv.step_elastance(delta)
 	rv.step_elastance(delta)
 	la.step_elastance(delta)
 	ra.step_elastance(delta)
-	# Valve logic and volume transfers
+
 	_step_valves(delta)
-	# Recompute ventricular pressures after ejection — volume changed, elastance did not
+
+	# Recompute all chamber pressures after flow — stale pressures cause wrong valve decisions
 	lv.pressure = lv.elastance * maxf(0.0, lv.volume - lv.v0)
 	rv.pressure = rv.elastance * maxf(0.0, rv.volume - rv.v0)
-	# Open aortic valve = pressure equilibrium: eject excess volume to match aorta
-	if lv.valve_open and lv.elastance > 0.0:
-		var lv_eq_volume: float = aorta_pressure / lv.elastance + lv.v0
-		var lv_transfer: float = lv.volume - lv_eq_volume
-		if lv_transfer > 0.0:
-			lv_transfer    = minf(lv_transfer, maxf(0.0, lv.volume - lv.v0))
-			lv.volume     -= lv_transfer
-			aorta_pressure += lv_transfer / 1.5
-		lv.pressure = lv.elastance * maxf(0.0, lv.volume - lv.v0)
+	la.pressure = la.elastance * maxf(0.0, la.volume - la.v0)
+	ra.pressure = ra.elastance * maxf(0.0, ra.volume - ra.v0)
+
 	_step_aorta(delta)
 	_step_pulmonary_artery(delta)
 
-	print("[CARDIO] EP=%s SA=%s | LA=%.1fmL p=%.1f mitral=%s | LV=%.1fmL p=%.1f aortic=%s aorta=%.1f(notch=%.1f) | RA=%.1fmL p=%.1f | RV=%.1fmL p=%.1f" % [
+	print("[CARDIO] EP=%s SA=%s | LA=%.1fmL p=%.1f mitral=%s | LV=%.1fmL p=%.1f aortic=%s aorta=%.1f | RA=%.1fmL p=%.1f | RV=%.1fmL p=%.1f | SBP=%d DBP=%d" % [
 		ElectricalPathwayStates.keys()[ep_state],
 		SinoAtrialStates.keys()[sa_state],
 		la.volume, la.pressure, "O" if la.valve_open else "X",
 		lv.volume, lv.pressure, "O" if lv.valve_open else "X",
-		aorta_pressure, _dicrotic_notch_boost,
+		aorta_pressure,
 		ra.volume, ra.pressure,
 		rv.volume, rv.pressure,
+		roundi(systolic_bp), roundi(diastolic_bp),
 	])
 
 func force_fire_sa_node() -> void:
@@ -145,22 +141,22 @@ func force_fire_sa_node() -> void:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# HEART
+# HEART — derived metrics unified from actual chamber volumes
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 var heart_rate: float             = 60.0
-var EDV: float                    = 142.0
-var ESV: float                    = 62.0
+var EDV: float                    = 120.0   # updated from lv.volume at mitral closure
+var ESV: float                    = 50.0    # updated from lv.volume at aortic closure
 var SV: float                     = 0.0
 var EF: float                     = 0.0
 var TPR: float                    = 17.7
 var cardiac_output: float         = 0.0
 var mean_arterial_pressure: float = 0.0
 var pulse_pressure: float         = 40.0
-var diastolic_bp: float           = 0.0
-var systolic_bp: float            = 0.0
-var bp_systolic: float            = 0.0   # alias for cortex/pulmonary compatibility
-var bp_diastolic: float           = 0.0   # alias
+var diastolic_bp: float           = 80.0
+var systolic_bp: float            = 120.0
+var bp_systolic: float            = 120.0   # alias for cortex/pulmonary compatibility
+var bp_diastolic: float           = 80.0    # alias
 
 var venous_return_fraction: float = 1.0
 
@@ -179,35 +175,20 @@ func set_demand(co: float) -> void:
 
 func _step_heart() -> void:
 	_update_cycle_durations()
-	if _organs != null and _organs.renal != null:
-		solve_for_preload()
 
-	SV = maxf(0.0, EDV - ESV)
-	EF = (SV / EDV) * 100.0 if EDV > 0.0 else 0.0
+	# SV/EF derived from actual chamber volumes captured at valve events
+	SV             = maxf(0.0, EDV - ESV)
+	EF             = (SV / EDV) * 100.0 if EDV > 0.0 else 0.0
+	cardiac_output = (SV * heart_rate) / 1000.0 if not sa_node_cardioplegia else 0.0
 
-	if not sa_node_cardioplegia:
-		cardiac_output = (SV * heart_rate) / 1000.0
-	else:
-		cardiac_output = 0.0
-
-	mean_arterial_pressure = cardiac_output * TPR
-	pulse_pressure         = 40.0
-	diastolic_bp           = mean_arterial_pressure - (pulse_pressure / 3.0)
-	systolic_bp            = (3.0 * mean_arterial_pressure) - (2.0 * diastolic_bp)
-	bp_systolic            = systolic_bp
-	bp_diastolic           = diastolic_bp
+	mean_arterial_pressure = diastolic_bp + (systolic_bp - diastolic_bp) / 3.0
+	pulse_pressure         = systolic_bp - diastolic_bp
 
 	if _vitals != null:
-		_vitals.hr         = roundi(heart_rate)
+		_vitals.hr           = roundi(heart_rate)
 		_vitals.bp_systolic  = roundi(systolic_bp)
 		_vitals.bp_diastolic = roundi(diastolic_bp)
 		_vitals._refresh_ui()
-
-func solve_for_preload() -> void:
-	var plasma_fluid: float                  = _organs.renal.plasma_fluid
-	var plasma_fluid_to_preload_ratio: float = 100.0 / 3750.0
-	var cardiac_preload: float               = plasma_fluid * plasma_fluid_to_preload_ratio * venous_return_fraction
-	EDV = ESV + cardiac_preload
 
 var cardiac_cycle_duration: float   = 1.0
 var atrial_systole_duration: float  = 0.1
@@ -310,7 +291,8 @@ func _ep_transition(next_state: ElectricalPathwayStates) -> void:
 			ep_cardiac_phase1 = false
 			print("[CARDIO] EP → AV_DELAY")
 		ElectricalPathwayStates.VENTRICULAR_DEPOLARIZATION:
-			ep_cardiac_phase1 = true
+			ep_cardiac_phase1    = true
+			_aortic_latched_shut = false   # new beat — aortic valve may open again
 			lv.trigger_sweep()
 			rv.trigger_sweep()
 			print("[CARDIO] EP → VENTRICULAR_DEPOLARIZATION")
@@ -361,15 +343,19 @@ func _step_electrical_pathway(delta: float) -> void:
 # VALVES + VOLUME TRANSFER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Venous return constants — pulmonary veins into LA
-const LA_VENOUS_RETURN_RATE_SYSTOLE: float  = 100.0  # mL/s — reservoir phase (mitral closed)
-const LA_VENOUS_RETURN_RATE_DIASTOLE: float = 42.0   # mL/s — conduit/booster phase
-const LA_CONTRACTION_RATE: float            = 250.0  # mL/s total active ejection rate
+# Pulmonary venous return into LA (from pulmonary veins — closed-loop approximation)
+const LA_VENOUS_RETURN_RATE_SYSTOLE: float  = 150.0  # mL/s during systole (reservoir phase)
+const LA_VENOUS_RETURN_RATE_DIASTOLE: float = 62.0   # mL/s during diastole (conduit phase)
+const LA_CONTRACTION_RATE: float            = 250.0  # mL/s active atrial ejection
 
-# Venous return constants — systemic veins into RA
-const RA_VENOUS_RETURN_RATE_SYSTOLE: float  = 34.0   # mL/s
-const RA_VENOUS_RETURN_RATE_DIASTOLE: float = 25.0   # mL/s
-const RA_CONTRACTION_RATE: float            = 180.0  # mL/s
+# Systemic venous compartment — true closed-loop for LV side
+# Blood ejected into aorta drains through systemic resistance into SVC reservoir → RA
+var systemic_venous_volume: float = 3500.0   # mL — large venous capacitance reservoir
+const SYSTEMIC_VENOUS_COMPLIANCE: float = 50.0     # mL/mmHg — very compliant veins
+const SYSTEMIC_VENOUS_UNSTRESSED: float = 3000.0   # mL — unstressed volume (P=0 below this)
+const SYSTEMIC_VENOUS_TO_RA_CONDUCTANCE: float = 8.0  # mL/(s·mmHg) — venous return to RA
+
+const RA_CONTRACTION_RATE: float = 180.0  # mL/s
 
 # C-wave: transient elastance spike on LA at mitral closure
 var _mitral_valve_diameter: float   = 1.0
@@ -377,6 +363,9 @@ const MITRAL_CLOSE_RATE: float      = 33.3   # diameter/s — fully closed in ~0
 const C_WAVE_ELASTANCE_BOOST: float = 0.30   # mmHg/mL added to la.e_max transiently
 const C_WAVE_DECAY_RATE: float      = 10.0   # /s — elastance boost decay after full closure
 var _c_wave_boost: float            = 0.0    # current extra elastance on LA
+
+# Aortic valve latch — once closed in a beat, cannot reopen until next VD
+var _aortic_latched_shut: bool = false
 
 # PCWP waveform detection
 var _pcwp_prev: float        = 8.0
@@ -391,33 +380,40 @@ func _step_valves(delta: float) -> void:
 	la.volume += la_vr_rate * delta
 
 	# ── Systemic venous return into RA ────────────────────────────────────────
-	var ra_vr_rate: float = RA_VENOUS_RETURN_RATE_SYSTOLE if ep_cardiac_phase1 else RA_VENOUS_RETURN_RATE_DIASTOLE
-	ra.volume += ra_vr_rate * delta
+	# Pressure-driven from venous reservoir into RA
+	var venous_pressure: float = maxf(0.0, (systemic_venous_volume - SYSTEMIC_VENOUS_UNSTRESSED) / SYSTEMIC_VENOUS_COMPLIANCE)
+	var venous_to_ra: float    = maxf(0.0, (venous_pressure - ra.pressure) * SYSTEMIC_VENOUS_TO_RA_CONDUCTANCE * delta)
+	venous_to_ra               = minf(venous_to_ra, maxf(0.0, systemic_venous_volume - SYSTEMIC_VENOUS_UNSTRESSED))
+	systemic_venous_volume    -= venous_to_ra
+	ra.volume                 += venous_to_ra
 
 	# ── Mitral valve (LA → LV) ────────────────────────────────────────────────
-	var ventricular_closure: bool = (
+	# Systole (VD/ER/T_WAVE/ISOREL): stays closed once LV pressure exceeds LA
+	# Diastole: opens only when LV pressure falls below LA pressure
+	var ventricular_systole: bool = (
 		ep_state == ElectricalPathwayStates.VENTRICULAR_DEPOLARIZATION or
 		ep_state == ElectricalPathwayStates.EARLY_REPOLARIZATION or
-		ep_state == ElectricalPathwayStates.T_WAVE
+		ep_state == ElectricalPathwayStates.T_WAVE or
+		ep_state == ElectricalPathwayStates.ISOVOLUMETRIC_RELAXATION
 	)
-	var should_close_mitral: bool = ventricular_closure and (lv.pressure > la.pressure + 1.0)
+	var should_close_mitral: bool = ventricular_systole and (lv.pressure > la.pressure + 1.0)
 
 	if should_close_mitral:
 		if la.valve_open:
-			la.valve_open         = false
+			la.valve_open          = false
 			_mitral_valve_diameter = 1.0
 			_c_wave_boost          = 0.0
-			print("[CARDIO] Mitral CLOSING | LA=%.1fmL p=%.1f" % [la.volume, la.pressure])
+			EDV                    = lv.volume  # capture EDV at mitral closure
+			print("[CARDIO] Mitral CLOSING | LA=%.1fmL p=%.1f | EDV=%.1f" % [la.volume, la.pressure, EDV])
 		_resolve_mitral_c_wave(delta)
-	else:
-		if not ventricular_closure:
-			la.valve_open         = true
+	elif not ventricular_systole:
+		if not la.valve_open and lv.pressure <= la.pressure + 1.0:
+			la.valve_open          = true
 			_mitral_valve_diameter = 1.0
 			_c_wave_boost          = 0.0
-			la.e_max               = 0.60  # restore baseline e_max
+			la.e_max               = 0.60
 
 	if la.valve_open:
-		# Active contraction flow (booster phase)
 		var la_force: float = 0.0
 		for i in la.region_count:
 			if la._regions[i]["mechanical"] == 1:
@@ -427,7 +423,6 @@ func _step_valves(delta: float) -> void:
 			active_flow  = minf(active_flow, maxf(0.0, la.volume - la.v0))
 			la.volume   -= active_flow
 			lv.volume   += active_flow
-		# Passive filling flow (pressure gradient)
 		var passive_flow: float = maxf(0.0, (la.pressure - lv.pressure) * la.valve_conductance * delta)
 		passive_flow  = minf(passive_flow, maxf(0.0, la.volume - la.v0))
 		la.volume    -= passive_flow
@@ -435,27 +430,34 @@ func _step_valves(delta: float) -> void:
 
 	la.volume = maxf(la.v0, la.volume)
 
-	# ── Aortic valve (LV → aorta) ─────────────────────────────────────────────
-	if not lv.valve_open and lv.pressure >= aorta_pressure:
-		lv.valve_open = true
-	if lv.valve_open and lv.pressure < aorta_pressure:
-		lv.valve_open = false
+	# ── Aortic valve (LV → aortic volume) ─────────────────────────────────────
+	# Latched shut once closed — cannot reopen in same beat. Resets at VD (new beat).
+	if not lv.valve_open and not _aortic_latched_shut:
+		if ep_cardiac_phase1 and lv.pressure >= aorta_pressure + 2.0:
+			lv.valve_open = true
+	elif lv.valve_open:
+		if lv.pressure < aorta_pressure:
+			lv.valve_open        = false
+			_aortic_latched_shut = true
+			ESV                  = lv.volume  # capture ESV at aortic closure
+			print("[CARDIO] Aortic CLOSING | LV=%.1fmL p=%.1f | ESV=%.1f" % [lv.volume, lv.pressure, ESV])
 
 	if lv.valve_open:
 		var eject_flow: float = maxf(0.0, (lv.pressure - aorta_pressure) * lv.valve_conductance * delta)
-		eject_flow     = minf(eject_flow, maxf(0.0, lv.volume - lv.v0))
-		lv.volume     -= eject_flow
-		aorta_pressure += eject_flow / 1.5
+		eject_flow       = minf(eject_flow, maxf(0.0, lv.volume - lv.v0))
+		lv.volume       -= eject_flow
+		aorta_volume    += eject_flow  # blood enters arterial compartment
 
 	lv.pressure = clampf(lv.pressure, 0.0, 200.0)
 
 	# ── Tricuspid valve (RA → RV) ─────────────────────────────────────────────
-	var should_close_tricuspid: bool = ventricular_closure and (rv.pressure > ra.pressure + 1.0)
+	var should_close_tricuspid: bool = ventricular_systole and (rv.pressure > ra.pressure + 1.0)
 
 	if should_close_tricuspid:
 		ra.valve_open = false
-	elif not ventricular_closure:
-		ra.valve_open = true
+	elif not ventricular_systole:
+		if not ra.valve_open and rv.pressure <= ra.pressure + 1.0:
+			ra.valve_open = true
 
 	if ra.valve_open:
 		var ra_force: float = 0.0
@@ -494,7 +496,7 @@ func _step_valves(delta: float) -> void:
 		v_wave_peak.emit(pcwp)
 		print("[CARDIO] v-wave peak | PCWP=%.1f mmHg" % pcwp)
 
-	if not _y_descent_emitted and la.valve_open and pcwp < _pcwp_prev:
+	if not _y_descent_emitted and la.valve_open and pcwp < _pcwp_prev and ep_state == ElectricalPathwayStates.DIASTOLIC_FILLING:
 		_y_descent_emitted = true
 		y_descent_start.emit(pcwp)
 		print("[CARDIO] y-descent start | PCWP=%.1f mmHg" % pcwp)
@@ -514,47 +516,79 @@ func _resolve_mitral_c_wave(delta: float) -> void:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# AORTA
+# AORTA — Windkessel volume/compliance model
+# Aorta is a blood compartment. Pressure derived from volume. No direct pressure hacks.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-var aorta_pressure: float      = 90.0
-var aorta_pressure_min: float  = 80.0
-var aorta_pressure_max: float  = 120.0
+# Two-element Windkessel: compliance C, resistance R (TPR)
+# Pressure = (aorta_volume - unstressed_volume) / compliance
+# Systemic outflow = aorta_pressure / TPR_effective → drains into systemic venous compartment
+var aorta_volume: float             = 700.0   # mL — arterial blood volume
+const AORTA_COMPLIANCE: float       = 2.0     # mL/mmHg — C in Windkessel
+const AORTA_UNSTRESSED_VOLUME: float = 560.0  # mL — volume at which P = 0  (gives 80 mmHg at 700 mL: (700-560)/2=70, tune)
+const SYSTEMIC_RESISTANCE: float    = 1.0     # mmHg·s/mL — outflow resistance (TPR effective)
+
+var aorta_pressure: float      = 93.0   # derived each tick from aorta_volume
+var aorta_pressure_min: float  = 8.0
+var aorta_pressure_max: float  = 200.0
 var aorta_blood_flow: bool     = false
 var aorta_blood_flow_end: bool = false
+var _aorta_cycle_peak: float   = 0.0
+var _aorta_cycle_min: float    = 999.0
 
-var _aortic_valve_was_open: bool   = false
-var _dicrotic_notch_boost: float   = 0.0
-var _incisura_pending: bool        = false
-var _incisura_close_pressure: float = 0.0  # aorta pressure at valve closure
-const DICROTIC_NOTCH_DIP: float    = 5.0
-const DICROTIC_NOTCH_HEIGHT: float = 0.5
-const DICROTIC_NOTCH_DECAY: float  = 80.0
+# Dicrotic notch — brief pressure perturbation at valve closure
+var _aortic_valve_was_open: bool    = false
+var _dicrotic_notch_pending: bool   = false
+var _dicrotic_notch_boost: float    = 0.0
+const DICROTIC_NOTCH_DIP: float    = 5.0    # mmHg drop at closure (incisura)
+const DICROTIC_NOTCH_HEIGHT: float = 3.0    # mmHg rebound above dip
+const DICROTIC_NOTCH_DECAY: float  = 80.0   # /s — how fast the rebound decays
 
 func _step_aorta(delta: float) -> void:
-	var notch_fired: bool = _aortic_valve_was_open and not lv.valve_open
-	_aortic_valve_was_open = lv.valve_open
+	# Systemic outflow — Windkessel runoff through peripheral resistance into venous reservoir
+	var outflow: float      = maxf(0.0, aorta_pressure / SYSTEMIC_RESISTANCE * delta)
+	outflow                 = minf(outflow, maxf(0.0, aorta_volume - AORTA_UNSTRESSED_VOLUME))
+	aorta_volume           -= outflow
+	systemic_venous_volume += outflow
 
-	if notch_fired:
-		_incisura_close_pressure = aorta_pressure
-		aorta_pressure          -= DICROTIC_NOTCH_DIP
-		_incisura_pending        = true
-	elif _incisura_pending:
-		aorta_pressure        += DICROTIC_NOTCH_DIP + DICROTIC_NOTCH_HEIGHT
-		_dicrotic_notch_boost  = DICROTIC_NOTCH_HEIGHT
-		_incisura_pending      = false
+	# Derive pressure from volume
+	aorta_pressure = maxf(0.0, (aorta_volume - AORTA_UNSTRESSED_VOLUME) / AORTA_COMPLIANCE)
+
+	# Dicrotic notch — applies after valve closure, not during systole
+	var prev_valve_was_open: bool = _aortic_valve_was_open
+	var valve_just_closed: bool   = _aortic_valve_was_open and not lv.valve_open and not ep_cardiac_phase1
+	_aortic_valve_was_open        = lv.valve_open
+
+	if valve_just_closed:
+		_dicrotic_notch_pending = true
+		aorta_pressure         -= DICROTIC_NOTCH_DIP
+		_dicrotic_notch_boost   = 0.0
+	elif _dicrotic_notch_pending:
+		aorta_pressure         += DICROTIC_NOTCH_DIP + DICROTIC_NOTCH_HEIGHT
+		_dicrotic_notch_boost   = DICROTIC_NOTCH_HEIGHT
+		_dicrotic_notch_pending = false
 	elif _dicrotic_notch_boost > 0.0:
 		_dicrotic_notch_boost = maxf(0.0, _dicrotic_notch_boost - DICROTIC_NOTCH_DECAY * delta)
 
-	if not lv.valve_open and not notch_fired and not _incisura_pending:
-		aorta_pressure -= 55.0 * delta
-
-	aorta_pressure_min = 8.0
-	aorta_pressure_max = 160.0
-	aorta_pressure     = clampf(aorta_pressure, aorta_pressure_min, aorta_pressure_max)
+	aorta_pressure = clampf(aorta_pressure, aorta_pressure_min, aorta_pressure_max)
 
 	aorta_blood_flow     = lv.valve_open
 	aorta_blood_flow_end = not lv.valve_open and ep_cardiac_phase1
+
+	# Track SBP/DBP from actual waveform
+	if lv.valve_open:
+		# Valve just opened this tick — capture DBP as lowest pressure during prior diastole
+		if not prev_valve_was_open and _aorta_cycle_min < 999.0:
+			diastolic_bp     = _aorta_cycle_min
+			bp_diastolic     = diastolic_bp
+			_aorta_cycle_min = 999.0
+		_aorta_cycle_peak = maxf(_aorta_cycle_peak, aorta_pressure)
+	else:
+		_aorta_cycle_min = minf(_aorta_cycle_min, aorta_pressure)
+		if valve_just_closed:
+			systolic_bp       = _aorta_cycle_peak
+			bp_systolic       = systolic_bp
+			_aorta_cycle_peak = 0.0
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
