@@ -97,10 +97,11 @@ use_systole_guard = true
 script = ExtResource("10_x11w5")
 debug_name = "Right Ventricle"
 e_min = 0.05
+e_max = 1.2
 e_rise_rate = 6.0
 e_decay_rate = 6.0
 v0 = 10.0
-initial_volume = 60.0
+initial_volume = 120.0
 valve_conductance = 50.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/RightHeart/Ventricle"]
@@ -131,7 +132,7 @@ debug_name = "Pulmonary Vein"
 script = ExtResource("10_x11w5")
 debug_name = "Left Atria"
 v0 = 10.0
-initial_volume = 50.0
+initial_volume = 70.0
 valve_conductance = 25.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/LeftHeart/Atria"]
@@ -167,12 +168,12 @@ use_pcwp_detection = true
 [node name="Ventricle" type="Node" parent="CharacterCardiovascular/LeftHeart"]
 script = ExtResource("10_x11w5")
 debug_name = "Left Ventricle"
-e_min = 0.083
+e_min = 0.06
 e_max = 2.5
 e_rise_rate = 25.0
 e_decay_rate = 60.0
 v0 = 10.0
-initial_volume = 100.0
+initial_volume = 120.0
 valve_conductance = 50.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/LeftHeart/Ventricle"]
