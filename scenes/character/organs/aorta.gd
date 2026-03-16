@@ -7,7 +7,7 @@ extends Node
 # Pressure derived from volume each tick.
 # Systemic outflow drains into the systemic venous reservoir (owned by cardiovascular coordinator).
 
-var volume: float   = 700.0   # mL — arterial blood volume
+var volume: float   = 620.0   # mL — arterial blood volume
 var pressure: float = 80.0    # derived from volume each tick
 
 var blood_flow:     bool = false   # true while aortic valve open
@@ -16,7 +16,7 @@ var blood_flow_end: bool = false   # true the tick the aortic valve closes
 var pressure_min: float = 8.0
 var pressure_max: float = 200.0
 
-const COMPLIANCE: float        = 2.0   # mL/mmHg
+const COMPLIANCE: float        = 1.6   # mL/mmHg
 const UNSTRESSED_VOLUME: float = 540.0 # mL
 const SYSTEMIC_RESISTANCE: float = 1.375 # mmHg·s/mL
 
