@@ -238,6 +238,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_cardiovascular_debug_panel = null
 				_cardiac_pressure_graph.queue_free()
 				_cardiac_pressure_graph = null
+				_character.organs.cardiovascular.pressure_graph = null
 				_pulmonary_debug_panel.queue_free()
 				_pulmonary_debug_panel = null
 				_coagulation_debug_panel.queue_free()
@@ -787,6 +788,7 @@ func _show_renal_debug() -> void:
 	graph.position = Vector2(900, 700)
 	canvas_layer.add_child(graph)
 	_cardiac_pressure_graph = graph
+	_character.organs.cardiovascular.pressure_graph = graph
 
 	var pulm_panel := PanelContainer.new()
 	pulm_panel.position = Vector2(910, 60)

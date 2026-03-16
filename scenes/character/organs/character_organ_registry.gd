@@ -34,7 +34,7 @@ func tick(is_moving: bool = false) -> void:
 	# Called by TurnOrder
 	
 	if cardiovascular != null:
-		cardiovascular.tick(0.016)
+		cardiovascular.tick_turn()
 	if pulmonary != null:
 		pulmonary.tick()
 	if renal != null:

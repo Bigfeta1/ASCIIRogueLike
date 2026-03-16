@@ -36,7 +36,7 @@ func tick(delta: float) -> void:
 		Phase.PHASE_4:
 			if membrane_potential < -40.0 and ic_na < 20.0:
 				ic_na += (20.0 / 0.49) * delta
-			
+
 			elif membrane_potential >= -40.0 and membrane_potential < 10.0 and ic_ca < 50.0:
 				ic_ca += (50.0 / 0.05) * delta
 			if membrane_potential >= 10.0:

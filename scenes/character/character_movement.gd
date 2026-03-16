@@ -119,7 +119,7 @@ func _check_move(delta: Vector2i) -> void:
 					combat._apply_damage(occupant)
 				if _character.organs.cardiovascular != null:
 					_character.organs.cardiovascular.set_demand(15.0)
-					_character.organs.cardiovascular.tick(0.016)
+					_character.organs.cardiovascular.tick_turn()
 				moved.emit()
 			return
 		

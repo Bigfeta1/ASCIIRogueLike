@@ -55,6 +55,8 @@ var spo2: float                  = 99.0
 const BASELINE_CO: float = 5.0
 const MAX_CO: float      = 20.0
 
+var pressure_graph: CardiacPressureGraph = null
+
 #endregion
 
 func set_demand(co: float) -> void:
@@ -94,6 +96,21 @@ func _refresh_initial_valve_states() -> void:
 #endregion
 
 #region TICK
+
+const TURN_DURATION: float = 15.0
+const SIM_STEP: float      = 0.016
+
+func tick_turn() -> void:
+	var beats_per_turn: int = roundi(heart_rate / 60.0 * TURN_DURATION)
+	var steps_per_beat: int = ceili(60.0 / heart_rate / SIM_STEP)
+	for b in beats_per_turn:
+		sa_node.force_fire()
+		for _i in steps_per_beat:
+			tick(SIM_STEP)
+			if pressure_graph != null:
+				pressure_graph.record(self)
+		print("[BEAT %d] BP=%.0f/%.0f MAP=%.1f" % [b + 1, monitor.bp_systolic, monitor.bp_diastolic, monitor.mean_arterial_pressure])
+	print("[TURN END] BP=%.0f/%.0f MAP=%.1f HR=%.0f CO=%.2f beats=%d" % [monitor.bp_systolic, monitor.bp_diastolic, monitor.mean_arterial_pressure, heart_rate, monitor.cardiac_output, beats_per_turn])
 
 func tick(delta: float) -> void:
 	_atrial.tick(delta)
