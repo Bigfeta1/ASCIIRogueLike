@@ -205,11 +205,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _character.organs.cardiovascular != null:
 				var cardio: Node = _character.organs.cardiovascular
 				cardio.sa_node.force_fire()
-				# Full cardiac cycle is ~0.59s; run 40 ticks at 0.016s each to capture it
-				for _i in 40:
+				var ticks: int = ceili(60.0 / cardio.heart_rate / 0.016)
+				for _i in ticks:
 					cardio.tick(0.016)
 					if _cardiac_pressure_graph != null:
 						_cardiac_pressure_graph.record(cardio)
+				print("[BEAT] LA=%.1f LV=%.1f RA=%.1f RV=%.1f Aorta=%.1f(P=%.1f) VenaCava=%.1f PulmVein=%.1f EDV=%.1f ESV=%.1f SV=%.1f CO=%.2f HR=%.0f BP=%.0f/%.0f" % [
+					cardio.la.volume, cardio.lv.volume,
+					cardio.ra.volume, cardio.rv.volume,
+					cardio.get_node("LeftHeart/Aorta").volume, cardio.monitor.aorta_pressure,
+					cardio.get_node("RightHeart/VenaCava").volume,
+					cardio.get_node("LeftHeart/PulmonaryVein").volume,
+					cardio.monitor.EDV, cardio.monitor.ESV, cardio.monitor.SV,
+					cardio.monitor.cardiac_output, cardio.heart_rate,
+					cardio.monitor.bp_systolic, cardio.monitor.bp_diastolic
+				])
 				_refresh_renal_debug()
 		KEY_F12:
 			if _renal_debug_panel != null:
@@ -769,7 +779,7 @@ func _show_renal_debug() -> void:
 	_cardiovascular_debug_panel = cardio_panel
 
 	var graph := CardiacPressureGraph.new()
-	graph.position = Vector2(610, 500)
+	graph.position = Vector2(900, 700)
 	canvas_layer.add_child(graph)
 	_cardiac_pressure_graph = graph
 
@@ -857,6 +867,19 @@ func _refresh_renal_debug() -> void:
 		+ "LV Vol:     %.1f mL\n" % cardio.lv.volume
 		+ "LV Press:   %.1f mmHg\n" % cardio.lv.pressure
 		+ "Aortic:     %s\n" % ("OPEN" if cardio.lv.valve_open else "CLOSED")
+		+ "\n[RIGHT ATRIA]\n"
+		+ "RA Vol:     %.1f mL\n" % cardio.ra.volume
+		+ "RA Press:   %.1f mmHg\n" % cardio.ra.pressure
+		+ "Tricuspid:  %s\n" % ("OPEN" if cardio.ra.valve_open else "CLOSED")
+		+ "\n[RIGHT VENTRICLE]\n"
+		+ "RV Vol:     %.1f mL\n" % cardio.rv.volume
+		+ "RV Press:   %.1f mmHg\n" % cardio.rv.pressure
+		+ "Pulmonic:   %s\n" % ("OPEN" if cardio.rv.valve_open else "CLOSED")
+		+ "\n[VASCULATURE]\n"
+		+ "Aorta Vol:  %.1f mL\n" % cardio.get_node("LeftHeart/Aorta").volume
+		+ "Aorta P:    %.1f mmHg\n" % cardio.monitor.aorta_pressure
+		+ "VenaCava:   %.1f mL\n" % cardio.get_node("RightHeart/VenaCava").volume
+		+ "PulmVein:   %.1f mL\n" % cardio.get_node("LeftHeart/PulmonaryVein").volume
 		+ "\n[SA NODE]\n"
 		+ "Vm:         %.1f mV\n" % cardio.get_node("HeartElectricalSystem/AtrialComponents/SAnode").membrane_potential
 		+ "SA State:   %s\n" % ["PHASE_4", "PHASE_0", "PHASE_3"][cardio.get_node("HeartElectricalSystem/AtrialComponents/SAnode").state]

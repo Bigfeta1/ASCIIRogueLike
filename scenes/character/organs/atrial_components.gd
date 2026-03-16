@@ -9,7 +9,10 @@ signal depolarized   # atria fully activated — VentricularComponents listens t
 @export var debug_name: String = ""
 
 func _ready() -> void:
-	_sa_node.fired.connect(func() -> void: _atrial_tract.activate())
+	_sa_node.fired.connect(func() -> void:
+		print("[CARDIAC] ── SA FIRED ──────────────────────────────────────────────────────")
+		_atrial_tract.activate()
+	)
 	_atrial_tract.conducted.connect(func() -> void: depolarized.emit())
 
 func tick(delta: float) -> void:
