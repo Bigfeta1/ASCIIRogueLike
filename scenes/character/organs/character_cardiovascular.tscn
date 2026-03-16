@@ -1,0 +1,183 @@
+[gd_scene load_steps=14 format=3 uid="uid://clroteae8vjic"]
+
+[ext_resource type="Script" uid="uid://csyc5rr15idm3" path="res://scenes/character/organs/character_cardiovascular.gd" id="1_qkorx"]
+[ext_resource type="Script" uid="uid://y26fskh56qtk" path="res://scenes/character/organs/cardiac_monitor.gd" id="2_q8pem"]
+[ext_resource type="Script" uid="uid://cmys7j2ixtb7i" path="res://scenes/character/organs/atrial_components.gd" id="3_xp7ea"]
+[ext_resource type="Script" uid="uid://bb8y13iejqwem" path="res://scenes/character/organs/sa_node.gd" id="4_lae2u"]
+[ext_resource type="Script" uid="uid://17ewtu0f2s8r" path="res://scenes/character/organs/conduction_component.gd" id="5_vjhpt"]
+[ext_resource type="Script" uid="uid://c4ax3y2s1746c" path="res://scenes/character/organs/electrical_pathway.gd" id="6_mqrvc"]
+[ext_resource type="Script" uid="uid://ywokgpus11uw" path="res://scenes/character/organs/vena_cava.gd" id="7_satwq"]
+[ext_resource type="Script" uid="uid://ctfq2qoasdvwm" path="res://scenes/character/organs/cardiac_chamber.gd" id="8_r3oam"]
+[ext_resource type="Script" uid="uid://dak3f0r4ghmh4" path="res://scenes/character/organs/chamber_myocytes.gd" id="9_qnqjp"]
+[ext_resource type="Script" uid="uid://lkgeijidc3pr" path="res://scenes/character/organs/cardiac_valve.gd" id="10_phrrd"]
+[ext_resource type="Script" uid="uid://b6fy7jlnvpswu" path="res://scenes/character/organs/pulmonary_artery.gd" id="11_sjv4a"]
+[ext_resource type="Script" uid="uid://clnah1u7hr3k5" path="res://scenes/character/organs/pulmonary_vein.gd" id="12_4vy5e"]
+[ext_resource type="Script" uid="uid://bma2e3acxq4e5" path="res://scenes/character/organs/aorta.gd" id="13_3uxcp"]
+
+[node name="CharacterCardiovascular" type="Node"]
+script = ExtResource("1_qkorx")
+
+[node name="CardiacMonitor" type="Node" parent="."]
+script = ExtResource("2_q8pem")
+
+[node name="HeartElectricalSystem" type="Node" parent="."]
+
+[node name="AtrialComponents" type="Node" parent="HeartElectricalSystem"]
+script = ExtResource("3_xp7ea")
+debug_name = "Atrial Components (EP)"
+
+[node name="SAnode" type="Node" parent="HeartElectricalSystem/AtrialComponents"]
+script = ExtResource("4_lae2u")
+
+[node name="AtrialTract" type="Node" parent="HeartElectricalSystem/AtrialComponents"]
+script = ExtResource("5_vjhpt")
+debug_name = "Atrial Tract"
+conduction_duration = 0.08
+
+[node name="Ventricularcomponents" type="Node" parent="HeartElectricalSystem"]
+script = ExtResource("6_mqrvc")
+debug_name = "Ventricular Components (EP)"
+
+[node name="AVnode" type="Node" parent="HeartElectricalSystem/Ventricularcomponents"]
+script = ExtResource("5_vjhpt")
+debug_name = "AV Node"
+conduction_duration = 0.06
+
+[node name="BundleOfHis" type="Node" parent="HeartElectricalSystem/Ventricularcomponents"]
+script = ExtResource("5_vjhpt")
+debug_name = "Bundle of His"
+conduction_duration = 0.01
+
+[node name="PurkinjeFibers" type="Node" parent="HeartElectricalSystem/Ventricularcomponents"]
+script = ExtResource("5_vjhpt")
+debug_name = "Purkinje Fibers"
+conduction_duration = 0.02
+
+[node name="RightHeart" type="Node" parent="."]
+
+[node name="VenaCava" type="Node" parent="RightHeart"]
+script = ExtResource("7_satwq")
+debug_name = "Vena Cava"
+
+[node name="Atria" type="Node" parent="RightHeart"]
+script = ExtResource("8_r3oam")
+debug_name = "Right Atria"
+e_min = 0.25
+e_max = 0.67
+v0 = 8.0
+initial_volume = 22.0
+valve_conductance = 20.0
+
+[node name="Myocytes" type="Node" parent="RightHeart/Atria"]
+script = ExtResource("9_qnqjp")
+debug_name = "Right Atria Myocytes"
+
+[node name="TricuspidValve" type="Node" parent="RightHeart/Atria"]
+script = ExtResource("10_phrrd")
+debug_name = "Tricuspid Valve"
+contraction_rate = 180.0
+use_systole_guard = true
+
+[node name="Ventricle" type="Node" parent="RightHeart"]
+script = ExtResource("8_r3oam")
+debug_name = "Right Ventricle"
+e_min = 0.05
+e_rise_rate = 6.0
+e_decay_rate = 6.0
+v0 = 10.0
+initial_volume = 60.0
+valve_conductance = 50.0
+
+[node name="Myocytes" type="Node" parent="RightHeart/Ventricle"]
+script = ExtResource("9_qnqjp")
+debug_name = "Right Ventricle Myocytes"
+electrical_source = 1
+fascicle_count = 3
+sweep_duration = 0.03
+myocyte_durations = Array[float]([0.002, 0.005, 0.1, 0.08, 0.0])
+myocyte_force = Array[float]([0.1, 0.4, 1.0, 0.25, 0.0])
+
+[node name="PulmoniclValve" type="Node" parent="RightHeart/Ventricle"]
+script = ExtResource("10_phrrd")
+debug_name = "Pulmonic Valve"
+pressure_clamp_max = 60.0
+
+[node name="PulmonaryArtery" type="Node" parent="RightHeart"]
+script = ExtResource("11_sjv4a")
+debug_name = "Pulmonary Artery"
+
+[node name="LeftHeart" type="Node" parent="."]
+
+[node name="PulmonaryVein" type="Node" parent="LeftHeart"]
+script = ExtResource("12_4vy5e")
+debug_name = "Pulmonary Vein"
+
+[node name="Atria" type="Node" parent="LeftHeart"]
+script = ExtResource("8_r3oam")
+debug_name = "Left Atria"
+e_min = 0.15
+v0 = 10.0
+initial_volume = 50.0
+valve_conductance = 150.0
+
+[node name="Myocytes" type="Node" parent="LeftHeart/Atria"]
+script = ExtResource("9_qnqjp")
+debug_name = "Left Atrial Myocytes"
+
+[node name="MitralValve" type="Node" parent="LeftHeart/Atria"]
+editor_description = "All four cardiac valves share this script, configured via exports.
+
+AV valves (mitral, tricuspid): 
+	use_systole_guard=true
+	contraction_rate>0
+
+Semilunar valves (aortic, pulmonic): 
+	use_systole_guard=false, 
+	contraction_rate=0
+
+Mitral extras: 
+	use_c_wave=true,
+	use_pcwp_detection=true
+
+Aortic extras: 
+	use_latch=true
+	use_waveform_tracking=true
+	notch_dip>0"
+script = ExtResource("10_phrrd")
+debug_name = "Mitral Valve"
+contraction_rate = 120.0
+use_systole_guard = true
+use_c_wave = true
+use_pcwp_detection = true
+
+[node name="Ventricle" type="Node" parent="LeftHeart"]
+script = ExtResource("8_r3oam")
+debug_name = "Left Ventricle"
+e_min = 0.083
+e_max = 3.5
+e_rise_rate = 25.0
+e_decay_rate = 20.0
+v0 = 10.0
+initial_volume = 100.0
+valve_conductance = 50.0
+
+[node name="Myocytes" type="Node" parent="LeftHeart/Ventricle"]
+script = ExtResource("9_qnqjp")
+debug_name = "Left Ventricle Myocytes"
+electrical_source = 1
+fascicle_count = 3
+sweep_duration = 0.03
+myocyte_durations = Array[float]([0.002, 0.005, 0.2, 0.08, 0.0])
+myocyte_force = Array[float]([0.1, 0.4, 1.0, 0.25, 0.0])
+
+[node name="AorticlValve" type="Node" parent="LeftHeart/Ventricle"]
+script = ExtResource("10_phrrd")
+debug_name = "Aortic Valve"
+open_threshold = 2.0
+use_latch = true
+use_waveform_tracking = true
+notch_dip = 2.0
+
+[node name="Aorta" type="Node" parent="LeftHeart"]
+script = ExtResource("13_3uxcp")
+debug_name = "Aorta"

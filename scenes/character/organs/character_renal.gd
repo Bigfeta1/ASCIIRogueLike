@@ -157,7 +157,7 @@ func tick() -> void:
 	# At peak combat demand, RPF falls to ~70% of baseline (blood redistributed to muscle).
 	var map_ratio := 1.0
 	if _organs != null and _organs.cardiovascular != null:
-		var map: float = _organs.cardiovascular.mean_arterial_pressure
+		var map: float = _organs.cardiovascular.monitor.mean_arterial_pressure
 		var co_excess: float = maxf(0.0, _organs.cardiovascular.demanded_co - _organs.cardiovascular.BASELINE_CO)
 		var sympathetic_suppression: float = co_excess / (_organs.cardiovascular.MAX_CO - _organs.cardiovascular.BASELINE_CO)
 		var rpf_ceiling: float = lerpf(1.0, 0.7, sympathetic_suppression)

@@ -86,7 +86,6 @@ valve_conductance = 20.0
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/RightHeart/Atria"]
 script = ExtResource("11_5ba37")
 debug_name = "Right Atria Myocytes"
-connected = false
 
 [node name="TricuspidValve" type="Node" parent="CharacterCardiovascular/RightHeart/Atria"]
 script = ExtResource("12_36rql")
@@ -108,7 +107,6 @@ valve_conductance = 50.0
 script = ExtResource("11_5ba37")
 debug_name = "Right Ventricle Myocytes"
 electrical_source = 1
-connected = false
 fascicle_count = 3
 sweep_duration = 0.03
 myocyte_durations = Array[float]([0.002, 0.005, 0.1, 0.08, 0.0])
@@ -181,7 +179,6 @@ valve_conductance = 50.0
 script = ExtResource("11_5ba37")
 debug_name = "Left Ventricle Myocytes"
 electrical_source = 1
-connected = false
 fascicle_count = 3
 sweep_duration = 0.03
 myocyte_durations = Array[float]([0.002, 0.005, 0.1, 0.08, 0.0])
