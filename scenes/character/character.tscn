@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3 uid="uid://gwl4g5mr80cv"]
+[gd_scene load_steps=26 format=3 uid="uid://gwl4g5mr80cv"]
 
 [ext_resource type="Texture2D" uid="uid://r360kik4wxvi" path="res://assets/images/character_sprites/spr_character_surgeon.png" id="1_2cgup"]
 [ext_resource type="Script" uid="uid://bd6yl36nwoj3r" path="res://scenes/character/character.gd" id="2_a5ia6"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://c0b1neg4bxnkp" path="res://assets/images/enemies/spr_enemy_soldier_1.png" id="8_soldier"]
 [ext_resource type="Script" uid="uid://bk2awg6ur8l52" path="res://scenes/character/character_movement.gd" id="9_movement"]
 [ext_resource type="Script" uid="uid://cgh7ndtr3243u" path="res://scenes/character/character_sprite.gd" id="10_sprite"]
+[ext_resource type="PackedScene" uid="uid://c37yn53x07kyk" path="res://scenes/character/organs/character_organs.tscn" id="11_4qkus"]
 [ext_resource type="Script" uid="uid://2khxtxptmbeo" path="res://scenes/character/character_ai.gd" id="11_ai"]
 [ext_resource type="Script" uid="uid://urqnxk88qgnp" path="res://scenes/character/character_actions.gd" id="12_actions"]
 [ext_resource type="Script" uid="uid://binrlapg1tfy8" path="res://scenes/character/character_combat.gd" id="13_combat"]
@@ -46,8 +47,6 @@ shader_parameter/corner_length = 0.2
 [node name="Character" type="Node3D"]
 transform = Transform3D(3.876, 0, 0, 0, 3.876, 0, 0, 0, 3.876, 0, 0, 0)
 script = ExtResource("2_a5ia6")
-character_type = null
-character_role = null
 
 [node name="CharacterActions" type="Node" parent="."]
 script = ExtResource("12_actions")
@@ -75,6 +74,8 @@ script = ExtResource("17_lifecycle")
 
 [node name="CharacterMovement" type="Node" parent="."]
 script = ExtResource("9_movement")
+
+[node name="CharacterOrgans" parent="." instance=ExtResource("11_4qkus")]
 
 [node name="CharacterSound" type="Node" parent="."]
 script = ExtResource("5_irmqu")

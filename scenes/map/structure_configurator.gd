@@ -128,7 +128,7 @@ func scatter_trees(home_rects: Array) -> void:
 			if not in_house:
 				floor_cells.append(cell)
 	floor_cells.shuffle()
-	var tree_count := randi_range(15, 60)
+	var tree_count := 0
 	for i in range(mini(tree_count, floor_cells.size())):
 		var cell := floor_cells[i]
 		spawn_one("tree", Vector2i(cell.x, cell.z))

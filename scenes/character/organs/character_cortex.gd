@@ -29,8 +29,8 @@ func tick() -> void:
 		return
 
 	var cardio: Node = _organs.cardiovascular
-	var sbp: float = cardio.bp_systolic
-	var map: float = cardio.mean_arterial_pressure
+	var sbp: float = cardio.monitor.bp_systolic
+	var map: float = cardio.monitor.mean_arterial_pressure
 
 	# Syncope: SBP below threshold → knock out immediately
 	var ai := _character.get_node_or_null("CharacterAI")
@@ -54,11 +54,11 @@ func tick() -> void:
 				# PEA: myocardial failure from hypoxia/acidosis.
 				# Electrical activity ceases — HR, CO, BP all collapse to zero.
 				cardio.heart_rate = 0.0
-				cardio.cardiac_output = 0.0
-				cardio.SV = 0.0
-				cardio.mean_arterial_pressure = 0.0
-				cardio.bp_systolic = 0.0
-				cardio.bp_diastolic = 0.0
+				cardio.monitor.cardiac_output = 0.0
+				cardio.monitor.SV = 0.0
+				cardio.monitor.mean_arterial_pressure = 0.0
+				cardio.monitor.bp_systolic = 0.0
+				cardio.monitor.bp_diastolic = 0.0
 				_vitals.hr = 0
 				_vitals.bp_systolic = 0
 				_vitals.bp_diastolic = 0

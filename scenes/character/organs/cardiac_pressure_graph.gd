@@ -38,7 +38,7 @@ func record(cardio: Node) -> void:
 		cardio.lv.pressure,
 		cardio.ra.pressure,
 		cardio.rv.pressure,
-		cardio.aorta_pressure,
+		cardio.monitor.aorta_pressure,
 	]
 	for s in NAMES.size():
 		_history[s].pop_front()

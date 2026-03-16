@@ -220,14 +220,14 @@ func _confirm_action() -> void:
 				return
 			if _active_item_id == "aspiration_needle":
 				var character := _inventory.get_parent()
-				if character.pulmonary != null and character.pulmonary.pneumothorax:
-					character.pulmonary.resolve_pneumothorax()
+				if character.organs.pulmonary != null and character.organs.pulmonary.pneumothorax:
+					character.organs.pulmonary.resolve_pneumothorax()
 					_inventory.remove_item(_active_item_id)
 				return
 			if _active_item_id == "heparin":
 				var character := _inventory.get_parent()
-				if character.coagulation != null:
-					character.coagulation.apply_heparin()
+				if character.organs.coagulation != null:
+					character.organs.coagulation.apply_heparin()
 					_inventory.remove_item(_active_item_id)
 				return
 			var vitals := _inventory.get_parent().get_node("CharacterVitals")

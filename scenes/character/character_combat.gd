@@ -126,13 +126,6 @@ func _apply_damage(target: Node) -> void:
 	]
 	var available_defenses: Array = DEFENSE_TABLE[w_idx][a_idx]
 
-	print("[COMBAT] %s -> %s | atk:%s die:d%d armor:%s | penalty:-%d | defenses:%s" % [
-		_character.name, target.name,
-		weapon.weight_class, weapon.damage_die,
-		defender_armor_class, hit_penalty,
-		str(available_defenses)
-	])
-
 	# Parry
 	if "parry" in available_defenses:
 		var parry_roll: int = randi_range(1, 20) + defender_levels.parry_mod()
@@ -175,11 +168,9 @@ func _apply_damage(target: Node) -> void:
 		_spawn_damage_label(target, damage)
 	if target.character_role == target.CharacterRole.PLAYER:
 		vitals._refresh_ui()
-		if target.coagulation != null:
-			target.coagulation.add_endothelial_injury(damage * 3.0)
-	print("[DEATH] %s hp=%d" % [target.name, vitals.hp])
+		if target.organs.coagulation != null:
+			target.organs.coagulation.add_endothelial_injury(damage * 3.0)
 	if vitals.hp <= 0:
-		print("[DEATH] incapacitating %s" % target.name)
 		if _character.character_role == _character.CharacterRole.PLAYER:
 			_character.get_node("CharacterLevels").add_xp(10)
 		target.get_node("CharacterLifecycle").die(target)

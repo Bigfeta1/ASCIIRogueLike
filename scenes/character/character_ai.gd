@@ -86,8 +86,6 @@ func _build_astar() -> void:
 
 
 func start_patrol() -> void:
-	print("[AI] start_patrol | enemy=%s | from_state=%s" % [get_parent().name, BehaviorState.keys()[behavior_state]])
-	print(get_stack())
 	if not _has_patrol_origin:
 		_patrol_origin = _movement.grid_pos
 		_has_patrol_origin = true
@@ -113,16 +111,11 @@ func hear_sound(intensity: int, source_pos: Vector2i) -> void:
 
 func see_player(player_pos: Vector2i, distance: float) -> void:
 	if behavior_state == BehaviorState.COMBAT or behavior_state == BehaviorState.ALERT or behavior_state == BehaviorState.SUSPICIOUS or behavior_state == BehaviorState.RETURN:
-		print("[AI] see_player blocked | enemy=%s | current_state=%s" % [get_parent().name, BehaviorState.keys()[behavior_state]])
 		return
 	var vision_range: float = _levels.sympathetic
 	if behavior_state == BehaviorState.INVESTIGATE:
 		var roll := randi_range(1, int(vision_range))
 		var threshold: int = max(1, int(vision_range - distance))
-		print("[AI] see_player during INVESTIGATE | enemy=%s | dist=%.1f | roll=%d | threshold=%d | result=%s" % [
-			get_parent().name, distance, roll, threshold,
-			"ALERT" if roll > threshold else "CONTINUE"
-		])
 		if roll > threshold:
 			behavior_state = BehaviorState.ALERT
 			var label: Label = SuspicionLabelScript.new()
@@ -132,13 +125,11 @@ func see_player(player_pos: Vector2i, distance: float) -> void:
 			_investigate_target = player_pos
 		return
 	if distance <= vision_range * 0.5:
-		print("[AI] see_player | enemy=%s | dist=%.1f | -> ALERT" % [get_parent().name, distance])
 		behavior_state = BehaviorState.ALERT
 		var label: Label = SuspicionLabelScript.new()
 		_canvas_layer.add_child(label)
 		label.setup(get_parent().position, _camera, "!", Color.RED)
 	else:
-		print("[AI] see_player | enemy=%s | from_state=%s | dist=%.1f | -> SUSPICIOUS | target=%s" % [get_parent().name, BehaviorState.keys()[behavior_state], distance, player_pos])
 		_investigate_target = player_pos
 		_spotted_distance = distance
 		behavior_state = BehaviorState.SUSPICIOUS
@@ -154,10 +145,6 @@ func _resolve_suspicion() -> void:
 	var vision_range: float = _levels.sympathetic
 	var roll := randi_range(1, int(vision_range))
 	var threshold: int = max(1, int(vision_range - _spotted_distance))
-	print("[AI] _resolve_suspicion | enemy=%s | spotted_dist=%.1f | vision_range=%.1f | roll=%d | threshold=%d | result=%s" % [
-		get_parent().name, _spotted_distance, vision_range, roll, threshold,
-		"INVESTIGATE" if roll <= threshold else "RETURN"
-	])
 	if roll <= threshold:
 		behavior_state = BehaviorState.INVESTIGATE
 	else:

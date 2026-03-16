@@ -160,19 +160,19 @@ func serialize_enemy(enemy_node: Node, zone_id: Vector2i) -> Dictionary:
 
 func _serialize_organs(enemy_node: Node) -> Dictionary:
 	var d: Dictionary = {}
-	var cardio: Node = enemy_node.cardiovascular
+	var cardio: Node = enemy_node.organs.cardiovascular
 	if cardio != null:
 		d["heart_rate"] = cardio.heart_rate
-		d["bp_systolic"] = cardio.bp_systolic
-		d["bp_diastolic"] = cardio.bp_diastolic
-		d["mean_arterial_pressure"] = cardio.mean_arterial_pressure
-		d["cardiac_output"] = cardio.cardiac_output
-		d["stroke_volume"] = cardio.SV
+		d["bp_systolic"] = cardio.monitor.bp_systolic
+		d["bp_diastolic"] = cardio.monitor.bp_diastolic
+		d["mean_arterial_pressure"] = cardio.monitor.mean_arterial_pressure
+		d["cardiac_output"] = cardio.monitor.cardiac_output
+		d["stroke_volume"] = cardio.monitor.SV
 		d["systemic_vascular_resistance"] = cardio.TPR
 		d["demanded_co"] = cardio.demanded_co
 		d["venous_return_fraction"] = cardio.venous_return_fraction
 		d["spo2"] = cardio.spo2
-	var pulm: Node = enemy_node.pulmonary
+	var pulm: Node = enemy_node.organs.pulmonary
 	if pulm != null:
 		d["respiratory_rate"] = pulm.respiratory_rate
 		d["tidal_volume"] = pulm.tidal_volume
@@ -185,12 +185,12 @@ func _serialize_organs(enemy_node: Node) -> Dictionary:
 		d["pulmonary_embolism"] = pulm.pulmonary_embolism
 		d["pe_severity"] = pulm.pe_severity
 		d["pe_rv_strain"] = pulm.pe_rv_strain
-	var renal: Node = enemy_node.renal
+	var renal: Node = enemy_node.organs.renal
 	if renal != null:
 		d["plasma_fluid"] = renal.plasma_fluid
 		d["interstitial_fluid"] = renal.interstitial_fluid
 		d["intracellular_fluid"] = renal.intracellular_fluid
-	var coag: Node = enemy_node.coagulation
+	var coag: Node = enemy_node.organs.coagulation
 	if coag != null:
 		d["stasis_score"] = coag.stasis_score
 		d["endothelial_injury"] = coag.endothelial_injury

@@ -1,12 +1,5 @@
 extends Node3D
 
-const OrganRegistryScript := preload("res://scenes/character/organs/character_organ_registry.gd")
-const RenalScript := preload("res://scenes/character/organs/character_renal.gd")
-const HypothalamusScript := preload("res://scenes/character/organs/character_hypothalamus.gd")
-const CardiovascularScript := preload("res://scenes/character/organs/character_cardiovascular.gd")
-const PulmonaryScript := preload("res://scenes/character/organs/character_pulmonary.gd")
-const CortexScript := preload("res://scenes/character/organs/character_cortex.gd")
-const CoagulationScript := preload("res://scenes/character/organs/character_coagulation.gd")
 
 enum ActionState { MOVEMENT, LOOK, MENU, INTERACTION }
 enum CharacterType { SURGEON, ENEMY, STRUCTURE }
@@ -52,13 +45,7 @@ var structure_actions: Array = []
 @onready var look_cursor: Node = get_node("LookCursor")
 @onready var interact_cursor: Node = get_node("InteractCursor")
 
-var renal: Node = null
-var organs: Node = null
-var hypothalamus: Node = null
-var cardiovascular: Node = null
-var pulmonary: Node = null
-var cortex: Node = null
-var coagulation: Node = null
+@onready var organs: Node = get_node("CharacterOrgans")
 
 
 func _ready() -> void:
@@ -80,47 +67,7 @@ func _ready() -> void:
 	if character_type == CharacterType.STRUCTURE:
 		return
 	
-	
-	organs = OrganRegistryScript.new()
-	organs.name = "CharacterOrganRegistry"
-	add_child(organs)
-
-	renal = RenalScript.new()
-	renal.name = "CharacterRenal"
-	add_child(renal)
-	organs.renal = renal
-	renal.setup(organs)
-
-	hypothalamus = HypothalamusScript.new()
-	hypothalamus.name = "CharacterHypothalamus"
-	add_child(hypothalamus)
-	organs.hypothalamus = hypothalamus
-	hypothalamus.setup(organs)
-
-	cardiovascular = CardiovascularScript.new()
-	cardiovascular.name = "CharacterCardiovascular"
-	add_child(cardiovascular)
-	organs.cardiovascular = cardiovascular
-	cardiovascular.setup(organs, vitals, levels)
-
-	pulmonary = PulmonaryScript.new()
-	pulmonary.name = "CharacterPulmonary"
-	add_child(pulmonary)
-	organs.pulmonary = pulmonary
-	pulmonary.setup(organs, levels, vitals)
-
-	cortex = CortexScript.new()
-	cortex.name = "CharacterCortex"
-	add_child(cortex)
-	organs.cortex = cortex
-	cortex.setup(organs, vitals)
-
-	coagulation = CoagulationScript.new()
-	coagulation.name = "CharacterCoagulation"
-	add_child(coagulation)
-	organs.coagulation = coagulation
-	coagulation.setup(organs)
-
+	organs.setup(vitals, levels)
 	sound.setup(grid_map)
 	interact_cursor.setup(grid_map)
 	look_cursor.setup(grid_map, camera, canvas_layer.get_node("LookModeInfo"))

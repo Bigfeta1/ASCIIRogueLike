@@ -53,9 +53,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event.pressed:
 		_held_keys.erase(event.keycode)
 		return
+	
 	if _turn_order.current_turn_state != _turn_order.TurnState.PLAYER_TURN:
 		return
+	
 	_held_keys[event.keycode] = true
+	
 	if not event.echo:
 		_move_pending = true
 	else:
@@ -70,8 +73,10 @@ func _do_move() -> void:
 	var dx := int(_held_keys.get(KEY_D, false) or _held_keys.get(KEY_RIGHT, false)) - int(_held_keys.get(KEY_A, false) or _held_keys.get(KEY_LEFT, false))
 	var dy := int(_held_keys.get(KEY_S, false) or _held_keys.get(KEY_DOWN, false)) - int(_held_keys.get(KEY_W, false) or _held_keys.get(KEY_UP, false))
 	var delta := Vector2i(dx, dy)
+	
 	if delta == Vector2i.ZERO:
 		return
+	
 	if _character.action_state == _character.ActionState.MOVEMENT:
 		_check_move(delta)
 	elif _character.action_state == _character.ActionState.LOOK:
@@ -92,13 +97,16 @@ func _check_move(delta: Vector2i) -> void:
 	var target := grid_pos + delta
 	var cell := Vector3i(target.x, 0, target.y)
 	var tile_id := _grid_map.get_cell_item(cell)
+	
 	if tile_id == GridMap.INVALID_CELL_ITEM:
 		if _character.character_role == _character.CharacterRole.PLAYER:
 			zone_exit.emit(delta)
 		return
+	
 	var true_tile := TileRegistry.get_original_tile(cell, tile_id)
 	if not TileRegistry.is_walkable(true_tile):
 		return
+	
 	var occupant: Node = _occupancy_map.get_solid(target)
 	if occupant != null:
 		if occupant.character_type == occupant.CharacterType.STRUCTURE:
@@ -109,14 +117,16 @@ func _check_move(delta: Vector2i) -> void:
 				if combat != null:
 					combat.bump_attack(target)
 					combat._apply_damage(occupant)
-				if _character.cardiovascular != null:
-					_character.cardiovascular.set_demand(15.0)
-					_character.cardiovascular.tick(0.016)
+				if _character.organs.cardiovascular != null:
+					_character.organs.cardiovascular.set_demand(15.0)
+					_character.organs.cardiovascular.tick(0.016)
 				moved.emit()
 			return
+		
 		# Alive character — check for combat or block
 		var other_ai := occupant.get_node_or_null("CharacterAI")
 		var different_faction: bool = occupant.faction != _character.faction
+		
 		if other_ai != null and other_ai.disposition == other_ai.Disposition.HOSTILE and different_faction:
 			occupant.get_node("CharacterLifecycle").enter_combat(occupant)
 			_face(delta)
@@ -124,17 +134,20 @@ func _check_move(delta: Vector2i) -> void:
 			if combat != null:
 				combat._apply_damage(occupant)
 				combat.bump_attack(target)
-			if _character.cardiovascular != null:
-				_character.cardiovascular.set_demand(17.0)
-				_character.cardiovascular.tick(0.016)
+			if _character.organs.cardiovascular != null:
+				_character.organs.cardiovascular.set_demand(17.0)
 			moved.emit()
 		return
+	
 	_occupancy_map.move_solid(grid_pos, target, _character)
 	grid_pos = target
-	if _character.cardiovascular != null:
-		_character.cardiovascular.set_demand(8.0)
-		_character.cardiovascular.tick(0.016)
+	
+	
+	if _character.organs.cardiovascular != null:
+		_character.organs.cardiovascular.set_demand(8.0)
+
 	moved.emit()
+	
 	_face(delta)
 	_snap()
 

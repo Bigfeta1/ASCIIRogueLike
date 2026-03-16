@@ -187,24 +187,24 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				_look_cursor.deactivate()
 		KEY_KP_1:
-			if _renal_debug_panel != null and _character.pulmonary != null:
-				if _character.pulmonary.pneumothorax:
-					_character.pulmonary.resolve_pneumothorax()
+			if _renal_debug_panel != null and _character.organs.pulmonary != null:
+				if _character.organs.pulmonary.pneumothorax:
+					_character.organs.pulmonary.resolve_pneumothorax()
 				else:
-					_character.pulmonary.trigger_pneumothorax("right")
+					_character.organs.pulmonary.trigger_pneumothorax("right")
 				_refresh_renal_debug()
 		KEY_KP_2:
-			if _renal_debug_panel != null and _character.coagulation != null:
-				_character.coagulation.add_endothelial_injury(40.0)
+			if _renal_debug_panel != null and _character.organs.coagulation != null:
+				_character.organs.coagulation.add_endothelial_injury(40.0)
 				_refresh_renal_debug()
 		KEY_KP_3:
-			if _renal_debug_panel != null and _character.coagulation != null:
-				_character.coagulation.trigger_trauma()
+			if _renal_debug_panel != null and _character.organs.coagulation != null:
+				_character.organs.coagulation.trigger_trauma()
 				_refresh_renal_debug()
 		KEY_KP_4:
-			if _renal_debug_panel != null and _character.cardiovascular != null:
-				var cardio: Node = _character.cardiovascular
-				cardio.force_fire_sa_node()
+			if _character.organs.cardiovascular != null:
+				var cardio: Node = _character.organs.cardiovascular
+				cardio.sa_node.force_fire()
 				# Full cardiac cycle is ~0.59s; run 40 ticks at 0.016s each to capture it
 				for _i in 40:
 					cardio.tick(0.016)
@@ -496,8 +496,8 @@ func _on_fill_confirmed(liquid: String, amount_liters: float) -> void:
 		var contents: Dictionary = _character.inventory.get_liquid(idx)
 		var remaining: float = snappedf(contents.get("amount_liters", 0.0) - amount_liters, 0.001)
 		_character.inventory.set_liquid(idx, liquid, remaining)
-		if _character.renal != null:
-			_character.renal.drink(amount_liters)
+		if _character.organs.renal != null:
+			_character.organs.renal.drink(amount_liters)
 		_use_item_id = ""
 	else:
 		item_id = _collect_item_id
@@ -740,7 +740,7 @@ func activate_drop_item(item_id: String) -> void:
 
 
 func _show_renal_debug() -> void:
-	if _character.renal == null:
+	if _character.organs.renal == null:
 		return
 	var canvas_layer: CanvasLayer = _character.get_parent().get_node("CanvasLayer")
 
@@ -797,7 +797,7 @@ func _show_renal_debug() -> void:
 func _refresh_renal_debug() -> void:
 	if _renal_debug_panel == null:
 		return
-	var renal: Node = _character.renal
+	var renal: Node = _character.organs.renal
 	renal.tick()
 	var renal_label: Label = _renal_debug_panel.get_child(0)
 	renal_label.text = (
@@ -819,7 +819,7 @@ func _refresh_renal_debug() -> void:
 
 	if _hypothalamus_debug_panel == null:
 		return
-	var hypo: Node = _character.hypothalamus
+	var hypo: Node = _character.organs.hypothalamus
 	var hypo_label: Label = _hypothalamus_debug_panel.get_child(0)
 	hypo_label.text = (
 		"[HYPOTHALAMUS DEBUG]\n"
@@ -835,22 +835,22 @@ func _refresh_renal_debug() -> void:
 
 	if _cardiovascular_debug_panel == null:
 		return
-	var cardio: Node = _character.cardiovascular
+	var cardio: Node = _character.organs.cardiovascular
 	var cardio_label: Label = _cardiovascular_debug_panel.get_child(0)
 	cardio_label.text = (
 		"[CARDIOVASCULAR]\n"
 		+ "HR:         %.0f bpm\n" % cardio.heart_rate
-		+ "SV:         %.1f mL\n" % cardio.SV
-		+ "EDV:        %.1f mL\n" % cardio.EDV
-		+ "ESV:        %.1f mL\n" % cardio.ESV
-		+ "EF:         %.1f %%\n" % cardio.EF
-		+ "CO:         %.2f L/min\n" % cardio.cardiac_output
-		+ "MAP:        %.1f mmHg\n" % cardio.mean_arterial_pressure
-		+ "BP:         %.0f/%.0f mmHg\n" % [cardio.systolic_bp, cardio.diastolic_bp]
+		+ "SV:         %.1f mL\n" % cardio.monitor.SV
+		+ "EDV:        %.1f mL\n" % cardio.monitor.EDV
+		+ "ESV:        %.1f mL\n" % cardio.monitor.ESV
+		+ "EF:         %.1f %%\n" % cardio.monitor.EF
+		+ "CO:         %.2f L/min\n" % cardio.monitor.cardiac_output
+		+ "MAP:        %.1f mmHg\n" % cardio.monitor.mean_arterial_pressure
+		+ "BP:         %.0f/%.0f mmHg\n" % [cardio.monitor.bp_systolic, cardio.monitor.bp_diastolic]
 		+ "TPR:        %.1f\n" % cardio.TPR
 		+ "\n[LEFT ATRIA]\n"
 		+ "LA Vol:     %.1f mL\n" % cardio.la.volume
-		+ "PCWP:       %.1f mmHg\n" % cardio.pcwp
+		+ "PCWP:       %.1f mmHg\n" % cardio.monitor.pcwp
 		+ "Mitral:     %s\n" % ("OPEN" if cardio.la.valve_open else "CLOSED")
 		+ "Atrial:     %s\n" % ("SYSTOLE" if cardio.la.in_systole else "DIASTOLE")
 		+ "\n[LEFT VENTRICLE]\n"
@@ -858,10 +858,13 @@ func _refresh_renal_debug() -> void:
 		+ "LV Press:   %.1f mmHg\n" % cardio.lv.pressure
 		+ "Aortic:     %s\n" % ("OPEN" if cardio.lv.valve_open else "CLOSED")
 		+ "\n[SA NODE]\n"
-		+ "Vm:         %.1f mV\n" % cardio.sa_node_membrane_potential
-		+ "SA State:   %s\n" % cardio.SinoAtrialStates.keys()[cardio.sa_state]
-		+ "\n[EP]\n"
-		+ "EP State:   %s\n" % cardio.ElectricalPathwayStates.keys()[cardio.ep_state]
+		+ "Vm:         %.1f mV\n" % cardio.get_node("HeartElectricalSystem/AtrialComponents/SAnode").membrane_potential
+		+ "SA State:   %s\n" % ["PHASE_4", "PHASE_0", "PHASE_3"][cardio.get_node("HeartElectricalSystem/AtrialComponents/SAnode").state]
+		+ "\n[CONDUCTION]\n"
+		+ "AtrialTract:%s\n" % ("C" if cardio.get_node("HeartElectricalSystem/AtrialComponents/AtrialTract").conducting else ".")
+		+ "AV Node:    %s\n" % ("C" if cardio.get_node("HeartElectricalSystem/Ventricularcomponents/AVnode").conducting else ".")
+		+ "His:        %s\n" % ("C" if cardio.get_node("HeartElectricalSystem/Ventricularcomponents/BundleOfHis").conducting else ".")
+		+ "Purkinje:   %s\n" % ("C" if cardio.get_node("HeartElectricalSystem/Ventricularcomponents/PurkinjeFibers").conducting else ".")
 	)
 
 	if _cardiac_pressure_graph != null:
@@ -869,7 +872,7 @@ func _refresh_renal_debug() -> void:
 
 	if _pulmonary_debug_panel == null:
 		return
-	var pulm: Node = _character.pulmonary
+	var pulm: Node = _character.organs.pulmonary
 	var pulm_label: Label = _pulmonary_debug_panel.get_child(0)
 	pulm_label.text = (
 		"[PULMONARY DEBUG]\n"
@@ -890,7 +893,7 @@ func _refresh_renal_debug() -> void:
 
 	if _coagulation_debug_panel == null:
 		return
-	var coag: Node = _character.coagulation
+	var coag: Node = _character.organs.coagulation
 	var coag_label: Label = _coagulation_debug_panel.get_child(0)
 	coag_label.text = (
 		"[COAGULATION DEBUG]\n"

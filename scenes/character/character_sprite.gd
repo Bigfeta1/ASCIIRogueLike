@@ -39,19 +39,13 @@ func set_texture(path: String) -> void:
 		(mesh as PlaneMesh).size = Vector2(2.0, 2.0 * aspect)
 
 func set_defeated(sprite_path: String) -> void:
-	print("[SPRITE] set_defeated path='%s'" % sprite_path)
 	if sprite_path == "":
-		print("[SPRITE] empty path, returning")
 		return
 	var mat := material_override as StandardMaterial3D
-	print("[SPRITE] material_override=%s mat=%s" % [str(material_override), str(mat)])
 	if mat == null:
-		print("[SPRITE] mat is null!")
 		return
 	var tex := load(sprite_path)
-	print("[SPRITE] loaded tex=%s" % str(tex))
 	mat.albedo_texture = tex
-	print("[SPRITE] texture set. current albedo_texture=%s" % str(mat.albedo_texture))
 	position = Vector3.ZERO
 	rotation = Vector3.ZERO
 	var splatter := MeshInstance3D.new()
