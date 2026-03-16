@@ -99,8 +99,6 @@ func tick(delta: float) -> void:
 	_atrial.tick(delta)
 	_ventricular.tick(delta)
 
-	_step_heart()
-
 	lv.tick(delta)
 	rv.tick(delta)
 	la.tick(delta)
@@ -119,6 +117,8 @@ func tick(delta: float) -> void:
 	monitor.aorta_blood_flow   = _aorta.blood_flow
 	monitor.aorta_blood_flow_end = _aorta.blood_flow_end
 	_pulmonary_artery.tick(delta, rv.valve_open)
+
+	_step_heart()
 
 
 func _step_heart() -> void:

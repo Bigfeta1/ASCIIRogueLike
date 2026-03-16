@@ -81,7 +81,7 @@ e_min = 0.25
 e_max = 0.67
 v0 = 8.0
 initial_volume = 22.0
-valve_conductance = 20.0
+valve_conductance = 60.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/RightHeart/Atria"]
 script = ExtResource("11_5ba37")
@@ -188,7 +188,6 @@ myocyte_force = Array[float]([0.1, 0.4, 1.0, 0.25, 0.0])
 [node name="AorticlValve" type="Node" parent="CharacterCardiovascular/LeftHeart/Ventricle"]
 script = ExtResource("12_36rql")
 debug_name = "Aortic Valve"
-open_threshold = 2.0
 use_latch = true
 use_waveform_tracking = true
 notch_dip = 2.0

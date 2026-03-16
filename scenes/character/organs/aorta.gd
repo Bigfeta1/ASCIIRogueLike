@@ -8,7 +8,7 @@ extends Node
 # Systemic outflow drains into the systemic venous reservoir (owned by cardiovascular coordinator).
 
 var volume: float   = 700.0   # mL — arterial blood volume
-var pressure: float = 93.0    # derived from volume each tick
+var pressure: float = 80.0    # derived from volume each tick
 
 var blood_flow:     bool = false   # true while aortic valve open
 var blood_flow_end: bool = false   # true the tick the aortic valve closes
@@ -16,9 +16,9 @@ var blood_flow_end: bool = false   # true the tick the aortic valve closes
 var pressure_min: float = 8.0
 var pressure_max: float = 200.0
 
-const COMPLIANCE: float       = 2.0    # mL/mmHg
-const UNSTRESSED_VOLUME: float = 540.0 # mL — pressure = 0 at this volume; (700-540)/2 = 80 mmHg baseline
-const SYSTEMIC_RESISTANCE: float = 1.49 # mmHg·s/mL — MAP=93 at CO=5 L/min (83.3 mL/s)
+const COMPLIANCE: float        = 2.0   # mL/mmHg
+const UNSTRESSED_VOLUME: float = 540.0 # mL
+const SYSTEMIC_RESISTANCE: float = 1.49 # mmHg·s/mL
 
 # Returns the volume drained into the systemic venous reservoir this tick.
 func tick(delta: float, valve_open: bool, notch_fired: bool, notch_dip: float) -> float:
