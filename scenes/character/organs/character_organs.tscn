@@ -79,9 +79,11 @@ script = ExtResource("10_x11w5")
 debug_name = "Right Atria"
 e_min = 0.25
 e_max = 0.67
+e_rise_rate = 4.0
+e_decay_rate = 2.4
 v0 = 8.0
 initial_volume = 22.0
-valve_conductance = 60.0
+valve_conductance = 48.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/RightHeart/Atria"]
 script = ExtResource("11_5ba37")
@@ -90,7 +92,7 @@ debug_name = "Right Atria Myocytes"
 [node name="TricuspidValve" type="Node" parent="CharacterCardiovascular/RightHeart/Atria"]
 script = ExtResource("12_36rql")
 debug_name = "Tricuspid Valve"
-contraction_rate = 180.0
+contraction_rate = 144.0
 use_systole_guard = true
 
 [node name="Ventricle" type="Node" parent="CharacterCardiovascular/RightHeart"]
@@ -98,19 +100,19 @@ script = ExtResource("10_x11w5")
 debug_name = "Right Ventricle"
 e_min = 0.05
 e_max = 1.2
-e_rise_rate = 6.0
-e_decay_rate = 6.0
+e_rise_rate = 4.8
+e_decay_rate = 4.8
 v0 = 10.0
 initial_volume = 120.0
-valve_conductance = 50.0
+valve_conductance = 40.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/RightHeart/Ventricle"]
 script = ExtResource("11_5ba37")
 debug_name = "Right Ventricle Myocytes"
 electrical_source = 1
 fascicle_count = 3
-sweep_duration = 0.03
-myocyte_durations = Array[float]([0.002, 0.005, 0.1, 0.08, 0.0])
+sweep_duration = 0.0375
+myocyte_durations = Array[float]([0.0025, 0.00625, 0.125, 0.1, 0.0])
 myocyte_force = Array[float]([0.1, 0.4, 1.0, 0.25, 0.0])
 
 [node name="PulmoniclValve" type="Node" parent="CharacterCardiovascular/RightHeart/Ventricle"]
@@ -131,9 +133,11 @@ debug_name = "Pulmonary Vein"
 [node name="Atria" type="Node" parent="CharacterCardiovascular/LeftHeart"]
 script = ExtResource("10_x11w5")
 debug_name = "Left Atria"
+e_rise_rate = 4.0
+e_decay_rate = 2.4
 v0 = 10.0
 initial_volume = 70.0
-valve_conductance = 25.0
+valve_conductance = 20.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/LeftHeart/Atria"]
 script = ExtResource("11_5ba37")
@@ -160,7 +164,7 @@ Aortic extras:
 	notch_dip>0"
 script = ExtResource("12_36rql")
 debug_name = "Mitral Valve"
-contraction_rate = 120.0
+contraction_rate = 96.0
 use_systole_guard = true
 use_c_wave = true
 use_pcwp_detection = true
@@ -169,21 +173,21 @@ use_pcwp_detection = true
 script = ExtResource("10_x11w5")
 debug_name = "Left Ventricle"
 e_min = 0.06
-e_max = 2.5
-e_rise_rate = 25.0
-e_decay_rate = 60.0
+e_max = 2.7
+e_rise_rate = 20.0
+e_decay_rate = 48.0
 v0 = 10.0
 initial_volume = 120.0
-valve_conductance = 50.0
+valve_conductance = 17.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/LeftHeart/Ventricle"]
 script = ExtResource("11_5ba37")
 debug_name = "Left Ventricle Myocytes"
 electrical_source = 1
 fascicle_count = 3
-sweep_duration = 0.03
-myocyte_durations = Array[float]([0.002, 0.005, 0.1, 0.08, 0.0])
-myocyte_force = Array[float]([0.1, 0.4, 1.0, 0.25, 0.0])
+sweep_duration = 0.15
+myocyte_durations = Array[float]([0.0025, 0.00625, 0.125, 0.1, 0.0])
+myocyte_force = Array[float]([0.3, 0.7, 1.0, 0.25, 0.0])
 
 [node name="AorticlValve" type="Node" parent="CharacterCardiovascular/LeftHeart/Ventricle"]
 script = ExtResource("12_36rql")

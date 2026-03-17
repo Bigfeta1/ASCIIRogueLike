@@ -56,6 +56,7 @@ const BASELINE_CO: float = 5.0
 const MAX_CO: float      = 20.0
 
 var pressure_graph: CardiacPressureGraph = null
+var _beat_phase: float = 1.0   # fires when >= 1.0; starts at 1.0 so step 0 fires immediately
 
 #endregion
 
@@ -74,7 +75,9 @@ func _ready() -> void:
 	_mitral_valve.waveform_trough.connect(func(p: float) -> void: y_descent_start.emit(p))
 
 	_aortic_valve.upstream_closed.connect(func(v: float) -> void: monitor.ESV = v)
-	_aortic_valve.waveform_peak.connect(func(v: float) -> void: monitor.bp_systolic = v)
+	_aortic_valve.waveform_peak.connect(func(v: float) -> void:
+		monitor.bp_systolic = v
+	)
 	_aortic_valve.waveform_trough.connect(func(v: float) -> void: monitor.bp_diastolic = v)
 
 #region SETUP
@@ -98,19 +101,31 @@ func _refresh_initial_valve_states() -> void:
 #region TICK
 
 const TURN_DURATION: float = 15.0
-const SIM_STEP: float      = 0.016
+const SIM_STEP: float      = 0.020
+
+static var _turn_index: int = 0
 
 func tick_turn() -> void:
-	var beats_per_turn: int = roundi(heart_rate / 60.0 * TURN_DURATION)
-	var steps_per_beat: int = ceili(60.0 / heart_rate / SIM_STEP)
-	for b in beats_per_turn:
-		sa_node.force_fire()
-		for _i in steps_per_beat:
-			tick(SIM_STEP)
-			if pressure_graph != null:
-				pressure_graph.record(self)
-		print("[BEAT %d] BP=%.0f/%.0f MAP=%.1f" % [b + 1, monitor.bp_systolic, monitor.bp_diastolic, monitor.mean_arterial_pressure])
-	print("[TURN END] BP=%.0f/%.0f MAP=%.1f HR=%.0f CO=%.2f beats=%d" % [monitor.bp_systolic, monitor.bp_diastolic, monitor.mean_arterial_pressure, heart_rate, monitor.cardiac_output, beats_per_turn])
+	_turn_index += 1
+	var phase_per_step: float = SIM_STEP / (60.0 / heart_rate)
+	var turn_steps: int = roundi(TURN_DURATION / SIM_STEP)
+	var beat: int = 0
+	var _beat_step: int = 0   # steps since last SA fire, for curve logging
+	for i in turn_steps:
+		if _beat_phase >= 1.0:
+			_beat_phase -= 1.0
+			sa_node.force_fire()
+			beat += 1
+			_beat_step = 0
+		tick(SIM_STEP)
+		if pressure_graph != null:
+			pressure_graph.record(self)
+		# Print one full beat of curve data on turn 1 beat 14 (near steady state)
+		if _turn_index == 1 and beat == 14 and _beat_step < 55:
+			print("[CURVE %d] LV=%.1f Ao=%.1f aov=%s" % [_beat_step, lv.pressure, monitor.aorta_pressure, str(lv.valve_open)])
+		_beat_step += 1
+		_beat_phase += phase_per_step
+	print("[TURN %d] BP=%.0f/%.0f HR=%.0f SV=%.1f EDV=%.1f ESV=%.1f" % [_turn_index, monitor.bp_systolic, monitor.bp_diastolic, heart_rate, monitor.SV, monitor.EDV, monitor.ESV])
 
 func tick(delta: float) -> void:
 	_atrial.tick(delta)
@@ -130,6 +145,7 @@ func tick(delta: float) -> void:
 	ra.pressure = ra.elastance * maxf(0.0, ra.volume - ra.v0)
 
 	_vena_cava.volume         += _aorta.tick(delta, lv.valve_open, _aortic_valve.notch_fired, _aortic_valve.notch_dip)
+	_aortic_valve.update_peak(_aorta.pressure)
 	monitor.aorta_pressure     = _aorta.pressure
 	monitor.aorta_blood_flow   = _aorta.blood_flow
 	monitor.aorta_blood_flow_end = _aorta.blood_flow_end

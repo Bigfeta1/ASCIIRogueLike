@@ -5,7 +5,7 @@ extends Node
 
 # Systemic venous reservoir. Aortic runoff drains here; RA draws from here.
 
-var volume: float = 3500.0
+var volume: float = 3665.0
 
 const UNSTRESSED_VOLUME: float = 3000.0  # mL — pressure = 0 below this
 const COMPLIANCE: float        = 50.0    # mL/mmHg — very compliant veins

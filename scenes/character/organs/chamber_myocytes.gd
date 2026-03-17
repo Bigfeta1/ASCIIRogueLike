@@ -99,27 +99,28 @@ func step_sweep(delta: float) -> void:
 
 func step_myocytes(delta: float) -> void:
 	active_force = 0.0
-	
+
 	for i in region_count:
 		var r: Dictionary = _regions[i]
 		var phase: int = r["myocyte"]
-		
+
 		if phase == 4:
 			continue
-		
-		
+
 		r["myocyte_timer"] += delta
 		active_force       += myocyte_force[phase]
-		
+
 		var dur: float = myocyte_durations[phase]
-		
+
 		if dur > 0.0 and r["myocyte_timer"] >= dur:
-			r["myocyte_timer"] = 0.0
+			var overflow: float = r["myocyte_timer"] - dur
 			if phase < 3:
-				r["myocyte"] = phase + 1
+				r["myocyte"]       = phase + 1
+				r["myocyte_timer"] = overflow
 			else:
-				r["myocyte"]    = 4
-				r["mechanical"] = 0
+				r["myocyte"]       = 4
+				r["myocyte_timer"] = 0.0
+				r["mechanical"]    = 0
 	
 	_update_systole_state()
 

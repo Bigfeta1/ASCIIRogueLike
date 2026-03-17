@@ -150,7 +150,6 @@ func tick(delta: float, downstream_pressure: float, ventricular_systole: bool, d
 			if not prev_was_open and _cycle_min < 999.0:
 				waveform_trough.emit(_cycle_min)
 				_cycle_min = 999.0
-			_cycle_peak = maxf(_cycle_peak, downstream_pressure)
 		else:
 			_cycle_min = minf(_cycle_min, downstream_pressure)
 			if notch_fired:
@@ -167,3 +166,7 @@ func tick(delta: float, downstream_pressure: float, ventricular_systole: bool, d
 			_trough_emitted = true
 			waveform_trough.emit(pcwp)
 		_prev_pressure = pcwp
+
+func update_peak(downstream_pressure: float) -> void:
+	if use_waveform_tracking and _upstream.valve_open:
+		_cycle_peak = maxf(_cycle_peak, downstream_pressure)
