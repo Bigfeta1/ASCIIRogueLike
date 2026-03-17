@@ -82,7 +82,7 @@ e_max = 0.67
 e_rise_rate = 4.0
 e_decay_rate = 2.4
 v0 = 8.0
-initial_volume = 22.0
+initial_volume = 30.4
 valve_conductance = 48.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/RightHeart/Atria"]
@@ -103,7 +103,7 @@ e_max = 1.2
 e_rise_rate = 4.8
 e_decay_rate = 4.8
 v0 = 10.0
-initial_volume = 120.0
+initial_volume = 86.2
 valve_conductance = 40.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/RightHeart/Ventricle"]
@@ -136,7 +136,7 @@ debug_name = "Left Atria"
 e_rise_rate = 4.0
 e_decay_rate = 2.4
 v0 = 10.0
-initial_volume = 70.0
+initial_volume = 59.3
 valve_conductance = 20.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/LeftHeart/Atria"]
@@ -177,7 +177,7 @@ e_max = 2.7
 e_rise_rate = 20.0
 e_decay_rate = 48.0
 v0 = 10.0
-initial_volume = 120.0
+initial_volume = 124.3
 valve_conductance = 17.0
 
 [node name="Myocytes" type="Node" parent="CharacterCardiovascular/LeftHeart/Ventricle"]

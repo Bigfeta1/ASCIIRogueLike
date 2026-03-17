@@ -5,10 +5,10 @@ extends Node
 
 # Systemic venous reservoir. Aortic runoff drains here; RA draws from here.
 
-var volume: float = 3665.0
+var volume: float = 3633.4  # mL — steady-state value
 
-const BASELINE_UNSTRESSED_VOLUME: float = 3000.0  # mL — resting value
-var   unstressed_volume: float          = 3000.0  # mL — modulated by sympathetic tone
+const BASELINE_UNSTRESSED_VOLUME: float = 3023.0  # mL — resting value
+var   unstressed_volume: float          = 3023.0  # mL — modulated by sympathetic tone
 const COMPLIANCE: float                      = 50.0    # mL/mmHg — very compliant veins
 const BASELINE_TO_RA_CONDUCTANCE: float      = 14.3    # mL/(s·mmHg) — resting value
 var   to_ra_conductance: float               = 14.3    # mL/(s·mmHg) — modulated by sympathetic tone
