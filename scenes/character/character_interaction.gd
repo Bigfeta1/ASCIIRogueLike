@@ -205,10 +205,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _character.organs.cardiovascular != null:
 				var cardio: Node = _character.organs.cardiovascular
 				cardio.sa_node.force_fire()
-				var ticks: int = ceili(60.0 / cardio.heart_rate / 0.016)
+				var ticks: int = ceili(60.0 / cardio.heart_rate / cardio.SIM_STEP)
 				var waveform: PackedStringArray = []
 				for _i in ticks:
-					cardio.tick(0.016)
+					cardio.tick(cardio.SIM_STEP)
 					if _cardiac_pressure_graph != null:
 						_cardiac_pressure_graph.record(cardio)
 					waveform.append("LV=%.1f Ao=%.1f" % [cardio.lv.pressure, cardio.monitor.aorta_pressure])
