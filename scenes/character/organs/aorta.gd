@@ -16,10 +16,10 @@ var blood_flow_end: bool = false   # true the tick the aortic valve closes
 var pressure_min: float = 8.0
 var pressure_max: float = 200.0
 
-const COMPLIANCE: float        = 1.55   # mL/mmHg
+const COMPLIANCE: float        = 1.575   # mL/mmHg
 const UNSTRESSED_VOLUME: float = 550.0 # mL
-const BASELINE_SYSTEMIC_RESISTANCE: float = 1.295 # mmHg·s/mL — resting value
-var   systemic_resistance: float          = 1.295 # mmHg·s/mL — modulated by sympathetic tone
+const BASELINE_SYSTEMIC_RESISTANCE: float = 1.2725 # mmHg·s/mL — resting value
+var   systemic_resistance: float          = 1.2725 # mmHg·s/mL — modulated by sympathetic tone
 
 # Returns the volume drained into the systemic venous reservoir this tick.
 func tick(delta: float, valve_open: bool, notch_fired: bool, notch_dip: float) -> float:

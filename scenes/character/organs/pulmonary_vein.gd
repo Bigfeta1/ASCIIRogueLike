@@ -5,9 +5,9 @@ extends Node
 
 # Pulmonary venous reservoir. RV ejects here; LA draws from here.
 
-var volume: float = 430.0
+var volume: float = 429.9
 
-const UNSTRESSED_VOLUME: float = 300.0  # mL
+const UNSTRESSED_VOLUME: float = 305.0  # mL
 const COMPLIANCE: float        = 10.0   # mL/mmHg
 const TO_LA_CONDUCTANCE: float = 23.0   # mL/(s·mmHg)
 

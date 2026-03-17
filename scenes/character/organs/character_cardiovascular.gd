@@ -143,12 +143,17 @@ func _apply_sympathetic_tone() -> void:
 
 	var fast_alpha: float = 0.6 if target_tone > _sym_tone_fast else 0.25 * parasym_recovery
 	_sym_tone_fast = lerpf(_sym_tone_fast, target_tone, fast_alpha)
+	if _sym_tone_fast < 0.001:
+		_sym_tone_fast = 0.0
 
 	var slow_alpha: float = 0.5 if target_tone > _sym_tone_slow else 0.15 * parasym_recovery
 	_sym_tone_slow = lerpf(_sym_tone_slow, target_tone, slow_alpha)
+	if _sym_tone_slow < 0.001:
+		_sym_tone_slow = 0.0
 
 	heart_rate           = lerpf(BASELINE_HR, MAX_HR, _sym_tone_fast)
-	lv.e_max             = lerpf(BASELINE_LV_EMAX, MAX_LV_EMAX, _sym_tone_fast)
+	var inotropy_curve: float = pow(_sym_tone_fast, 0.4)
+	lv.e_max             = lerpf(BASELINE_LV_EMAX, MAX_LV_EMAX, inotropy_curve)
 	lv.e_rise_rate       = lerpf(BASELINE_LV_ERISE, MAX_LV_ERISE, _sym_tone_fast)
 	lv.e_decay_rate      = lerpf(BASELINE_LV_EDECAY, MAX_LV_EDECAY, _sym_tone_fast)
 	rv.e_max             = lerpf(BASELINE_RV_EMAX, MAX_RV_EMAX, _sym_tone_fast)
@@ -171,25 +176,30 @@ func _apply_sympathetic_tone() -> void:
 
 func tick_turn() -> void:
 	_turn_index += 1
-	_apply_sympathetic_tone()
 	var phase_per_step: float = SIM_STEP / (60.0 / heart_rate)
 	var turn_steps: int = roundi(TURN_DURATION / SIM_STEP)
 	var beat: int = 0
 	var _beat_step: int = 0
+	var _prev_edv: float = monitor.EDV
+	var _prev_esv: float = monitor.ESV
 	for i in turn_steps:
 		if _beat_phase >= 1.0:
 			_beat_phase -= 1.0
 			sa_node.force_fire()
+			if _turn_index <= 2:
+				print("[T%d B%d] EDV=%.1f ESV=%.1f SV=%.1f LA=%.1f LV=%.1f RV=%.1f PV=%.1f VC=%.1f Ao=%.1f" % [_turn_index, beat, _prev_edv, _prev_esv, _prev_edv-_prev_esv, la.volume, lv.volume, rv.volume, _pulmonary_vein.volume, _vena_cava.volume, _aorta.volume])
 			beat += 1
 			_beat_step = 0
+			_prev_edv = monitor.EDV
+			_prev_esv = monitor.ESV
 		tick(SIM_STEP)
 		if pressure_graph != null:
 			pressure_graph.record(self)
-		if _turn_index == 1 and beat == 14 and _beat_step < 55:
-			print("[CURVE %d] LV=%.1f Ao=%.1f aov=%s" % [_beat_step, lv.pressure, monitor.aorta_pressure, str(lv.valve_open)])
 		_beat_step += 1
 		_beat_phase += phase_per_step
-	print("[TURN %d] BP=%.0f/%.0f HR=%.0f SV=%.1f EDV=%.1f ESV=%.1f" % [_turn_index, monitor.bp_systolic, monitor.bp_diastolic, heart_rate, monitor.SV, monitor.EDV, monitor.ESV])
+	_apply_sympathetic_tone()
+	var total_vol: float = la.volume + lv.volume + ra.volume + rv.volume + _aorta.volume + _vena_cava.volume + _pulmonary_vein.volume
+	print("[TURN %d] BP=%.0f/%.0f HR=%.0f SV=%.1f EDV=%.1f ESV=%.1f CO=%.3f tone_f=%.3f tone_s=%.3f demanded=%.2f VC=%.1f PV=%.1f Ao=%.1f LA=%.1f LV=%.1f RA=%.1f RV=%.1f TOTAL=%.1f" % [_turn_index, monitor.bp_systolic, monitor.bp_diastolic, heart_rate, monitor.SV, monitor.EDV, monitor.ESV, monitor.cardiac_output, _sym_tone_fast, _sym_tone_slow, demanded_co, _vena_cava.volume, _pulmonary_vein.volume, _aorta.volume, la.volume, lv.volume, ra.volume, rv.volume, total_vol])
 
 func tick(delta: float) -> void:
 	_atrial.tick(delta)

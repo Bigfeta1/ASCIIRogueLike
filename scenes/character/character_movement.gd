@@ -42,6 +42,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode == KEY_SPACE and event.pressed:
 		if _turn_order.current_turn_state == _turn_order.TurnState.PLAYER_TURN:
 			if _character.action_state == _character.ActionState.MOVEMENT:
+				if _character.organs.cardiovascular != null:
+					_character.organs.cardiovascular.set_demand(4.66)
 				waited.emit()
 		return
 	var dir_keys := [KEY_D, KEY_RIGHT, KEY_A, KEY_LEFT, KEY_S, KEY_DOWN, KEY_W, KEY_UP]

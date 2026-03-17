@@ -7,7 +7,7 @@ extends Node
 
 var EDV: float                    = 120.0   # mL — LV volume at mitral closure
 var ESV: float                    = 50.0    # mL — LV volume at aortic closure
-var SV: float                     = 0.0     # mL — stroke volume
+var SV: float                     = 0.0     # mL — stroke volum e
 var EF: float                     = 0.0     # % — ejection fraction
 var cardiac_output: float         = 0.0     # L/min
 var mean_arterial_pressure: float = 0.0     # mmHg

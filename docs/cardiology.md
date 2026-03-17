@@ -2,7 +2,7 @@
 
 **Coordinator:** `scenes/character/organs/character_cardiovascular.gd`
 
-Full cardiac cycle simulation. Tick entry point: `tick(delta: float)` — called from `turn_order.gd` with `delta=0.016` on every player move/wait.
+Full cardiac cycle simulation. Entry point: `tick_turn()` — called once per player action (move or wait) from `character_organ_registry.gd`. Internally runs 750 simulation steps at `SIM_STEP=0.020s` over `TURN_DURATION=15s`. Each step calls `tick(0.020)`.
 
 ---
 
@@ -11,7 +11,7 @@ Full cardiac cycle simulation. Tick entry point: `tick(delta: float)` — called
 ```
 CharacterOrgans/
 └── CharacterCardiovascular          ← coordinator (character_cardiovascular.gd)
-	├── CardiacMonitor               ← cardiac_monitor.gd  (sampled/derived metrics)
+	├── CardiacMonitor               ← cardiac_monitor.gd  (sampled/derived metrics — snapshot only)
 	├── HeartElectricalSystem        ← plain Node (no script)
 	│   ├── AtrialComponents         ← atrial_components.gd
 	│   │   ├── SAnode               ← sa_node.gd
@@ -21,28 +21,43 @@ CharacterOrgans/
 	│       ├── BundleOfHis          ← conduction_component.gd  (0.01s)
 	│       └── PurkinjeFibers       ← conduction_component.gd  (0.02s)
 	├── RightHeart
-	│   ├── VenaCava
+	│   ├── VenaCava                 ← vena_cava.gd
 	│   ├── Atria                    ← cardiac_chamber.gd
 	│   │   ├── Myocytes             ← chamber_myocytes.gd  (electrical_source=atrial)
 	│   │   └── TricuspidValve       ← cardiac_valve.gd
 	│   ├── Ventricle                ← cardiac_chamber.gd
 	│   │   ├── Myocytes             ← chamber_myocytes.gd  (electrical_source=ventricular)
 	│   │   └── PulmoniclValve       ← cardiac_valve.gd
-	│   └── PulmonaryArtery
+	│   └── PulmonaryArtery          ← pulmonary_artery.gd
 	└── LeftHeart
-		├── PulmonaryVein
+		├── PulmonaryVein            ← pulmonary_vein.gd
 		├── Atria                    ← cardiac_chamber.gd
 		│   ├── Myocytes             ← chamber_myocytes.gd  (electrical_source=atrial)
 		│   └── MitralValve          ← cardiac_valve.gd
 		├── Ventricle                ← cardiac_chamber.gd
 		│   ├── Myocytes             ← chamber_myocytes.gd  (electrical_source=ventricular)
 		│   └── AorticlValve         ← cardiac_valve.gd
-		└── Aorta
+		└── Aorta                    ← aorta.gd
 ```
 
 ---
 
-## Tick Order
+## tick_turn() Flow
+
+Called once per player action. Runs the full turn simulation then updates sympathetic tone.
+
+```
+tick_turn():
+	for 750 steps (15s / 0.020s):
+		if _beat_phase >= 1.0:
+			sa_node.force_fire()     ← triggers beat at computed HR
+			_beat_phase -= 1.0
+		tick(0.020)
+		_beat_phase += SIM_STEP / (60.0 / heart_rate)
+	_apply_sympathetic_tone()        ← reads CO from completed beats, updates params for next turn
+```
+
+## tick(delta) Order
 
 Order matters — each step sees the previous step's output.
 
@@ -50,18 +65,17 @@ Order matters — each step sees the previous step's output.
 _atrial.tick(delta)          ← SA node + AtrialTract conduction
 _ventricular.tick(delta)     ← AVnode + BundleOfHis + PurkinjeFibers conduction
 
-lv.tick(delta)               ← sweep + myocytes + elastance (ventricles first)
+lv.tick(delta)               ← myocytes.step_chamber() + step_elastance() (ventricles first)
 rv.tick(delta)
 la.tick(delta)
 ra.tick(delta)
 
 _step_valves(delta)          ← venous return, all 4 valve ticks, aorta fill
 [pressure recompute]         ← all 4 chambers recomputed after flow
-_aorta.tick(delta)           ← Windkessel runoff, dicrotic notch → monitor.aorta_* updated
+_aorta.tick(delta)           ← Windkessel runoff, dicrotic notch; returns outflow to vena_cava
 _pulmonary_artery.tick(delta)
 
-_step_heart()                ← SV/EF/CO/MAP/vitals written to CardiacMonitor last,
-                                so monitor always reflects fully-advanced state this tick
+_step_heart()                ← SV/EF/CO/MAP/vitals written to CardiacMonitor last
 ```
 
 ---
@@ -80,9 +94,9 @@ Membrane potential: `Vm = -130 + ic_na + ic_ca + ic_k`
 | PHASE_0 | Threshold reached. Emits `fired` signal. Transitions to PHASE_3. |
 | PHASE_3 | Repolarization. K⁺ efflux decays. Resets all currents to baseline → back to PHASE_4. |
 
-`force_fire()` — debug helper: sets `Vm=10`, `state=PHASE_0`.
+`force_fire()` — primary HR control mechanism used by `tick_turn()`. Sets `Vm=10`, `state=PHASE_0`, triggering the beat immediately. The natural SA node firing rate is ~103 bpm at these sim parameters; `force_fire()` is used to impose the HR computed by the sympathetic tone controller.
 
-`cardioplegia: bool` — when true, clamps `ic_k=500` (hyperpolarized, no firing).
+`cardioplegia: bool` — when true, clamps `ic_k=500` (hyperpolarized, no firing). Accessed directly via `cardio.sa_node.cardioplegia`.
 
 ---
 
@@ -92,7 +106,7 @@ Membrane potential: `Vm = -130 + ic_na + ic_ca + ic_k`
 
 **File:** `scenes/character/organs/conduction_component.gd`
 
-Generic timer node. All four conduction nodes (AtrialTract, AVnode, BundleOfHis, PurkinjeFibers) share this script.
+Generic timer node. All four conduction nodes share this script.
 
 ```
 activate()  →  conducting=true, _timer=0
@@ -110,22 +124,16 @@ tick(delta) →  _timer += delta; if >= conduction_duration: conducted.emit()
 
 **File:** `scenes/character/organs/atrial_components.gd`
 
-Coordinator for the atrial electrical system. Wires SA node → AtrialTract → `depolarized`.
-
 ```
 SAnode.fired ──► AtrialTract.activate()
 AtrialTract.conducted ──► depolarized.emit()
 ```
 
-Ticked by the cardiovascular coordinator: `_atrial.tick(delta)` calls `_sa_node.tick(delta)` and `_atrial_tract.tick(delta)`.
-
-**Signal:** `depolarized` — atria fully activated; triggers myocyte sweeps and starts ventricular chain.
+**Signal:** `depolarized` — atria fully activated; triggers LA/RA myocyte sweeps and starts ventricular chain.
 
 ### ElectricalPathway (VentricularComponents)
 
 **File:** `scenes/character/organs/electrical_pathway.gd`
-
-Pure chain coordinator. No state machine.
 
 ```
 AtrialComponents.depolarized ──► AVnode.activate()
@@ -134,9 +142,7 @@ BundleOfHis.conducted        ──► PurkinjeFibers.activate()
 PurkinjeFibers.conducted     ──► ventricular_depolarization_started.emit()
 ```
 
-Ticked by the cardiovascular coordinator: `_ep.tick(delta)` calls tick on all three ventricular conduction nodes.
-
-**Signal:** `ventricular_depolarization_started` — triggers aortic valve latch reset and cycle flag resets.
+**Signal:** `ventricular_depolarization_started` — triggers aortic valve latch reset and LV/RV myocyte sweeps (self-wired in ChamberMyocytes._ready()).
 
 ---
 
@@ -144,9 +150,7 @@ Ticked by the cardiovascular coordinator: `_ep.tick(delta)` calls tick on all th
 
 **File:** `scenes/character/organs/cardiac_chamber.gd`
 
-Scene Node. All 4 chambers are separate scene nodes (`LeftHeart/Atria`, `LeftHeart/Ventricle`, `RightHeart/Atria`, `RightHeart/Ventricle`), each with their own `@export` values set in the tscn.
-
-Contains only elastance/pressure logic. All myocyte and sweep logic lives in the child `Myocytes` node (see ChamberMyocytes below).
+All 4 chambers are separate scene nodes in `character_cardiovascular.tscn`, each with their own `@export` values.
 
 ### Configuration (@export, set in scene)
 
@@ -161,21 +165,13 @@ Contains only elastance/pressure logic. All myocyte and sweep logic lives in the
 | `valve_open` | bool | outflow valve state — set by CardiacValve |
 | `valve_conductance` | float | outflow valve conductance mL/s/mmHg |
 
-### Runtime State (read by coordinator)
+### Runtime State
 
 | Property | Meaning |
 |---|---|
 | `volume` | current chamber volume mL |
 | `pressure` | `elastance * max(0, volume - v0)` mmHg |
 | `elastance` | current E(t) mmHg/mL |
-
-### Delegates
-
-All sweep/myocyte operations delegate to the child `Myocytes` node:
-
-- `step_sweep(delta)` / `step_myocytes(delta)` / `trigger_sweep()` — pass-through to `_myocytes`
-- `get_active_force() -> float` — returns `_myocytes.active_force`
-- `get_region_count() -> int` — returns `_myocytes.region_count`
 
 ### Elastance + Pressure Model
 
@@ -189,13 +185,15 @@ else:
 pressure = elastance * max(0, volume - v0)
 ```
 
+`tick(delta)` calls `_myocytes.step_chamber(delta)` then `step_elastance(delta)`.
+
 ---
 
 ## ChamberMyocytes
 
 **File:** `scenes/character/organs/chamber_myocytes.gd`
 
-Scene Node, child of each chamber as `Myocytes`. Owns all action potential phase logic, regional sweep, and electrical source wiring.
+Child of each chamber as `Myocytes`. Owns all action potential phase logic, regional sweep, and electrical source wiring.
 
 ### Configuration (@export, set in scene)
 
@@ -210,8 +208,6 @@ Scene Node, child of each chamber as `Myocytes`. Owns all action potential phase
 
 ### Self-Wiring in _ready()
 
-Each `ChamberMyocytes` node wires itself to the electrical system on `_ready()` — no external wiring needed:
-
 ```
 electrical_source == 0 (atrial):
     HeartElectricalSystem/AtrialComponents.depolarized → trigger_sweep()
@@ -220,47 +216,40 @@ electrical_source == 1 (ventricular):
     HeartElectricalSystem/Ventricularcomponents.ventricular_depolarization_started → trigger_sweep()
 ```
 
-### Signals
-
-| Signal | When |
-|---|---|
-| `region_depolarized(region)` | sweep reaches each region |
-| `systole_started` | first region enters CONTRACTION |
-| `diastole_started` | last region exits CONTRACTION |
-
 ### Electrical Sweep
 
-`trigger_sweep()` — resets all regions to PHASE_4/resting, starts sweep.
-
-`step_sweep(delta)` — fires fascicles sequentially over `sweep_duration`. All regions in a fascicle depolarize simultaneously.
+`trigger_sweep()` — resets all regions to resting, starts sweep.
 
 - Atria: 1 fascicle × 3 regions = 3 regions
-- Ventricles: 3 fascicles × 3 regions = 9 regions; fascicles fire sequentially
+- Ventricles: 3 fascicles × 3 regions = 9 regions; fascicles fire sequentially over `sweep_duration=0.0375s`
 
-### Myocyte Action Potential Phases
+### Myocyte Action Potential Phases (ventricular, from tscn)
 
-`step_myocytes(delta)` — advances each active region through phases 0→1→2→3→4.
+`myocyte_durations = [0.0025, 0.00625, 0.125, 0.1, 0.0]`
+`myocyte_force     = [0.1, 0.4, 1.0, 0.25, 0.0]`
 
-| Phase | Atrial duration | Ventricular duration | Force (atrial/ventricular) |
-|---|---|---|---|
-| 0 | 0.002s | 0.002s | 0.15 / 0.10 |
-| 1 | 0.005s | 0.005s | 0.50 / 0.40 |
-| 2 | 0.073s | 0.100s | 1.00 |
-| 3 | 0.060s | 0.080s | 0.20 / 0.25 |
-| 4 | ∞ (resting) | ∞ | 0.00 |
+| Phase | Duration | Force |
+|---|---|---|
+| 0 | 0.0025s | 0.10 |
+| 1 | 0.00625s | 0.40 |
+| 2 | 0.125s | 1.00 |
+| 3 | 0.100s | 0.25 |
+| 4 | ∞ (resting) | 0.00 |
+
+Total active duration per myocyte: ~0.234s
 
 ---
 
-## Chamber Constants
-
-Values set as `@export` in `character.tscn`:
+## Chamber Constants (from `character_cardiovascular.tscn`)
 
 | Chamber | e_min | e_max | e_rise | e_decay | v0 | vol_init | valve_cond | fascicles | sweep |
 |---|---|---|---|---|---|---|---|---|---|
-| LA | 0.20 | 0.60 | 5.0 | 3.0 | 10 mL | 50 mL | 25.0 | 1 | 0.08s |
-| LV | 0.083 | 2.5 | 25.0 | 60.0 | 10 mL | 100 mL | 50.0 | 3 | 0.03s |
-| RA | 0.25 | 0.67 | 5.0 | 3.0 | 8 mL | 22 mL | 20.0 | 1 | 0.08s |
-| RV | 0.05 | 0.60 | 6.0 | 6.0 | 10 mL | 60 mL | 50.0 | 3 | 0.03s |
+| LA | (default) | (default) | 4.0 | 2.4 | 10 mL | 70 mL | 20.0 | 1 | (default) |
+| LV | 0.06 | 2.5 | 20.0 | 48.0 | 10 mL | 120 mL | 40.0 | 3 | 0.0375s |
+| RA | 0.25 | 0.67 | 4.0 | 2.4 | 8 mL | 22 mL | 48.0 | 1 | (default) |
+| RV | 0.05 | (default) | 4.8 | 4.8 | 10 mL | 120 mL | 40.0 | 3 | 0.0375s |
+
+Note: `lv.e_max` is overridden at runtime by `_apply_sympathetic_tone()`. Scene value 2.5 = BASELINE_LV_EMAX.
 
 ---
 
@@ -268,7 +257,7 @@ Values set as `@export` in `character.tscn`:
 
 **File:** `scenes/character/organs/cardiac_valve.gd`
 
-Single configurable script shared by all 4 valves. All per-valve behavior is controlled via `@export` flags and floats set in the scene.
+Single configurable script shared by all 4 valves.
 
 ### Configuration (@export)
 
@@ -284,13 +273,13 @@ Single configurable script shared by all 4 valves. All per-valve behavior is con
 | `use_waveform_tracking` | false | aortic: SBP/DBP from pressure waveform peak/trough |
 | `notch_dip` | 0.0 | aortic: pressure dip on closure (dicrotic notch) |
 
-### Per-Valve Configuration
+### Per-Valve Configuration (from tscn)
 
 | Valve | Key exports |
 |---|---|
-| MitralValve | `contraction_rate=120`, `use_systole_guard=true`, `use_c_wave=true`, `use_pcwp_detection=true` |
-| AorticlValve | `open_threshold=2.0`, `use_latch=true`, `use_waveform_tracking=true`, `notch_dip=2.0` |
-| TricuspidValve | `contraction_rate=180`, `use_systole_guard=true` |
+| MitralValve | `contraction_rate=96`, `use_systole_guard=true`, `use_c_wave=true`, `use_pcwp_detection=true` |
+| AorticlValve | `use_latch=true`, `use_waveform_tracking=true`, `notch_dip=2.0` |
+| TricuspidValve | `contraction_rate=144`, `use_systole_guard=true` |
 | PulmoniclValve | `pressure_clamp_max=60.0` |
 
 ### Signals
@@ -303,130 +292,140 @@ Single configurable script shared by all 4 valves. All per-valve behavior is con
 
 ### Setup
 
-`setup(upstream: CardiacChamber, downstream: CardiacChamber)` — called from coordinator `_ready()`. Semilunar valves pass `null` for downstream (they use `downstream_pressure` float argument instead).
+`setup(upstream: CardiacChamber, downstream: CardiacChamber)` — called from coordinator `_ready()`. Semilunar valves pass `null` for downstream.
 
-Signal connections to the coordinator (`upstream_closed`, `waveform_peak`, `waveform_trough`) are also wired in the coordinator's `_ready()` and write into `CardiacMonitor`.
+Signal connections (`upstream_closed`, `waveform_peak`, `waveform_trough`) wired in coordinator `_ready()`, write into `CardiacMonitor`.
 
 ### tick()
 
 `tick(delta, downstream_pressure, ventricular_systole, downstream_valve_open)`
 
-- `downstream_pressure` — aorta_pressure / pulmonary_pressure for semilunar; ignored for AV valves
-- `ventricular_systole` — used only by AV valves with `use_systole_guard=true`
-- `downstream_valve_open` — used only by mitral with `use_pcwp_detection=true` (needs aortic valve state)
-
-Exposes after tick: `notch_fired: bool`, `flow: float` (eject_flow this tick for semilunar valves).
-
 ### Valve Behavior
 
-**AV valves (mitral, tricuspid) — pressure-driven with systolic stability guard (`use_systole_guard=true`):**
+**AV valves (mitral, tricuspid) — pressure-driven with systolic stability guard:**
 - Closes when `ventricular_systole=true` AND `downstream.pressure > upstream.pressure + 1.0`
 - Opens when `ventricular_systole=false` AND `downstream.pressure <= upstream.pressure + 1.0`
-- The `ventricular_systole` gate is a stability guard against mid-systole flutter, not a physiological phase flag
 - Flow when open: active (`contraction_rate × atrial_force × delta`) + passive (`pressure_gradient × conductance × delta`)
 
 **Semilunar valves (aortic, pulmonic) — fully emergent, pure pressure differential:**
 - Opens when `upstream.pressure >= downstream_pressure + open_threshold`
 - Closes when `upstream.pressure < downstream_pressure`
-- Flow when open: `(upstream.pressure - downstream_pressure) × conductance × delta` → stored in `flow`
+- Flow when open: `(upstream.pressure - downstream_pressure) × conductance × delta`
 
-**C-wave (mitral only — `use_c_wave=true`):**
-- On close: `_valve_diameter = 1.0`, begins closing at 33.3/s
-- While closing: `la.e_max` boosted by up to +0.30 mmHg/mL
-- After full closure: boost decays at 10.0/s
-- On reopen: `la.e_max` restored to baseline 0.60
+**Aortic latch (`use_latch=true`):** Cannot reopen after closing until next `ventricular_depolarization_started`.
 
-**Aortic latch (`use_latch=true`):**
-- `reset_latch()` — called by coordinator on `ventricular_depolarization_started`
-- Once latched, valve cannot reopen until next ventricular depolarization
+**Waveform tracking (aortic):** Tracks downstream pressure peak → `waveform_peak(SBP)` on valve close; trough → `waveform_trough(DBP)` on valve reopen.
 
-**Waveform tracking (aortic — `use_waveform_tracking=true`):**
-- Tracks downstream pressure peak → `waveform_peak(SBP)` on valve close
-- Tracks downstream pressure trough → `waveform_trough(DBP)` on valve reopen
-
-**PCWP detection (mitral — `use_pcwp_detection=true`):**
-- `waveform_peak(pcwp)` — fired when `upstream.pressure` turns over while mitral closed and aortic closed
-- `waveform_trough(pcwp)` — fired when `upstream.pressure` turns over while mitral open
+**PCWP detection (mitral):** v-wave peak and y-descent trough emitted from LA pressure waveform.
 
 ---
 
 ## Venous Return
 
-Two reservoir compartments; all returns are pressure-gradient driven.
-
-### Pulmonary Venous Reservoir (LA fill)
+### Pulmonary Venous Reservoir — `pulmonary_vein.gd`
 
 | Parameter | Value |
 |---|---|
-| `pulmonary_venous_volume` | 380 mL initial |
-| `PULMONARY_VENOUS_UNSTRESSED` | 300 mL |
-| `PULMONARY_VENOUS_COMPLIANCE` | 10 mL/mmHg |
-| `PULMONARY_VENOUS_TO_LA_CONDUCTANCE` | 23 mL/(s·mmHg) |
+| `volume` | 430 mL initial |
+| `UNSTRESSED_VOLUME` | 300 mL |
+| `COMPLIANCE` | 10 mL/mmHg |
+| `TO_LA_CONDUCTANCE` | 23 mL/(s·mmHg) |
 
-RV ejects into this reservoir via `_pulmonic_valve.flow`. LA draws from it continuously via pressure gradient.
-
-### Systemic Venous Reservoir (RA fill)
+### Systemic Venous Reservoir — `vena_cava.gd`
 
 | Parameter | Value |
 |---|---|
-| `systemic_venous_volume` | 3500 mL initial |
-| `SYSTEMIC_VENOUS_UNSTRESSED` | 3000 mL |
-| `SYSTEMIC_VENOUS_COMPLIANCE` | 50 mL/mmHg |
-| `SYSTEMIC_VENOUS_TO_RA_CONDUCTANCE` | 14.3 mL/(s·mmHg) |
-
-Aortic runoff drains here. RA draws from it continuously via pressure gradient.
+| `volume` | 3665 mL initial |
+| `BASELINE_UNSTRESSED_VOLUME` | 3000 mL |
+| `unstressed_volume` | 3000 mL (var — modulated by sympathetic tone) |
+| `COMPLIANCE` | 50 mL/mmHg |
+| `BASELINE_TO_RA_CONDUCTANCE` | 14.3 mL/(s·mmHg) |
+| `to_ra_conductance` | 14.3 mL/(s·mmHg) (var — modulated by sympathetic tone) |
 
 ---
 
-## Aorta — Two-Element Windkessel
+## Aorta — Two-Element Windkessel — `aorta.gd`
 
-`P = (aorta_volume - AORTA_UNSTRESSED_VOLUME) / AORTA_COMPLIANCE`
+`P = (volume - UNSTRESSED_VOLUME) / COMPLIANCE`
 
 | Parameter | Value |
 |---|---|
-| `aorta_volume` | 700 mL initial |
-| `AORTA_COMPLIANCE` | 2.0 mL/mmHg |
-| `AORTA_UNSTRESSED_VOLUME` | 540 mL → baseline P = (700-540)/2 = 80 mmHg |
-| `SYSTEMIC_RESISTANCE` | 1.0 mmHg·s/mL |
+| `volume` | 620 mL initial |
+| `COMPLIANCE` | 1.55 mL/mmHg |
+| `UNSTRESSED_VOLUME` | 550 mL |
+| `BASELINE_SYSTEMIC_RESISTANCE` | 1.295 mmHg·s/mL |
+| `systemic_resistance` | 1.295 mmHg·s/mL (var — modulated by sympathetic tone) |
 
-Each tick: pressure derived from volume → outflow = `aorta_pressure / SYSTEMIC_RESISTANCE * delta` drains into systemic venous reservoir → pressure rederived → dicrotic notch applied if `_aortic_valve.notch_fired`.
-
-`aorta_blood_flow: bool` — true while aortic valve open.
-`aorta_blood_flow_end: bool` — true the tick the aortic valve closes (`notch_fired`).
+Each tick: pressure derived from volume → outflow = `pressure / systemic_resistance * delta` → drains into vena_cava → pressure rederived → dicrotic notch applied if `_aortic_valve.notch_fired`.
 
 ---
 
-## Pulmonary Artery
+## Pulmonary Artery — `pulmonary_artery.gd`
 
-Single-compartment pressure variable (no volume model).
-
-Decays at 4.0 mmHg/s when pulmonic valve is closed. Clamped to `[8.0, 30.0]` mmHg.
+Pressure-only model (no volume). Decays at 4.0 mmHg/s when pulmonic valve closed. Clamped `[8.0, 30.0]` mmHg.
 
 ---
 
-## CardiacMonitor
+## CardiacMonitor — `cardiac_monitor.gd`
 
-**File:** `scenes/character/organs/cardiac_monitor.gd`
-
-Stores all sampled and derived metrics. Written by `CharacterCardiovascular` each tick. Read by cortex, world_state, debug panels, and any external system that needs cardiovascular output. Nothing in here drives the simulation.
+Snapshot of derived metrics. Written by coordinator each tick. **Does not drive simulation.** Nothing should write to this to affect sim behavior.
 
 | Variable | Source |
 |---|---|
-| `EDV` | `lv.volume` at mitral closure (`upstream_closed` signal) |
-| `ESV` | `lv.volume` at aortic closure (`upstream_closed` signal) |
-| `SV` | `EDV - ESV` — computed in `_step_heart()` |
+| `EDV` | `lv.volume` at mitral closure |
+| `ESV` | `lv.volume` at aortic closure |
+| `SV` | `EDV - ESV` |
 | `EF` | `(SV / EDV) × 100` |
-| `cardiac_output` | `(SV × heart_rate) / 1000` |
-| `bp_systolic` | aortic valve `waveform_peak` signal |
-| `bp_diastolic` | aortic valve `waveform_trough` signal |
+| `cardiac_output` | `(SV × heart_rate) / 1000` L/min |
+| `bp_systolic` | aortic valve `waveform_peak` |
+| `bp_diastolic` | aortic valve `waveform_trough` |
 | `mean_arterial_pressure` | `DBP + (SBP - DBP) / 3` |
 | `pulse_pressure` | `SBP - DBP` |
-| `pcwp` | `la.pressure` — updated at top of `_step_valves()` |
-| `aorta_pressure` | `_aorta.pressure` — updated each tick |
-| `aorta_blood_flow` | `_aorta.blood_flow` — true while aortic valve open |
-| `aorta_blood_flow_end` | `_aorta.blood_flow_end` — true the tick aortic valve closes |
+| `pcwp` | `la.pressure` at top of `_step_valves()` |
+| `aorta_pressure` | `_aorta.pressure` each tick |
+| `aorta_blood_flow` | true while aortic valve open |
+| `aorta_blood_flow_end` | true the tick aortic valve closes |
 
 External access: `cardio.monitor.bp_systolic`, `cardio.monitor.cardiac_output`, etc.
+
+---
+
+## Sympathetic Tone Controller
+
+Two-channel closed-loop CO controller. `_apply_sympathetic_tone()` is called at the **end** of `tick_turn()`, after all beats have run, so it reads real measured CO and applies updated parameters to the **next** turn.
+
+**Channels:**
+- `_sym_tone_fast` — neural (HR, inotropy): rise alpha=0.6, decay alpha=0.25
+- `_sym_tone_slow` — humoral (SVR, venous tone): rise alpha=0.5, decay alpha=0.15
+
+**Error signal:** `co_error = demanded_co - monitor.cardiac_output`
+`error_fraction = co_error / (MAX_CO - BASELINE_CO)` where `MAX_CO=20.0`, `BASELINE_CO=5.0`
+
+**Modulated parameters:**
+
+| Parameter | Range |
+|---|---|
+| `heart_rate` | lerpf(60, 180, tone_fast) |
+| `lv.e_max` | lerpf(2.5, 4.5, pow(tone_fast, 0.4)) — concave inotropy curve |
+| `lv.e_rise_rate` | lerpf(20, 130, tone_fast) |
+| `lv.e_decay_rate` | lerpf(60, 120, tone_fast) |
+| `rv.e_max` | lerpf(1.2, 2.0, tone_fast) |
+| `la.valve_conductance` | lerpf(25, 55, tone_fast) |
+| `aorta.systemic_resistance` | lerpf(1.295, 0.479, pow(tone_slow, 0.4)) |
+| `vena_cava.unstressed_volume` | lerpf(3000, 2550, pow(tone_slow, 0.4)) |
+| `vena_cava.to_ra_conductance` | lerpf(14.3, 28.6, pow(tone_slow, 0.4)) |
+
+**Demanded CO by action (set via `set_demand()` in `character_movement.gd`):**
+
+| Action | demanded_co |
+|---|---|
+| Wait (space) | 4.66 L/min |
+| Normal move | 6.5 L/min |
+| Structure attack | 15.0 L/min |
+| Combat bump | 17.0 L/min |
+
+**Steady-state at rest (tone→0, demand=4.66):** BP ~120/80, HR 60, CO ~4.84 L/min.
+**Walking (demand=6.5, turns 1-8):** BP ~128-131/80-82, HR ~63-70, SV ~88-93, EDV ~138-145, ESV ~45-52.
 
 ---
 
@@ -437,116 +436,74 @@ External access: `cardio.monitor.bp_systolic`, `cardio.monitor.cardiac_output`, 
 | `v_wave_peak(pcwp)` | re-emitted from `_mitral_valve.waveform_peak` |
 | `y_descent_start(pcwp)` | re-emitted from `_mitral_valve.waveform_trough` |
 
-`beat_initiated` is gone — the SA node now emits `fired` directly to `AtrialComponents`, which drives the chain. The coordinator listens to `_atrial.depolarized` for debug/reset purposes.
-
 ---
 
 ## Signal Flow — Full Cardiac Cycle
 
 ```
-SA Node (PHASE_4 slow depolarization)
-	│  Vm reaches +10
-	▼
-SA Node PHASE_0
+sa_node.force_fire()  ← called by tick_turn() beat loop
 	│
 	└─► fired ──► AtrialTract.activate()
-					  │  0.08s
-					  ▼
-				  AtrialTract.conducted ──► AtrialComponents.depolarized
-					  │
-					  ├─► [coordinator: debug print]
-					  │
-					  ├─► [LA/RA Myocytes.trigger_sweep() — self-wired in _ready()]
-					  │       la/ra step_sweep fires regions over sweep_duration
-					  │       la/ra myocytes: PHASE_4→0→1→2→3→4
-					  │       la/ra elastance rises → la.pressure rises → passive mitral flow
-					  │
-					  └─► AVnode.activate()
-							  │  0.06s
-							  ▼
-						  AVnode.conducted ──► BundleOfHis.activate()
-							  │  0.01s
-							  ▼
-						  BundleOfHis.conducted ──► PurkinjeFibers.activate()
-							  │  0.02s
-							  ▼
-						  PurkinjeFibers.conducted ──► ventricular_depolarization_started
-							  │
-							  ├─► [coordinator: reset_latch(), reset_cycle_flags()]
-							  │
-							  └─► [LV/RV Myocytes.trigger_sweep() — self-wired in _ready()]
-									  lv/rv fascicles fire over 0.03s
-									  lv/rv myocytes: PHASE_0→1→2→3→4 (~0.187s total)
-									  lv elastance rises → lv.pressure rises
-									  lv.pressure > la.pressure → mitral closes (systole guard)
-									  c-wave boost on la.e_max
-									  lv.pressure >= aorta_pressure+2 → aortic valve opens
-									  aortic ejection → aorta_volume rises → monitor.bp_systolic
-									  lv myocytes PHASE_3→4, force tapering
-									  lv.pressure < aorta_pressure → aortic valve closes
-									  notch_fired → dicrotic notch applied
-									  waveform_peak(SBP), waveform_trough(DBP)
-									  lv.pressure < la.pressure → mitral opens (diastole)
-									  pcwp v-wave, y-descent
+				  │  0.08s
+				  ▼
+			  AtrialTract.conducted ──► AtrialComponents.depolarized
+				  │
+				  ├─► [LA/RA Myocytes.trigger_sweep() — self-wired]
+				  │       la/ra elastance rises → la.pressure rises → passive mitral flow
+				  │
+				  └─► AVnode.activate()
+						  │  0.06s → BundleOfHis 0.01s → PurkinjeFibers 0.02s
+						  ▼
+					  ventricular_depolarization_started
+						  │
+						  └─► [LV/RV Myocytes.trigger_sweep() — self-wired]
+								  lv fascicles fire over 0.0375s
+								  lv myocytes: total active ~0.234s
+								  lv.pressure rises → mitral closes (systole guard)
+								  lv.pressure >= aorta_pressure → aortic valve opens
+								  ejection → aorta_volume rises → SBP recorded on close
+								  lv.pressure < aorta_pressure → aortic valve closes + latch
+								  notch_fired → dicrotic notch applied
+								  waveform_peak(SBP), waveform_trough(DBP)
+								  lv.pressure < la.pressure → mitral opens (diastole)
 ```
 
 ---
 
-## Compatibility
+## External API
 
-**Simulation state — read/write directly on `cardio`:**
-
-- `heart_rate`, `TPR`, `spo2`
-- `demanded_co`, `demanded_co_pre_decay`
-- `venous_return_fraction`
+**Simulation state on `cardio`:**
+- `heart_rate`, `TPR`, `spo2`, `demanded_co`, `demanded_co_pre_decay`
 - `BASELINE_CO = 5.0`, `MAX_CO = 20.0`
-- `set_demand(co)` — sets demanded cardiac output
+- `set_demand(co: float)` — sets demanded cardiac output
+- `sa_node` — direct access to SANode; `sa_node.cardioplegia = true` for arrest
+- `tick_turn()` — advance one full turn (750 steps + sympathetic update)
+- `tick(delta)` — advance one simulation step (used by KP_4 debug)
 
-**Derived/sampled metrics — read/write via `cardio.monitor`:**
-
-- `cardio.monitor.bp_systolic`, `cardio.monitor.bp_diastolic`
-- `cardio.monitor.cardiac_output`, `cardio.monitor.SV`, `cardio.monitor.EDV`, `cardio.monitor.ESV`, `cardio.monitor.EF`
-- `cardio.monitor.mean_arterial_pressure`, `cardio.monitor.pulse_pressure`
-- `cardio.monitor.pcwp`
-- `cardio.monitor.aorta_pressure`, `cardio.monitor.aorta_blood_flow`, `cardio.monitor.aorta_blood_flow_end`
+**Snapshot metrics on `cardio.monitor`:**
+- `bp_systolic`, `bp_diastolic`, `mean_arterial_pressure`, `pulse_pressure`
+- `cardiac_output`, `SV`, `EDV`, `ESV`, `EF`
+- `pcwp`, `aorta_pressure`, `aorta_blood_flow`, `aorta_blood_flow_end`
 
 ---
 
 ## Debug
 
+- **KP_4** — `sa_node.force_fire()` + one beat worth of `tick(SIM_STEP)` calls (`ceili(60/heart_rate/SIM_STEP)` steps). Does NOT call `tick_turn()` or `_apply_sympathetic_tone()`. Runs at current parameters. Produces 120/80 at game start (pure baseline, no tone). Prints [WAVEFORM] per-tick and [BEAT] summary.
 - **F12** — toggles cardiovascular debug panel (wired in `character_interaction.gd`)
-- **Numpad 4** — calls `force_fire_sa_node()` + 12 manual ticks
-- Tick print format:
-  ```
-  [CARDIO] at=C/. av=C/. his=C/. purk=C/. | LA=...mL p=... mitral=O/X | LV=...mL p=... aortic=O/X aorta=... | RA=...mL p=... | RV=...mL p=... | pulm_v=... sys_v=... | SBP=... DBP=...
-  ```
-  Where `C` = conducting, `.` = idle.
-
-`force_fire_sa_node()` routes to `_atrial._sa_node.force_fire()`.
-`sa_node_cardioplegia` property on coordinator sets `_atrial._sa_node.cardioplegia`.
 
 ---
 
-## Accuracy Rating
+## Accuracy
 
-| Context | Rating |
-|---|---|
-| Game-ready cardiac model | **high** |
-| Simplified physiology simulator | moderate-high |
-| Research-grade hemodynamics | not intended |
-
-All 4 chambers share the same time-varying elastance model with regional myocyte activation and sweeping depolarization. Pressure is always emergent from `E(t) * (V - V0)`.
-
-**Semilunar valves (aortic, pulmonic)** are fully pressure-driven — open/close is purely emergent from pressure differentials.
-
-**AV valves (mitral, tricuspid)** are pressure-driven with a systolic state guard (`use_systole_guard=true`). The guard prevents mid-systole flutter caused by transient pressure oscillations — without it, small perturbations during isovolumic contraction can momentarily satisfy the reopening condition. This is a stability constraint, not a physiological gate, but it means AV valve behavior is not fully emergent.
+All 4 chambers use time-varying elastance. Pressure is always emergent from `E(t) * (V - V0)`. Semilunar valves are fully pressure-driven. AV valves use a systolic stability guard (not a physiological gate) to prevent mid-systole flutter.
 
 ### Remaining Limitations
 
 | Limitation | Why it matters |
 |---|---|
-| Venous return is continuous pressure-gradient, but reservoir capacitance is simplified | real pulmonary/systemic compliance is distributed |
-| Pulmonary artery is a single-compartment pressure var (no volume model) | no pulmonary vascular resistance curve |
+| Venous reservoir capacitance is lumped, not distributed | real pulmonary/systemic compliance is distributed |
+| Pulmonary artery is pressure-only (no volume model) | no pulmonary vascular resistance curve |
 | No interventricular septal coupling | RV/LV interact mechanically in reality |
 | Right heart constants less validated than left heart | right-sided pressures may drift |
 
@@ -554,4 +511,4 @@ All 4 chambers share the same time-varying elastance model with regional myocyte
 
 ## Pending
 
-- Right heart valve constant tuning
+- Verify resting equilibrium at 120/80 after sympathetic tone controller moved to end of tick_turn()
