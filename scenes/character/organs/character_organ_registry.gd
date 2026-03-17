@@ -25,7 +25,7 @@ func setup(vitals: Node, levels: Node) -> void:
 	
 	renal.setup(self)
 	hypothalamus.setup(self)
-	cardiovascular.setup(vitals)
+	cardiovascular.setup(vitals, levels)
 	pulmonary.setup(self, levels, vitals)
 	cortex.setup(self, vitals)
 	coagulation.setup(self)

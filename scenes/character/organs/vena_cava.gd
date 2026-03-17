@@ -7,16 +7,18 @@ extends Node
 
 var volume: float = 3665.0
 
-const UNSTRESSED_VOLUME: float = 3000.0  # mL — pressure = 0 below this
-const COMPLIANCE: float        = 50.0    # mL/mmHg — very compliant veins
-const TO_RA_CONDUCTANCE: float = 14.3    # mL/(s·mmHg)
+const BASELINE_UNSTRESSED_VOLUME: float = 3000.0  # mL — resting value
+var   unstressed_volume: float          = 3000.0  # mL — modulated by sympathetic tone
+const COMPLIANCE: float                      = 50.0    # mL/mmHg — very compliant veins
+const BASELINE_TO_RA_CONDUCTANCE: float      = 14.3    # mL/(s·mmHg) — resting value
+var   to_ra_conductance: float               = 14.3    # mL/(s·mmHg) — modulated by sympathetic tone
 
 var pressure: float = 0.0   # derived from volume each tick
 
 # Drains into RA. Returns volume transferred.
 func tick(delta: float, ra_pressure: float) -> float:
-	pressure = maxf(0.0, (volume - UNSTRESSED_VOLUME) / COMPLIANCE)
-	var flow: float = maxf(0.0, (pressure - ra_pressure) * TO_RA_CONDUCTANCE * delta)
-	flow    = minf(flow, maxf(0.0, volume - UNSTRESSED_VOLUME))
+	pressure = maxf(0.0, (volume - unstressed_volume) / COMPLIANCE)
+	var flow: float = maxf(0.0, (pressure - ra_pressure) * to_ra_conductance * delta)
+	flow    = minf(flow, maxf(0.0, volume - unstressed_volume))
 	volume -= flow
 	return flow

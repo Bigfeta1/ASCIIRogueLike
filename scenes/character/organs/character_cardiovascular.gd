@@ -4,7 +4,8 @@ signal v_wave_peak(pcwp: float)      # PCWP peak at end of ventricular systole �
 signal y_descent_start(pcwp: float)  # mitral opens, LA begins draining into LV
 
 #region REGISTRY
-var _vitals: Node = null
+var _vitals: Node  = null
+var _levels: Node  = null
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # ELECTROPHYSIOLOGY
@@ -45,18 +46,38 @@ var _vitals: Node = null
 #endregion
 
 #region SIMULATION STATE PARAMETERS
-var heart_rate: float            = 60.0
-var TPR: float                   = 17.7
+var heart_rate: float             = 60.0
+var TPR: float                    = 17.7
 var venous_return_fraction: float = 1.0
-var demanded_co: float           = 5.0
-var demanded_co_pre_decay: float = 5.0
-var spo2: float                  = 99.0
+var demanded_co: float            = 5.0
+var demanded_co_pre_decay: float  = 5.0
+var spo2: float                   = 99.0
 
 const BASELINE_CO: float = 5.0
 const MAX_CO: float      = 20.0
 
+# Sympathetic tone — two channels with different time constants
+# fast: HR + inotropy (neural, ~1-2 turns); slow: SVR + venous tone (humoral, ~2-3 turns)
+var _sym_tone_fast: float = 0.0
+var _sym_tone_slow: float = 0.0
+
+# Baseline cardiac parameters
+const BASELINE_HR: float             = 60.0
+const MAX_HR: float                  = 180.0
+const BASELINE_LV_EMAX: float        = 2.5
+const MAX_LV_EMAX: float             = 4.5
+const BASELINE_LV_EDECAY: float      = 60.0
+const MAX_LV_EDECAY: float           = 120.0
+const BASELINE_RV_EMAX: float        = 1.2
+const MAX_RV_EMAX: float             = 2.0
+const BASELINE_LA_CONDUCTANCE: float = 25.0
+const MAX_LA_CONDUCTANCE: float      = 55.0
+const BASELINE_LV_ERISE: float       = 20.0
+const MAX_LV_ERISE: float            = 130.0
+
 var pressure_graph: CardiacPressureGraph = null
 var _beat_phase: float = 1.0   # fires when >= 1.0; starts at 1.0 so step 0 fires immediately
+
 
 #endregion
 
@@ -81,8 +102,9 @@ func _ready() -> void:
 	_aortic_valve.waveform_trough.connect(func(v: float) -> void: monitor.bp_diastolic = v)
 
 #region SETUP
-func setup(vitals: Node) -> void:
+func setup(vitals: Node, levels: Node = null) -> void:
 	_vitals = vitals
+	_levels = levels
 	_refresh_initial_valve_states()
 
 func _refresh_initial_valve_states() -> void:
@@ -105,12 +127,55 @@ const SIM_STEP: float      = 0.020
 
 static var _turn_index: int = 0
 
+func _apply_sympathetic_tone() -> void:
+	var actual_co: float      = monitor.cardiac_output
+	var co_error: float       = demanded_co - actual_co
+	var error_fraction: float = co_error / (MAX_CO - BASELINE_CO)
+
+	var sym_mod: float          = 1.0
+	var parasym_recovery: float = 1.0
+	if _levels != null:
+		sym_mod            = 1.0 + _levels.stat_mod(_levels.sympathetic) * 0.05
+		parasym_recovery   = 1.0 + _levels.stat_mod(_levels.parasympathetic) * 0.1
+
+	var tone_step: float   = error_fraction * sym_mod * 0.4
+	var target_tone: float = clampf(_sym_tone_fast + tone_step, 0.0, 1.0)
+
+	var fast_alpha: float = 0.6 if target_tone > _sym_tone_fast else 0.25 * parasym_recovery
+	_sym_tone_fast = lerpf(_sym_tone_fast, target_tone, fast_alpha)
+
+	var slow_alpha: float = 0.5 if target_tone > _sym_tone_slow else 0.15 * parasym_recovery
+	_sym_tone_slow = lerpf(_sym_tone_slow, target_tone, slow_alpha)
+
+	heart_rate           = lerpf(BASELINE_HR, MAX_HR, _sym_tone_fast)
+	lv.e_max             = lerpf(BASELINE_LV_EMAX, MAX_LV_EMAX, _sym_tone_fast)
+	lv.e_rise_rate       = lerpf(BASELINE_LV_ERISE, MAX_LV_ERISE, _sym_tone_fast)
+	lv.e_decay_rate      = lerpf(BASELINE_LV_EDECAY, MAX_LV_EDECAY, _sym_tone_fast)
+	rv.e_max             = lerpf(BASELINE_RV_EMAX, MAX_RV_EMAX, _sym_tone_fast)
+	la.valve_conductance = lerpf(BASELINE_LA_CONDUCTANCE, MAX_LA_CONDUCTANCE, _sym_tone_fast)
+
+	var svr_curve: float = pow(_sym_tone_slow, 0.4)
+	_aorta.systemic_resistance   = lerpf(
+		_aorta.BASELINE_SYSTEMIC_RESISTANCE,
+		_aorta.BASELINE_SYSTEMIC_RESISTANCE * 0.37,
+		svr_curve)
+	_vena_cava.unstressed_volume = lerpf(
+		_vena_cava.BASELINE_UNSTRESSED_VOLUME,
+		_vena_cava.BASELINE_UNSTRESSED_VOLUME * 0.85,
+		svr_curve)
+	_vena_cava.to_ra_conductance = lerpf(
+		_vena_cava.BASELINE_TO_RA_CONDUCTANCE,
+		_vena_cava.BASELINE_TO_RA_CONDUCTANCE * 2.0,
+		svr_curve)
+
+
 func tick_turn() -> void:
 	_turn_index += 1
+	_apply_sympathetic_tone()
 	var phase_per_step: float = SIM_STEP / (60.0 / heart_rate)
 	var turn_steps: int = roundi(TURN_DURATION / SIM_STEP)
 	var beat: int = 0
-	var _beat_step: int = 0   # steps since last SA fire, for curve logging
+	var _beat_step: int = 0
 	for i in turn_steps:
 		if _beat_phase >= 1.0:
 			_beat_phase -= 1.0
@@ -120,7 +185,6 @@ func tick_turn() -> void:
 		tick(SIM_STEP)
 		if pressure_graph != null:
 			pressure_graph.record(self)
-		# Print one full beat of curve data on turn 1 beat 14 (near steady state)
 		if _turn_index == 1 and beat == 14 and _beat_step < 55:
 			print("[CURVE %d] LV=%.1f Ao=%.1f aov=%s" % [_beat_step, lv.pressure, monitor.aorta_pressure, str(lv.valve_open)])
 		_beat_step += 1

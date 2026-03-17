@@ -144,7 +144,7 @@ func _check_move(delta: Vector2i) -> void:
 	
 	
 	if _character.organs.cardiovascular != null:
-		_character.organs.cardiovascular.set_demand(8.0)
+		_character.organs.cardiovascular.set_demand(6.5)
 
 	moved.emit()
 	

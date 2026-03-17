@@ -12,7 +12,8 @@
       "Read(//mnt/e/GodotGames/ChemRogueLite/chem-rogue-lite/**)",
       "Bash(done)",
       "Bash(cat:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

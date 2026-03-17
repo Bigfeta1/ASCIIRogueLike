@@ -18,7 +18,8 @@ var pressure_max: float = 200.0
 
 const COMPLIANCE: float        = 1.55   # mL/mmHg
 const UNSTRESSED_VOLUME: float = 550.0 # mL
-const SYSTEMIC_RESISTANCE: float = 1.295 # mmHg·s/mL
+const BASELINE_SYSTEMIC_RESISTANCE: float = 1.295 # mmHg·s/mL — resting value
+var   systemic_resistance: float          = 1.295 # mmHg·s/mL — modulated by sympathetic tone
 
 # Returns the volume drained into the systemic venous reservoir this tick.
 func tick(delta: float, valve_open: bool, notch_fired: bool, notch_dip: float) -> float:
@@ -27,7 +28,7 @@ func tick(delta: float, valve_open: bool, notch_fired: bool, notch_dip: float) -
 
 	pressure = maxf(0.0, (volume - UNSTRESSED_VOLUME) / COMPLIANCE)
 
-	var outflow: float = maxf(0.0, pressure / SYSTEMIC_RESISTANCE * delta)
+	var outflow: float = maxf(0.0, pressure / systemic_resistance * delta)
 	outflow             = minf(outflow, maxf(0.0, volume - UNSTRESSED_VOLUME))
 	volume             -= outflow
 
