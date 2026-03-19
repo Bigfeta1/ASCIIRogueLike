@@ -17,6 +17,8 @@
 [node name="CharacterCardiovascular" type="Node"]
 script = ExtResource("1_qkorx")
 
+[node name="CardiacSim" type="CardiacSim" parent="."]
+
 [node name="CardiacMonitor" type="Node" parent="."]
 script = ExtResource("2_q8pem")
 

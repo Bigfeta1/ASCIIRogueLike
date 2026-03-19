@@ -21,7 +21,7 @@ var _character: Node = null
 func setup(organ_registry: Node, vitals: Node) -> void:
 	_organs = organ_registry
 	_vitals = vitals
-	_character = get_parent()
+	_character = get_parent().get_parent()
 
 
 func tick() -> void:

@@ -85,20 +85,42 @@ func _on_turn_changed(_old_turn: TurnState, new_turn: TurnState) -> void:
 
 
 func handle_enemy_turn():
+	# Launch all cardiac sims in parallel first
+	for enemy in _enemies:
+		if enemy.organs != null and enemy.organs.cardiovascular != null:
+			var cv: Node = enemy.organs.cardiovascular
+			if not cv._is_player and cv._cardiac_sim != null:
+				cv._cardiac_sim.tick_turn_async()
+
+	# While sims run in background, do cheap sequential work
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
 		var alive: bool = ai.life_state == ai.LifeState.ALIVE
-
 		if alive:
 			ai.take_turn_step()
-
-		if enemy.organs != null:
-			enemy.organs.tick(alive)
-
-		# Enemy Regen
 		enemy.get_node("CharacterVitals").tick_regen()
 
-		await get_tree().process_frame
+	# Wait for all cardiac sims to finish
+	var any_running := true
+	while any_running:
+		any_running = false
+		for enemy in _enemies:
+			if enemy.organs != null and enemy.organs.cardiovascular != null:
+				var cv: Node = enemy.organs.cardiovascular
+				if cv._cardiac_sim != null and not cv._cardiac_sim.is_done():
+					any_running = true
+					break
+		if any_running:
+			await get_tree().process_frame
+
+	# Collect results and run remaining organ ticks
+	for enemy in _enemies:
+		var alive: bool = enemy.get_node("CharacterAI").life_state == enemy.get_node("CharacterAI").LifeState.ALIVE
+		if enemy.organs != null:
+			var cv: Node = enemy.organs.cardiovascular
+			if not cv._is_player and cv._cardiac_sim != null:
+				cv._collect_async_results()
+			enemy.organs.tick_non_cardiac(alive)
 
 	WorldState.tick_off_screen_enemies()
 	_map_params.advance_time(15)

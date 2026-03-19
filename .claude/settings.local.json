@@ -13,7 +13,13 @@
       "Bash(done)",
       "Bash(cat:*)",
       "Bash(python3:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(g++ --version)",
+      "Bash(pip3 install:*)",
+      "Bash(sudo apt-get:*)",
+      "Bash(scons:*)",
+      "Bash(apt-cache show:*)",
+      "Bash(x86_64-w64-mingw32-g++ --version)"
     ]
   }
 }

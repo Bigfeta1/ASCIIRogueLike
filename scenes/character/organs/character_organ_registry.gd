@@ -31,10 +31,12 @@ func setup(vitals: Node, levels: Node, is_player: bool = false) -> void:
 	coagulation.setup(self)
 
 func tick(is_moving: bool = false) -> void:
-	# Called by TurnOrder
-	
+	# Called by TurnOrder (player only now — enemies use tick_non_cardiac)
 	if cardiovascular != null:
-		cardiovascular.tick_turn()
+		await cardiovascular.tick_turn()
+	tick_non_cardiac(is_moving)
+
+func tick_non_cardiac(is_moving: bool = false) -> void:
 	if pulmonary != null:
 		pulmonary.tick()
 	if renal != null:

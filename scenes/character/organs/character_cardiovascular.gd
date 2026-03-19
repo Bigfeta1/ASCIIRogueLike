@@ -89,12 +89,15 @@ const MIN_TO_RA_CONDUCTANCE: float   = 14.3 * 0.7
 
 var pressure_graph: CardiacPressureGraph = null
 
+@onready var _cardiac_sim: CardiacSim = get_node("CardiacSim")
 
 #endregion
 
 func set_demand(co: float) -> void:
 	demanded_co_pre_decay = co
 	demanded_co           = co
+	if not _is_player and _cardiac_sim != null:
+		_cardiac_sim.set_demand(co)
 
 func _ready() -> void:
 	_mitral_valve.setup(la, lv)
@@ -119,6 +122,8 @@ func setup(vitals: Node, levels: Node = null, is_player: bool = false) -> void:
 	_vitals = vitals
 	_levels = levels
 	_is_player = is_player
+	if not _is_player and _cardiac_sim != null:
+		_cardiac_sim.initialize()
 	_refresh_initial_valve_states()
 
 func _refresh_initial_valve_states() -> void:
@@ -212,6 +217,10 @@ func _apply_sympathetic_tone() -> void:
 func tick_turn() -> void:
 	_turn_index += 1
 
+	if not _is_player and _cardiac_sim != null:
+		# async path: launched externally, results collected via _collect_async_results()
+		return
+
 	var turn_steps: int = roundi(TURN_DURATION / SIM_STEP)
 	for i in turn_steps:
 		tick(SIM_STEP)
@@ -238,6 +247,20 @@ func tick_turn() -> void:
 		_vena_cava.volume, _pulmonary_vein.volume, _aorta.volume,
 		la.volume, lv.volume, ra.volume, rv.volume, total_vol
 	])
+
+func _collect_async_results() -> void:
+	heart_rate = _cardiac_sim.get_heart_rate()
+	monitor.bp_systolic  = _cardiac_sim.get_bp_systolic()
+	monitor.bp_diastolic = _cardiac_sim.get_bp_diastolic()
+	monitor.cardiac_output = _cardiac_sim.get_cardiac_output()
+	monitor.SV  = _cardiac_sim.get_sv()
+	monitor.EDV = _cardiac_sim.get_edv()
+	monitor.ESV = _cardiac_sim.get_esv()
+	monitor.mean_arterial_pressure = _cardiac_sim.get_mean_arterial_pressure()
+	if _vitals != null:
+		_vitals.hr           = roundi(heart_rate)
+		_vitals.bp_systolic  = roundi(monitor.bp_systolic)
+		_vitals.bp_diastolic = roundi(monitor.bp_diastolic)
 
 func tick(delta: float) -> void:
 	_atrial.tick(delta)
