@@ -67,7 +67,7 @@ func _ready() -> void:
 	if character_type == CharacterType.STRUCTURE:
 		return
 	
-	organs.setup(vitals, levels)
+	organs.setup(vitals, levels, character_role == CharacterRole.PLAYER)
 	sound.setup(grid_map)
 	interact_cursor.setup(grid_map)
 	look_cursor.setup(grid_map, camera, canvas_layer.get_node("LookModeInfo"))

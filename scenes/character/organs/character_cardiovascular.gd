@@ -113,9 +113,12 @@ func _ready() -> void:
 	_aortic_valve.waveform_trough.connect(func(v: float) -> void: monitor.bp_diastolic = v)
 
 #region SETUP
-func setup(vitals: Node, levels: Node = null) -> void:
+var _is_player: bool = false
+
+func setup(vitals: Node, levels: Node = null, is_player: bool = false) -> void:
 	_vitals = vitals
 	_levels = levels
+	_is_player = is_player
 	_refresh_initial_valve_states()
 
 func _refresh_initial_valve_states() -> void:
@@ -224,6 +227,9 @@ func tick_turn() -> void:
 
 	_apply_sympathetic_tone()
 
+	if _vitals != null and _is_player:
+		_vitals._refresh_ui()
+
 	var total_vol: float = la.volume + lv.volume + ra.volume + rv.volume + _aorta.volume + _vena_cava.volume + _pulmonary_vein.volume
 	print("[TURN %d] BP=%.0f/%.0f HR=%.0f SV=%.1f EDV=%.1f ESV=%.1f CO=%.3f tone_f=%.3f tone_s=%.3f demanded=%.2f VC=%.1f PV=%.1f Ao=%.1f LA=%.1f LV=%.1f RA=%.1f RV=%.1f TOTAL=%.1f" % [
 		_turn_index, monitor.bp_systolic, monitor.bp_diastolic, heart_rate,
@@ -268,11 +274,10 @@ func _step_heart() -> void:
 	monitor.mean_arterial_pressure = monitor.bp_diastolic + (monitor.bp_systolic - monitor.bp_diastolic) / 3.0
 	monitor.pulse_pressure         = monitor.bp_systolic - monitor.bp_diastolic
 
-	if _vitals != null:
+	if _vitals != null and _is_player:
 		_vitals.hr           = roundi(heart_rate)
 		_vitals.bp_systolic  = roundi(monitor.bp_systolic)
 		_vitals.bp_diastolic = roundi(monitor.bp_diastolic)
-		_vitals._refresh_ui()
 
 
 func _step_valves(delta: float) -> void:

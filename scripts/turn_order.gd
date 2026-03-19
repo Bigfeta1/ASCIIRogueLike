@@ -77,26 +77,28 @@ func _on_turn_changed(_old_turn: TurnState, new_turn: TurnState) -> void:
 		return
 	
 	# Handle Enemy turn
-	handle_enemy_turn()
-	
+	await handle_enemy_turn()
+
 	# Emit Signal
 	current_turn_state = TurnState.PLAYER_TURN
 	turn_changed.emit(TurnState.MAP_TURN, TurnState.PLAYER_TURN)
-	
+
 
 func handle_enemy_turn():
 	for enemy in _enemies:
 		var ai: Node = enemy.get_node("CharacterAI")
 		var alive: bool = ai.life_state == ai.LifeState.ALIVE
-		
+
 		if alive:
 			ai.take_turn_step()
-		
+
 		if enemy.organs != null:
 			enemy.organs.tick(alive)
 
 		# Enemy Regen
 		enemy.get_node("CharacterVitals").tick_regen()
-	
+
+		await get_tree().process_frame
+
 	WorldState.tick_off_screen_enemies()
 	_map_params.advance_time(15)

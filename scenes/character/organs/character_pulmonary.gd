@@ -61,12 +61,14 @@ var pe_rv_strain: float = 0.0               # 0.0–1.0 — progressive RV dilat
 var _organs: Node = null
 var _levels: Node = null
 var _vitals: Node = null
+var _is_player: bool = false
 
 
-func setup(organ_registry: Node, levels: Node, vitals: Node = null) -> void:
+func setup(organ_registry: Node, levels: Node, vitals: Node = null, is_player: bool = false) -> void:
 	_organs = organ_registry
 	_levels = levels
 	_vitals = vitals
+	_is_player = is_player
 	_calculate_volumes()
 
 
@@ -98,7 +100,7 @@ func tick() -> void:
 	# Write SpO2 back into cardiovascular, and RR into vitals for HUD display.
 	if _organs.get("cardiovascular") != null:
 		_organs.cardiovascular.spo2 = pao2_spo2
-	if _vitals != null:
+	if _vitals != null and _is_player:
 		_vitals.rr = roundi(respiratory_rate)
 		_vitals._refresh_ui()
 

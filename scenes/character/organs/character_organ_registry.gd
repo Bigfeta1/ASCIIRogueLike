@@ -20,13 +20,13 @@ func _ready() -> void:
 	coagulation = get_node("CharacterCoagulation")
 	
 
-func setup(vitals: Node, levels: Node) -> void:
+func setup(vitals: Node, levels: Node, is_player: bool = false) -> void:
 	# Called by Character.gd
-	
+
 	renal.setup(self)
 	hypothalamus.setup(self)
-	cardiovascular.setup(vitals, levels)
-	pulmonary.setup(self, levels, vitals)
+	cardiovascular.setup(vitals, levels, is_player)
+	pulmonary.setup(self, levels, vitals, is_player)
 	cortex.setup(self, vitals)
 	coagulation.setup(self)
 
