@@ -8,9 +8,6 @@ var grid_pos: Vector2i = Vector2i.ZERO
 var zone: Vector2i = Vector2i.ZERO
 var facing_state: int  # CharacterSprite.FacingState
 
-var _held_keys: Dictionary = {}
-var _move_pending: bool = false
-
 var _character: Node
 var _sprite: Node
 var _grid_map: GridMap
@@ -34,65 +31,21 @@ func setup(grid_map: GridMap, turn_order: Node, occupancy_map: Node) -> void:
 	_occupancy_map = occupancy_map
 	_snap()
 
-func _unhandled_input(event: InputEvent) -> void:
-	if _character.character_role != _character.CharacterRole.PLAYER:
-		return
-	if not event is InputEventKey:
-		return
-	if event.keycode == KEY_SPACE and event.pressed:
-		if _turn_order.current_turn_state == _turn_order.TurnState.PLAYER_TURN:
-			if _character.action_state == _character.ActionState.MOVEMENT:
-				if _character.organs.cardiovascular != null:
-					_character.organs.cardiovascular.set_demand(4.75)
-				waited.emit()
-		return
-	var dir_keys := [KEY_D, KEY_RIGHT, KEY_A, KEY_LEFT, KEY_S, KEY_DOWN, KEY_W, KEY_UP]
-	if not event.keycode in dir_keys:
-		return
-	var ai := _character.get_node_or_null("CharacterAI")
-	if ai != null and ai.life_state != ai.LifeState.ALIVE:
-		return
-	if not event.pressed:
-		_held_keys.erase(event.keycode)
-		return
-	
-	if _turn_order.current_turn_state != _turn_order.TurnState.PLAYER_TURN:
-		return
-	
-	_held_keys[event.keycode] = true
-	
-	if not event.echo:
-		_move_pending = true
-	else:
-		_do_move()
 
-func _process(_delta: float) -> void:
-	if _move_pending:
-		_move_pending = false
-		_do_move()
+func move_look_cursor(delta: Vector2i) -> void:
+	_look_cursor.move(delta)
 
-func _do_move() -> void:
-	var dx := int(_held_keys.get(KEY_D, false) or _held_keys.get(KEY_RIGHT, false)) - int(_held_keys.get(KEY_A, false) or _held_keys.get(KEY_LEFT, false))
-	var dy := int(_held_keys.get(KEY_S, false) or _held_keys.get(KEY_DOWN, false)) - int(_held_keys.get(KEY_W, false) or _held_keys.get(KEY_UP, false))
-	var delta := Vector2i(dx, dy)
-	
-	if delta == Vector2i.ZERO:
-		return
-	
-	if _character.action_state == _character.ActionState.MOVEMENT:
-		_check_move(delta)
-	elif _character.action_state == _character.ActionState.LOOK:
-		_look_cursor.move(delta)
-	elif _character.action_state == _character.ActionState.INTERACTION:
-		if _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.MOVE_CURSOR:
-			if _character.interaction.pending_action != "":
-				_check_move(delta)
-			else:
-				_interact_cursor.move(delta)
-		elif _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.DROPPING_ITEM:
+
+func move_interaction_cursor(delta: Vector2i) -> void:
+	if _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.MOVE_CURSOR:
+		if _character.interaction.pending_action != "":
+			_check_move(delta)
+		else:
 			_interact_cursor.move(delta)
-		elif _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.PLACE_CAMPFIRE:
-			_interact_cursor.move(delta)
+	elif _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.DROPPING_ITEM:
+		_interact_cursor.move(delta)
+	elif _character.interaction.interaction_sub_state == _character.interaction.InteractionSubState.PLACE_CAMPFIRE:
+		_interact_cursor.move(delta)
 
 
 func _check_move(delta: Vector2i) -> void:
@@ -119,9 +72,8 @@ func _check_move(delta: Vector2i) -> void:
 				if combat != null:
 					combat.bump_attack(target)
 					combat._apply_damage(occupant)
-				if _character.organs.cardiovascular != null:
-					_character.organs.cardiovascular.set_demand(15.0)
-					_character.organs.cardiovascular.tick_turn()
+				if _character.organs.autonomic != null:
+					_character.organs.autonomic.notify_activity(0.672)
 				moved.emit()
 			return
 		
@@ -136,8 +88,8 @@ func _check_move(delta: Vector2i) -> void:
 			if combat != null:
 				combat._apply_damage(occupant)
 				combat.bump_attack(target)
-			if _character.organs.cardiovascular != null:
-				_character.organs.cardiovascular.set_demand(17.0)
+			if _character.organs.autonomic != null:
+				_character.organs.autonomic.notify_activity(0.803)
 			moved.emit()
 		return
 	
@@ -145,8 +97,8 @@ func _check_move(delta: Vector2i) -> void:
 	grid_pos = target
 	
 	
-	if _character.organs.cardiovascular != null:
-		_character.organs.cardiovascular.set_demand(6.5)
+	if _character.organs.autonomic != null:
+		_character.organs.autonomic.notify_activity(0.115)
 
 	moved.emit()
 	

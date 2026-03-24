@@ -169,7 +169,6 @@ func _serialize_organs(enemy_node: Node) -> Dictionary:
 		d["cardiac_output"] = cardio.monitor.cardiac_output
 		d["stroke_volume"] = cardio.monitor.SV
 		d["systemic_vascular_resistance"] = cardio.TPR
-		d["demanded_co"] = cardio.demanded_co
 		d["venous_return_fraction"] = cardio.venous_return_fraction
 		d["spo2"] = cardio.spo2
 	var pulm: Node = enemy_node.organs.pulmonary

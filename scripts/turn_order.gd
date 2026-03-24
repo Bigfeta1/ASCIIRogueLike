@@ -120,6 +120,8 @@ func handle_enemy_turn():
 			var cv: Node = enemy.organs.cardiovascular
 			if not cv._is_player and cv._cardiac_sim != null:
 				cv._collect_async_results()
+			if enemy.organs.autonomic != null:
+				enemy.organs.autonomic.tick_turn()
 			enemy.organs.tick_non_cardiac(alive)
 
 	WorldState.tick_off_screen_enemies()

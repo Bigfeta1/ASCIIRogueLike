@@ -151,19 +151,18 @@ func _update_tension_pressure() -> void:
 
 
 func _update_respiratory_rate() -> void:
-	# RR scales with metabolic demand (demanded_co).
+	# RR scales with metabolic activity level.
 	# At rest: 12 bpm. At max exertion: up to 40 bpm.
 	# Cardio stat improves ventilatory efficiency — same demand met at lower RR.
 	var base_rr := BASELINE_RR
-	if _organs.cardiovascular != null:
-		var co_excess: float = maxf(0.0, _organs.cardiovascular.demanded_co_pre_decay - _organs.cardiovascular.BASELINE_CO)
-		var co_fraction: float = co_excess / (_organs.cardiovascular.MAX_CO - _organs.cardiovascular.BASELINE_CO)
+	if _organs.autonomic != null:
+		var activity_fraction: float = _organs.autonomic._metabolic_svr_factor
 		var cardio_mod: float = 0.0
 		if _levels != null:
 			cardio_mod = _levels.stat_mod(_levels.cardio) * 0.1
 		# Higher cardio → more efficient ventilation → lower RR for same demand
 		var rr_range: float = (MAX_RR - BASELINE_RR) * maxf(0.0, 1.0 - cardio_mod)
-		base_rr = BASELINE_RR + rr_range * co_fraction
+		base_rr = BASELINE_RR + rr_range * activity_fraction
 
 	# Hypoxic drive: SpO2 < 90% → peripheral chemoreceptors → tachypnea.
 	# Adds up to +28 bpm at SpO2=50% (full hypoxia). Takes the dominant driver.

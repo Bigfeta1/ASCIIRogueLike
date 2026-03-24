@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://c37yn53x07kyk"]
+[gd_scene load_steps=25 format=3 uid="uid://c37yn53x07kyk"]
 
 [ext_resource type="Script" uid="uid://babdf1rj7opns" path="res://scenes/character/organs/character_organ_registry.gd" id="1_11c27"]
 [ext_resource type="Script" uid="uid://dh5m7m2fhgmuh" path="res://scenes/character/organs/character_renal.gd" id="2_kupcc"]
@@ -19,15 +19,17 @@
 [ext_resource type="Script" uid="uid://dkv52xjo3xmni" path="res://scenes/character/organs/character_cortex.gd" id="17_pj1va"]
 [ext_resource type="Script" uid="uid://djd7kjff15ilg" path="res://scenes/character/organs/character_coagulation.gd" id="18_2yiyi"]
 [ext_resource type="Script" uid="uid://y26fskh56qtk" path="res://scenes/character/organs/cardiac_monitor.gd" id="19_cardmon"]
+[ext_resource type="Script" uid="uid://x5jut2joxi5w" path="res://scenes/character/organs/character_ans.gd" id="20_ans"]
+[ext_resource type="Script" uid="uid://bnx2wcqcxew63" path="res://scenes/character/organs/precentral_gyrus.gd" id="21_precg"]
+[ext_resource type="Script" uid="uid://cy65fmhjtcheb" path="res://scenes/character/organs/nervous_system_registry.gd" id="22_nsreg"]
+[ext_resource type="Script" uid="uid://w8sinnpd45vc" path="res://scenes/character/organs/cns_registry.gd" id="23_cnsreg"]
+[ext_resource type="Script" uid="uid://yigso2rodibr" path="res://scenes/character/organs/pns_registry.gd" id="24_pnsreg"]
 
 [node name="CharacterOrgans" type="Node"]
 script = ExtResource("1_11c27")
 
 [node name="CharacterRenal" type="Node" parent="."]
 script = ExtResource("2_kupcc")
-
-[node name="CharacterHypothalamus" type="Node" parent="."]
-script = ExtResource("3_tvv73")
 
 [node name="CharacterCardiovascular" type="Node" parent="."]
 script = ExtResource("4_puvte")
@@ -203,8 +205,34 @@ debug_name = "Aorta"
 [node name="CharacterPulmonary" type="Node" parent="."]
 script = ExtResource("16_k2btv")
 
-[node name="CharacterCortex" type="Node" parent="."]
-script = ExtResource("17_pj1va")
-
 [node name="CharacterCoagulation" type="Node" parent="."]
 script = ExtResource("18_2yiyi")
+
+[node name="CharacterNervousSystem" type="Node" parent="."]
+script = ExtResource("22_nsreg")
+
+[node name="CNS" type="Node" parent="CharacterNervousSystem"]
+script = ExtResource("23_cnsreg")
+
+[node name="CharacterCortex" type="Node" parent="CharacterNervousSystem/CNS"]
+script = ExtResource("17_pj1va")
+
+[node name="FrontalLobe" type="Node" parent="CharacterNervousSystem/CNS/CharacterCortex"]
+
+[node name="PrecentralGyrus" type="Node" parent="CharacterNervousSystem/CNS/CharacterCortex/FrontalLobe"]
+script = ExtResource("21_precg")
+
+[node name="CharacterHypothalamus" type="Node" parent="CharacterNervousSystem/CNS"]
+script = ExtResource("3_tvv73")
+
+[node name="Brainstem" type="Node" parent="CharacterNervousSystem/CNS"]
+
+[node name="MidBrain" type="Node" parent="CharacterNervousSystem/CNS/Brainstem"]
+
+[node name="ReticularActivatingSystem" type="Node" parent="CharacterNervousSystem/CNS/Brainstem/MidBrain"]
+
+[node name="PNS" type="Node" parent="CharacterNervousSystem"]
+script = ExtResource("24_pnsreg")
+
+[node name="AutonomicNervousSystem" type="Node" parent="CharacterNervousSystem/PNS"]
+script = ExtResource("20_ans")

@@ -59,7 +59,8 @@ func _ready() -> void:
 	# Components resolve siblings themselves in their own _ready(); only scene-external
 	# refs are injected here so no component hardcodes scene paths.
 	var occupancy_map: Node = grid_map.get_node("OccupancyMap")
-	movement.setup(grid_map, scene.get_node("GameLogic/TurnOrder") if character_role == CharacterRole.PLAYER else null, occupancy_map)
+	var turn_order: Node = scene.get_node("GameLogic/TurnOrder") if character_role == CharacterRole.PLAYER else null
+	movement.setup(grid_map, turn_order, occupancy_map)
 	lifecycle.setup(occupancy_map)
 	combat.setup(grid_map, canvas_layer, camera)
 	vision.setup(grid_map, occupancy_map)
@@ -73,6 +74,7 @@ func _ready() -> void:
 	look_cursor.setup(grid_map, camera, canvas_layer.get_node("LookModeInfo"))
 
 	if character_role == CharacterRole.PLAYER:
+		organs.precentral_gyrus.setup(self, turn_order)
 		vitals.setup(canvas_layer, camera, canvas_layer.get_node("TopBar"))
 		var character_sheet: Control = canvas_layer.get_node("CharacterSheet")
 		levels.setup(character_sheet, canvas_layer.get_node("TopBar"))
@@ -88,5 +90,4 @@ func _ready() -> void:
 		inventory.add_item("tinder_box")
 		inventory.add_item("logs")
 	else:
-		var turn_order: Node = scene.get_node("GameLogic/TurnOrder")
-		ai.setup(grid_map, turn_order, canvas_layer, camera)
+		ai.setup(grid_map, scene.get_node("GameLogic/TurnOrder"), canvas_layer, camera)

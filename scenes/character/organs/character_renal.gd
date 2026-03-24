@@ -158,8 +158,7 @@ func tick() -> void:
 	var map_ratio := 1.0
 	if _organs != null and _organs.cardiovascular != null:
 		var map: float = _organs.cardiovascular.monitor.mean_arterial_pressure
-		var co_excess: float = maxf(0.0, _organs.cardiovascular.demanded_co - _organs.cardiovascular.BASELINE_CO)
-		var sympathetic_suppression: float = co_excess / (_organs.cardiovascular.MAX_CO - _organs.cardiovascular.BASELINE_CO)
+		var sympathetic_suppression: float = _organs.autonomic._metabolic_svr_factor if _organs.autonomic != null else 0.0
 		var rpf_ceiling: float = lerpf(1.0, 0.7, sympathetic_suppression)
 		if map < 70.0:
 			map_ratio = maxf(map / 70.0, 0.0)

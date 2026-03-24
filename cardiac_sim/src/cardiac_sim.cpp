@@ -14,29 +14,23 @@ void CardiacSim::_bind_methods() {
     ClassDB::bind_method(D_METHOD("tick_turn"),       &CardiacSim::tick_turn);
     ClassDB::bind_method(D_METHOD("tick_turn_async"), &CardiacSim::tick_turn_async);
     ClassDB::bind_method(D_METHOD("is_done"),         &CardiacSim::is_done);
-    ClassDB::bind_method(D_METHOD("set_demand", "co"), &CardiacSim::set_demand);
-    ClassDB::bind_method(D_METHOD("initialize"), &CardiacSim::initialize);
-    ClassDB::bind_method(D_METHOD("force_fire"), &CardiacSim::force_fire);
+    ClassDB::bind_method(D_METHOD("initialize"),      &CardiacSim::initialize);
+    ClassDB::bind_method(D_METHOD("force_fire"),      &CardiacSim::force_fire);
+    ClassDB::bind_method(D_METHOD("apply_tone", "effective_sym", "effective_vagal", "metabolic_svr_factor"), &CardiacSim::apply_tone);
 
-    ClassDB::bind_method(D_METHOD("get_bp_systolic"),           &CardiacSim::get_bp_systolic);
-    ClassDB::bind_method(D_METHOD("get_bp_diastolic"),          &CardiacSim::get_bp_diastolic);
-    ClassDB::bind_method(D_METHOD("get_heart_rate"),            &CardiacSim::get_heart_rate);
-    ClassDB::bind_method(D_METHOD("get_cardiac_output"),        &CardiacSim::get_cardiac_output);
-    ClassDB::bind_method(D_METHOD("get_mean_arterial_pressure"),&CardiacSim::get_mean_arterial_pressure);
-    ClassDB::bind_method(D_METHOD("get_sv"),                    &CardiacSim::get_sv);
-    ClassDB::bind_method(D_METHOD("get_edv"),                   &CardiacSim::get_edv);
-    ClassDB::bind_method(D_METHOD("get_esv"),                   &CardiacSim::get_esv);
-    ClassDB::bind_method(D_METHOD("get_spo2"),                  &CardiacSim::get_spo2);
-    ClassDB::bind_method(D_METHOD("get_demanded_co"),           &CardiacSim::get_demanded_co);
-    ClassDB::bind_method(D_METHOD("get_demanded_co_pre_decay"), &CardiacSim::get_demanded_co_pre_decay);
-    ClassDB::bind_method(D_METHOD("get_sym_tone_fast"),         &CardiacSim::get_sym_tone_fast);
-    ClassDB::bind_method(D_METHOD("get_sym_tone_slow"),         &CardiacSim::get_sym_tone_slow);
-    ClassDB::bind_method(D_METHOD("get_venous_return_fraction"),&CardiacSim::get_venous_return_fraction);
+    ClassDB::bind_method(D_METHOD("get_bp_systolic"),            &CardiacSim::get_bp_systolic);
+    ClassDB::bind_method(D_METHOD("get_bp_diastolic"),           &CardiacSim::get_bp_diastolic);
+    ClassDB::bind_method(D_METHOD("get_heart_rate"),             &CardiacSim::get_heart_rate);
+    ClassDB::bind_method(D_METHOD("get_cardiac_output"),         &CardiacSim::get_cardiac_output);
+    ClassDB::bind_method(D_METHOD("get_mean_arterial_pressure"), &CardiacSim::get_mean_arterial_pressure);
+    ClassDB::bind_method(D_METHOD("get_sv"),                     &CardiacSim::get_sv);
+    ClassDB::bind_method(D_METHOD("get_edv"),                    &CardiacSim::get_edv);
+    ClassDB::bind_method(D_METHOD("get_esv"),                    &CardiacSim::get_esv);
+    ClassDB::bind_method(D_METHOD("get_spo2"),                   &CardiacSim::get_spo2);
+    ClassDB::bind_method(D_METHOD("get_venous_return_fraction"), &CardiacSim::get_venous_return_fraction);
 
     ClassDB::bind_method(D_METHOD("set_spo2", "v"),                   &CardiacSim::set_spo2);
     ClassDB::bind_method(D_METHOD("set_venous_return_fraction", "v"), &CardiacSim::set_venous_return_fraction);
-    ClassDB::bind_method(D_METHOD("set_sym_mod", "v"),                &CardiacSim::set_sym_mod);
-    ClassDB::bind_method(D_METHOD("set_parasym_recovery", "v"),       &CardiacSim::set_parasym_recovery);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -126,11 +120,6 @@ void CardiacSim::initialize() {
 // ─────────────────────────────────────────────────────────────────────────────
 // PUBLIC API
 // ─────────────────────────────────────────────────────────────────────────────
-void CardiacSim::set_demand(float co) {
-    demanded_co_pre_decay = co;
-    demanded_co           = co;
-}
-
 void CardiacSim::force_fire() {
     // Immediately fire SA node — used for KP_4 single-beat debug
     _trigger_atrial_sweep();
@@ -150,8 +139,6 @@ void CardiacSim::tick_turn() {
     } else {
         monitor.cardiac_output = 0.0f;
     }
-
-    _apply_sympathetic_tone();
 }
 
 void CardiacSim::tick_turn_async() {
@@ -571,78 +558,42 @@ void CardiacSim::_step_heart() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SYMPATHETIC TONE
+// APPLY TONE — called by GDScript CharacterANS each turn.
+// effective_sym   [0, 1] — net sympathetic drive (baroreflex + central command)
+// effective_vagal [0, 1] — net vagal drive (1.0 = resting, 0.0 = fully withdrawn)
+// metabolic_svr_factor [0, 1] — local exercise vasodilation
 // ─────────────────────────────────────────────────────────────────────────────
-void CardiacSim::_apply_sympathetic_tone() {
-    float actual_co     = monitor.cardiac_output;
-    float co_error      = demanded_co - actual_co;
-    float error_fraction = _clampf(co_error / (MAX_CO - BASELINE_CO), -1.0f, 1.0f);
+void CardiacSim::apply_tone(float effective_sym, float effective_vagal, float metabolic_svr_factor) {
+    // SA node: sym raises na_slope, vagal lowers it.
+    // At rest (sym=0, vagal=1): baseline. At max sym: MAX. At max vagal withdrawal: MIN.
+    sa.na_slope = _lerpf(BASELINE_NA_SLOPE, MAX_NA_SLOPE, effective_sym);
+    sa.na_slope = _lerpf(sa.na_slope, MIN_NA_SLOPE, 1.0f - effective_vagal);
 
-    if (co_error > 0.0f) {
-        _sym_tone_fast = _clampf(_sym_tone_fast + error_fraction * sym_mod * 0.12f, -1.0f, 1.0f);
-        _sym_tone_slow = _clampf(_sym_tone_slow + error_fraction * sym_mod * 0.10f, -1.0f, 1.0f);
-    } else if (co_error < -CO_TOLERANCE) {
-        _sym_tone_fast = _clampf(_sym_tone_fast + error_fraction * parasym_recovery * 0.12f, -1.0f, 1.0f);
-        _sym_tone_slow = _clampf(_sym_tone_slow + error_fraction * parasym_recovery * 0.10f, -1.0f, 1.0f);
-    }
+    // Ventricular inotropy/lusitropy — sym only (vagal has negligible ventricular effect)
+    lv.e_max        = _lerpf(BASELINE_LV_EMAX,  MAX_LV_EMAX,  effective_sym);
+    rv.e_max        = _lerpf(BASELINE_RV_EMAX,  MAX_RV_EMAX,  effective_sym);
+    lv.e_rise_rate  = _lerpf(BASELINE_LV_ERISE,  MAX_LV_ERISE,  effective_sym);
+    lv.e_decay_rate = _lerpf(BASELINE_LV_EDECAY, MAX_LV_EDECAY, effective_sym);
 
-    float fast_cmd = _clampf(_sym_tone_fast + error_fraction * 0.25f, -1.0f, 1.0f);
-    float slow_cmd = _clampf(_sym_tone_slow + error_fraction * 0.18f, -1.0f, 1.0f);
+    // LA valve conductance — sym only
+    la.valve_conductance = _lerpf(BASELINE_LA_COND, MAX_LA_COND, effective_sym);
 
-    // NA slope (HR)
-    if (fast_cmd >= 0.0f)
-        sa.na_slope = _lerpf(BASELINE_NA_SLOPE, MAX_NA_SLOPE, fast_cmd);
-    else
-        sa.na_slope = _lerpf(BASELINE_NA_SLOPE, MIN_NA_SLOPE, -fast_cmd);
+    // SVR: sym raises resistance (vasoconstriction); metabolic vasodilation opposes.
+    // At rest (sym=0, metabolic=0): baseline. At sym=1: 2x baseline.
+    float baseline_svr = AortaState::BASELINE_SYSTEMIC_RESISTANCE;
+    float max_svr      = baseline_svr * 2.0f;
+    float min_svr      = baseline_svr * 0.50f;
+    float raw_svr      = _lerpf(baseline_svr, max_svr, effective_sym)
+                         - (baseline_svr * metabolic_svr_factor * 0.5f);
+    aorta.systemic_resistance = _clampf(raw_svr, min_svr, max_svr);
 
-    // LV e_max
-    if (fast_cmd >= 0.0f)
-        lv.e_max = _lerpf(BASELINE_LV_EMAX, MAX_LV_EMAX, _powf_concave(fast_cmd));
-    else
-        lv.e_max = _lerpf(BASELINE_LV_EMAX, MIN_LV_EMAX, _powf_concave(-fast_cmd));
-
-    // RV e_max
-    if (fast_cmd >= 0.0f)
-        rv.e_max = _lerpf(BASELINE_RV_EMAX, MAX_RV_EMAX, _powf_concave(fast_cmd));
-    else
-        rv.e_max = _lerpf(BASELINE_RV_EMAX, MIN_RV_EMAX, _powf_concave(-fast_cmd));
-
-    // e_rise/decay — only upward
-    lv.e_rise_rate  = _lerpf(BASELINE_LV_ERISE,  MAX_LV_ERISE,  _maxf(0.0f, fast_cmd));
-    lv.e_decay_rate = _lerpf(BASELINE_LV_EDECAY, MAX_LV_EDECAY, _maxf(0.0f, fast_cmd));
-
-    // LA valve conductance
-    la.valve_conductance = _lerpf(BASELINE_LA_COND, MAX_LA_COND, _maxf(0.0f, fast_cmd));
-
-    // SVR
-    if (slow_cmd >= 0.0f)
-        aorta.systemic_resistance = _lerpf(AortaState::BASELINE_SYSTEMIC_RESISTANCE,
-                                            AortaState::BASELINE_SYSTEMIC_RESISTANCE * 0.37f,
-                                            _powf_concave(slow_cmd));
-    else
-        aorta.systemic_resistance = _lerpf(AortaState::BASELINE_SYSTEMIC_RESISTANCE,
-                                            AortaState::BASELINE_SYSTEMIC_RESISTANCE * 1.5f,
-                                            _powf_concave(-slow_cmd));
-
-    // Unstressed volume
-    if (slow_cmd >= 0.0f)
-        vena_cava.unstressed_volume = _lerpf(VenaCavaState::BASELINE_UNSTRESSED_VOLUME,
-                                              VenaCavaState::BASELINE_UNSTRESSED_VOLUME * 0.85f,
-                                              _powf_concave(slow_cmd));
-    else
-        vena_cava.unstressed_volume = _lerpf(VenaCavaState::BASELINE_UNSTRESSED_VOLUME,
-                                              VenaCavaState::BASELINE_UNSTRESSED_VOLUME * 1.1f,
-                                              _powf_concave(-slow_cmd));
-
-    // Venous conductance
-    if (slow_cmd >= 0.0f)
-        vena_cava.to_ra_conductance = _lerpf(VenaCavaState::BASELINE_TO_RA_CONDUCTANCE,
-                                              VenaCavaState::BASELINE_TO_RA_CONDUCTANCE * 2.0f,
-                                              slow_cmd);
-    else
-        vena_cava.to_ra_conductance = _lerpf(VenaCavaState::BASELINE_TO_RA_CONDUCTANCE,
-                                              VenaCavaState::BASELINE_TO_RA_CONDUCTANCE * 0.7f,
-                                              -slow_cmd);
+    // Venous tone: sym causes venoconstriction (lower unstressed volume → more preload)
+    vena_cava.unstressed_volume = _lerpf(VenaCavaState::BASELINE_UNSTRESSED_VOLUME,
+                                          VenaCavaState::BASELINE_UNSTRESSED_VOLUME * 0.85f,
+                                          effective_sym);
+    vena_cava.to_ra_conductance = _lerpf(VenaCavaState::BASELINE_TO_RA_CONDUCTANCE,
+                                          VenaCavaState::BASELINE_TO_RA_CONDUCTANCE * 2.0f,
+                                          effective_sym);
 }
 
 } // namespace godot

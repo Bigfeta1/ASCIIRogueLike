@@ -71,4 +71,3 @@ func tick(delta: float) -> void:
 				ic_k              = 70.0
 				membrane_potential = -60.0
 				state             = Phase.PHASE_4
-

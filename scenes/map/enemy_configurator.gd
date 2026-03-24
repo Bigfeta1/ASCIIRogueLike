@@ -69,7 +69,6 @@ func spawn(zone_id: Vector2i = Vector2i.ZERO) -> void:
 				cardio.monitor.cardiac_output = organs.get("cardiac_output", cardio.monitor.cardiac_output)
 				cardio.monitor.SV = organs.get("stroke_volume", cardio.monitor.SV)
 				cardio.TPR = organs.get("systemic_vascular_resistance", cardio.TPR)
-				cardio.demanded_co = organs.get("demanded_co", cardio.demanded_co)
 				cardio.venous_return_fraction = organs.get("venous_return_fraction", cardio.venous_return_fraction)
 				cardio.spo2 = organs.get("spo2", cardio.spo2)
 			var pulm: Node = enemy.organs.pulmonary

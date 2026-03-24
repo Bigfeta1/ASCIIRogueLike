@@ -151,19 +151,13 @@ class CardiacSim : public Node {
 public:
     static const int TURN_STEPS = 750;
     static constexpr float SIM_STEP     = 0.020f;
-    static constexpr float BASELINE_CO  = 4.75f;
-    static constexpr float MAX_CO       = 20.0f;
-    static constexpr float CO_TOLERANCE = 0.03f;
-
     static constexpr float BASELINE_HR         = 60.0f;
     static constexpr float BASELINE_LV_EMAX    = 2.5f;
     static constexpr float MAX_LV_EMAX         = 4.5f;
-    static constexpr float MIN_LV_EMAX         = 1.8f;
     static constexpr float BASELINE_LV_EDECAY  = 60.0f;
     static constexpr float MAX_LV_EDECAY       = 120.0f;
     static constexpr float BASELINE_RV_EMAX    = 1.2f;
     static constexpr float MAX_RV_EMAX         = 2.0f;
-    static constexpr float MIN_RV_EMAX         = 0.9f;
     static constexpr float BASELINE_LA_COND    = 25.0f;
     static constexpr float MAX_LA_COND         = 55.0f;
     static constexpr float BASELINE_LV_ERISE   = 20.0f;
@@ -197,14 +191,8 @@ public:
 
     // Controller
     float heart_rate            = 60.0f;
-    float demanded_co           = 5.0f;
-    float demanded_co_pre_decay = 5.0f;
     float spo2                  = 99.0f;
     float venous_return_fraction = 1.0f;
-    float _sym_tone_fast        = 0.0f;
-    float _sym_tone_slow        = 0.0f;
-    float sym_mod               = 1.0f;
-    float parasym_recovery      = 1.0f;
 
     // Threading
     std::thread          _thread;
@@ -231,7 +219,6 @@ private:
     float _tick_vena_cava(float delta);
     float _tick_pulm_vein(float delta);
     void _step_heart();
-    void _apply_sympathetic_tone();
     void _trigger_atrial_sweep();
     void _trigger_ventricular_sweep();
     inline float _clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -249,7 +236,7 @@ public:
     void tick_turn();
     void tick_turn_async();
     bool is_done() const { return _thread_done.load(); }
-    void set_demand(float co);
+    void apply_tone(float effective_sym, float effective_vagal, float metabolic_svr_factor);
     void force_fire();
 
     // Getters for GDScript
@@ -261,17 +248,11 @@ public:
     float get_sv()                   const { return monitor.SV; }
     float get_edv()                  const { return monitor.EDV; }
     float get_esv()                  const { return monitor.ESV; }
-    float get_spo2()                 const { return spo2; }
-    float get_demanded_co()          const { return demanded_co; }
-    float get_demanded_co_pre_decay() const { return demanded_co_pre_decay; }
-    float get_sym_tone_fast()        const { return _sym_tone_fast; }
-    float get_sym_tone_slow()        const { return _sym_tone_slow; }
+    float get_spo2()                   const { return spo2; }
     float get_venous_return_fraction() const { return venous_return_fraction; }
 
-    void  set_spo2(float v)                    { spo2 = v; }
-    void  set_venous_return_fraction(float v)  { venous_return_fraction = v; }
-    void  set_sym_mod(float v)                 { sym_mod = v; }
-    void  set_parasym_recovery(float v)        { parasym_recovery = v; }
+    void  set_spo2(float v)                   { spo2 = v; }
+    void  set_venous_return_fraction(float v) { venous_return_fraction = v; }
 };
 
 } // namespace godot
